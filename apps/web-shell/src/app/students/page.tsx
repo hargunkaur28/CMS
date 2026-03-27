@@ -73,39 +73,39 @@ export default function StudentDirectory() {
       {/* KPI Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <MiniStatCard label="Total Students" value={stats?.totalStudents || 0} icon={<Users size={16} />} />
-        <MiniStatCard label="Active" value={stats?.activeStudents || 0} icon={<div className="w-2 h-2 rounded-full bg-emerald-500" />} />
-        <MiniStatCard label="New This Month" value={stats?.newThisMonth || 0} icon={<TrendingUp size={16} className="text-primary-indigo" />} />
-        <MiniStatCard label="Dropout Rate" value={`${stats?.dropoutRate?.toFixed(1) || 0}%`} icon={<AlertCircle size={16} className="text-red-500" />} />
+        <MiniStatCard label="Active" value={stats?.activeStudents || 0} icon={<div className="w-2 h-2 rounded-full bg-black/40" />} />
+        <MiniStatCard label="New This Month" value={stats?.newThisMonth || 0} icon={<TrendingUp size={16} className="text-black" />} />
+        <MiniStatCard label="Dropout Rate" value={`${stats?.dropoutRate?.toFixed(1) || 0}%`} icon={<AlertCircle size={16} className="text-black/40" />} />
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-low/50 p-2 rounded-2xl border border-outline-variant/20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 p-2 rounded-2xl border border-outline-variant/20">
         <div className="flex items-center gap-2 flex-1 max-w-md ml-2 group">
-          <Search size={18} className="text-on-surface/20 group-focus-within:text-primary-indigo transition-colors" />
+          <Search size={18} className="text-black/20 group-focus-within:text-black transition-colors" />
           <input 
             type="text"
             placeholder="Search by name or unique ID..."
-            className="bg-transparent border-none text-sm font-bold text-on-surface placeholder:text-on-surface/20 outline-none w-full py-2"
+            className="bg-transparent border-none text-sm font-bold text-black placeholder:text-black/20 outline-none w-full py-2"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
         <div className="flex items-center gap-2 pr-2">
-          <button className="p-2 hover:bg-white rounded-lg text-on-surface/40 transition-all border border-transparent hover:border-outline-variant/30">
+          <button className="p-2 hover:bg-black/5 rounded-lg text-black/40 transition-all border border-transparent hover:border-outline-variant/30">
             <Filter size={18} />
           </button>
           <div className="w-px h-6 bg-outline-variant/30 mx-2" />
-          <div className="flex bg-surface-container-low p-1 rounded-xl border border-outline-variant/20">
+          <div className="flex bg-white/50 p-1 rounded-xl border border-outline-variant/20">
             <button 
               onClick={() => setViewMode("grid")}
-              className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-white text-primary-indigo shadow-sm" : "text-on-surface/20 hover:text-on-surface/40"}`}
+              className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-black text-white shadow-sm" : "text-black/20 hover:text-black/40"}`}
             >
               <Grid size={18} />
             </button>
             <button 
               onClick={() => setViewMode("list")}
-              className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white text-primary-indigo shadow-sm" : "text-on-surface/20 hover:text-on-surface/40"}`}
+              className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-black text-white shadow-sm" : "text-black/20 hover:text-black/40"}`}
             >
               <List size={18} />
             </button>
@@ -114,8 +114,8 @@ export default function StudentDirectory() {
       </div>
 
       {loading ? (
-        <div className="h-[400px] flex items-center justify-center bg-surface-container-low/30 rounded-3xl border-2 border-dashed border-outline-variant">
-           <Loader2 className="animate-spin text-primary-indigo" size={32} />
+        <div className="h-[400px] flex items-center justify-center bg-white/30 rounded-3xl border-2 border-dashed border-outline-variant">
+           <Loader2 className="animate-spin text-black" size={32} />
         </div>
       ) : (
         <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" : "space-y-4"}>
@@ -124,8 +124,8 @@ export default function StudentDirectory() {
           ))}
           {students.length === 0 && (
             <div className="col-span-full py-24 text-center">
-               <AlertCircle size={48} className="text-on-surface/10 mx-auto mb-4" />
-               <p className="text-lg font-display font-medium text-on-surface/20 uppercase tracking-widest">No students found matching your criteria</p>
+               <AlertCircle size={48} className="text-black/10 mx-auto mb-4" />
+               <p className="text-lg font-display font-medium text-black/20 uppercase tracking-widest">No students found matching your criteria</p>
             </div>
           )}
         </div>
@@ -136,12 +136,12 @@ export default function StudentDirectory() {
 
 function MiniStatCard({ label, value, icon }: any) {
   return (
-    <Card className="p-5 border-none bg-surface-container-lowest flex items-center justify-between group">
+    <Card className="p-5 border-none bg-white flex items-center justify-between group">
       <div>
-        <p className="text-[10px] font-bold text-on-surface/30 uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-xl font-display font-bold text-on-surface">{value}</p>
+        <p className="text-[10px] font-bold text-black/30 uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-xl font-display font-bold text-black">{value}</p>
       </div>
-      <div className="p-3 bg-surface-container-low rounded-xl text-on-surface/20 group-hover:bg-primary-indigo/10 group-hover:text-primary-indigo transition-all">
+      <div className="p-3 bg-black/5 rounded-xl text-black/20 group-hover:bg-black/10 group-hover:text-black transition-all">
         {icon}
       </div>
     </Card>

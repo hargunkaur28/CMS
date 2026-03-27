@@ -1,6 +1,6 @@
 // FILE: apps/web-shell/src/lib/api/students.ts
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+const API_URL = "http://localhost:5000/api";
 
 export interface ApiResponse<T> {
   success: boolean;

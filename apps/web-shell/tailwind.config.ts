@@ -9,27 +9,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
-        surface: "#f7f9fb",
-        "surface-container-low": "#f2f4f6",
+        background: "#ffffff",
+        foreground: "#000000",
+        surface: "#ffffff",
+        "surface-container-low": "#ffffff",
         "surface-container-lowest": "#ffffff",
-        "surface-container": "#eceef0",
-        "surface-container-highest": "#e2e4e6",
+        "surface-container": "#fcfcfc",
+        "surface-container-highest": "#f5f5f5",
         "on-surface": "#000000",
-        "primary-indigo": "#4F46E5",
-        "outline-variant": "rgba(199, 196, 216, 0.2)",
+        "primary-indigo": "#000000",
+        "outline-variant": "#e5e5e5",
       },
       backgroundImage: {
-        "indigo-gradient": "linear-gradient(to right, #4F46E5, #6366F1)",
-        "sidebar-gradient": "linear-gradient(to bottom, #0F172A, #1E1B4B)",
+        "mono-gradient": "linear-gradient(to right, #000000, #333333)",
       },
       fontFamily: {
         display: ["var(--font-dm-sans)", "sans-serif"],
         utility: ["var(--font-inter)", "sans-serif"],
       },
       boxShadow: {
-        ambient: "0 4px 24px rgba(79, 70, 229, 0.08)",
+        ambient: "0 2px 12px rgba(0, 0, 0, 0.04)",
       },
     },
   },

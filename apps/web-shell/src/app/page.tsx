@@ -1,3 +1,5 @@
+"use client";
+
 import React from "react";
 import Card from "@/components/ui/Card";
 import { 
@@ -8,10 +10,36 @@ import {
   ArrowUpRight, 
   ArrowDownRight,
   Clock,
-  Sparkles
+  Sparkles,
+  ShieldCheck
 } from "lucide-react";
 
 export default function DashboardPage() {
+  const [role, setRole] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    setRole(user.role || "COLLEGE_ADMIN");
+  }, []);
+
+  if (!role) return null;
+
+  switch (role) {
+    case "SUPER_ADMIN":
+      return <SuperAdminDashboard />;
+    case "TEACHER":
+      return <TeacherDashboard />;
+    case "STUDENT":
+      return <StudentDashboard />;
+    case "PARENT":
+      return <ParentDashboard />;
+    case "COLLEGE_ADMIN":
+    default:
+      return <AdminDashboard />;
+  }
+}
+
+function AdminDashboard() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
       {/* Hero KPI Cards */}
@@ -23,7 +51,7 @@ export default function DashboardPage() {
           trendUp={true} 
           subtitle="vs last year" 
           icon={<Users size={20} />} 
-          color="bg-primary-indigo"
+          color="bg-black"
         />
         <KPICard 
           title="Today's Attendance" 
@@ -32,7 +60,7 @@ export default function DashboardPage() {
           trendUp={false} 
           subtitle="Stable" 
           icon={<Clock size={20} />} 
-          color="bg-emerald-500"
+          color="bg-black/80"
         />
         <KPICard 
           title="Fee Collection" 
@@ -41,7 +69,7 @@ export default function DashboardPage() {
           trendUp={true} 
           subtitle="Target 1.5 Cr" 
           icon={<CreditCard size={20} />} 
-          color="bg-amber-500"
+          color="bg-black/60"
         />
         <KPICard 
           title="At-Risk Students" 
@@ -50,7 +78,7 @@ export default function DashboardPage() {
           trendUp={false} 
           subtitle="Managed by AI" 
           icon={<AlertCircle size={20} />} 
-          color="bg-red-500"
+          color="bg-black/40"
         />
       </div>
 
@@ -90,7 +118,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-2xl p-4 border border-outline-variant text-xs text-on-surface/40 italic">
               "Which departments have attendance below 70% this week?"
             </div>
-            <button className="w-full py-3 bg-white text-black border-2 border-primary-indigo rounded-xl font-bold text-sm shadow-ambient hover:bg-surface-container-low transition-all active:scale-95 leading-none px-4">
+            <button className="w-full py-3 bg-black text-white rounded-xl font-bold text-sm shadow-sm hover:bg-black/90 transition-all active:scale-95 leading-none px-4">
               Start Conversation
             </button>
           </div>
@@ -107,7 +135,7 @@ function KPICard({ title, value, trend, trendUp, subtitle, icon, color }: any) {
         <div className={`w-10 h-10 ${color} text-white rounded-xl flex items-center justify-center shadow-lg shadow-black/5 group-hover:rotate-6 transition-all`}>
           {icon}
         </div>
-        <div className={`flex items-center gap-1 text-[10px] font-bold ${trendUp ? "text-emerald-500" : "text-red-500"} bg-white/50 px-2 py-0.5 rounded-full`}>
+        <div className={`flex items-center gap-1 text-[10px] font-bold text-black bg-black/5 px-2 py-0.5 rounded-full`}>
           {trendUp ? <TrendingUp size={10} /> : <TrendingUp size={10} className="rotate-180" />}
           {trend}
         </div>
@@ -120,6 +148,89 @@ function KPICard({ title, value, trend, trendUp, subtitle, icon, color }: any) {
     </Card>
   );
 }
+
+function ParentDashboard() {
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display font-black text-on-surface tracking-tight">Parent Portal</h1>
+          <p className="text-sm text-on-surface/40 mt-1">Monitoring Academic Lifecycle of Harsh Kumar</p>
+        </div>
+        <div className="px-4 py-2 bg-black/5 text-black rounded-full text-xs font-bold border border-black/10">
+          Fees Up to Date
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <KPICard title="Attendance" value="88.4%" trend="+2%" trendUp={true} subtitle="Good Standing" icon={<Clock size={20} />} color="bg-black" />
+        <KPICard title="Avg Performance" value="76%" trend="-3%" trendUp={false} subtitle="Above Average" icon={<TrendingUp size={20} />} color="bg-black/60" />
+        <KPICard title="Next Exam" value="Maths" trend="12 Apr" trendUp={true} subtitle="Preparation 60%" icon={<Sparkles size={20} />} color="bg-black/40" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="p-8 border-none bg-white shadow-ambient">
+           <h3 className="font-bold text-lg mb-4">Upcoming Schedule</h3>
+           <div className="space-y-4">
+              <ScheduleItem subject="Computer Networks" time="09:00 AM" teacher="Dr. Gupta" />
+              <ScheduleItem subject="Database Lab" time="11:30 AM" teacher="Prof. Sharma" />
+           </div>
+        </Card>
+        <Card className="p-8 border-none bg-primary-indigo text-white shadow-ambient overflow-hidden relative">
+           <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
+           <h3 className="font-bold text-lg mb-2">Academic Wellness</h3>
+           <p className="text-sm text-white/70 mb-6">AI Insight: Child is showing high interest in Backend Labs.</p>
+           <button className="w-full py-3 bg-white text-black rounded-xl font-bold text-sm">View Detailed Report</button>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function TeacherDashboard() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-on-surface/40">
+       <Sparkles size={48} className="mb-4 opacity-20" />
+       <h2 className="text-xl font-bold">Teacher Dashboard</h2>
+       <p className="text-sm">Class management & attendance tools ready for initialization.</p>
+    </div>
+  );
+}
+
+function StudentDashboard() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-on-surface/40 text-center">
+       <Users size={48} className="mb-4 opacity-20" />
+       <h2 className="text-xl font-bold">Student Dashboard</h2>
+       <p className="text-sm mt-2">Welcome back, Student! Your personalized timetable and results will appear here.</p>
+    </div>
+  );
+}
+
+function SuperAdminDashboard() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] text-on-surface/40 text-center">
+       <ShieldCheck size={48} className="mb-4 opacity-20" />
+       <h2 className="text-xl font-bold">Platform Governance</h2>
+       <p className="text-sm mt-2">Global institutional monitoring active. Multi-tenant controls enabled.</p>
+    </div>
+  );
+}
+
+function ScheduleItem({ subject, time, teacher }: any) {
+  return (
+    <div className="flex items-center justify-between p-4 bg-surface-container-low rounded-2xl border border-outline-variant/30">
+       <div>
+         <p className="text-sm font-bold">{subject}</p>
+         <p className="text-[10px] text-on-surface/40">{teacher}</p>
+       </div>
+       <div className="text-right">
+         <p className="text-xs font-bold text-black">{time}</p>
+       </div>
+    </div>
+  );
+}
+
 
 function RiskRow({ name, id, risk, score, factors }: any) {
   return (
@@ -137,8 +248,8 @@ function RiskRow({ name, id, risk, score, factors }: any) {
         ))}
       </div>
       <div className="text-right">
-        <div className={`text-[10px] font-bold ${risk === 'CRITICAL' ? 'text-red-500' : 'text-amber-500'}`}>{risk}</div>
-        <div className="text-lg font-display font-bold text-on-surface">{score}%</div>
+        <div className={`text-[10px] font-bold text-black/40 uppercase`}>{risk}</div>
+        <div className="text-lg font-display font-bold text-black">{score}%</div>
       </div>
     </div>
   );

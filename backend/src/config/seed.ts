@@ -26,16 +26,29 @@ const seedData = async () => {
 
     console.log('Default College Created');
 
-    // 2. Create Super Admin
-    await User.create({
-      name: 'Super Admin',
-      email: 'admin@git.edu',
-      password: 'admin123', // Will be hashed by pre-save hook
-      role: 'SUPER_ADMIN',
-      isActive: true,
-    });
+    // 2. Create All Roles
+    const roles = [
+      { name: 'Global Super Admin', email: 'superadmin@ngcms.edu', password: 'password123', role: 'SUPER_ADMIN' },
+      { name: 'Dr. Rajesh Khanna', email: 'admin@git.edu', password: 'password123', role: 'COLLEGE_ADMIN', collegeId: defaultCollege._id },
+      { name: 'Prof. Alan Turing', email: 'teacher@git.edu', password: 'password123', role: 'TEACHER', collegeId: defaultCollege._id },
+      { name: 'Harsh Kumar', email: 'student@git.edu', password: 'password123', role: 'STUDENT', collegeId: defaultCollege._id },
+      { name: 'Mr. Sharma', email: 'parent@git.edu', password: 'password123', role: 'PARENT', collegeId: defaultCollege._id }
+    ];
 
-    console.log('Super Admin Created');
+    for (const r of roles) {
+      const existingUser = await User.findOne({ email: r.email });
+      if (existingUser) {
+        existingUser.name = r.name;
+        existingUser.password = r.password;
+        existingUser.role = r.role as any;
+        existingUser.collegeId = r.collegeId as any;
+        await existingUser.save();
+      } else {
+        await User.create(r);
+      }
+    }
+
+    console.log('All Roles Hashed and Created Successfully');
     
     // 3. Create Default Departments
     const depts = [

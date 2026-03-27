@@ -14,7 +14,7 @@ import authRoutes from './routes/authRoutes.js';
 import admissionsRoutes from './routes/admissions.js';
 import courseRoutes from './routes/courseRoutes.js';
 import batchRoutes from './routes/batchRoutes.js';
-import attendanceRoutes from './routes/attendanceRoutes.js';
+import attendanceRoutes from './routes/attendance.js';
 import studentRoutes from './routes/students.js';
 import departmentRoutes from './routes/departments.js';
 
@@ -28,6 +28,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// Request Logger
+app.use((req, res, next) => {
+  console.log(`[API] ${req.method} ${req.url}`);
+  next();
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
