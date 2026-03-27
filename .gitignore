@@ -52,3 +52,6 @@ yarn-error.log*
 # Other
 .turbo/
 **/.turbo/
+
+# Temporary files
+tmp/
