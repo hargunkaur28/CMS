@@ -1,33 +1,113 @@
-import mongoose, { Schema, Document } from 'mongoose';
+// FILE: backend/src/models/Student.ts
+import mongoose, { Schema, Document } from "mongoose";
 
 export interface IStudent extends Document {
-  userId: mongoose.Types.ObjectId;
-  rollNumber: string;
-  courseId: mongoose.Types.ObjectId;
-  batchId: mongoose.Types.ObjectId;
-  collegeId: mongoose.Types.ObjectId;
-  parentUserId?: mongoose.Types.ObjectId; // Link to Parent User
-  dob: Date;
-  gender: 'male' | 'female' | 'other';
-  bloodGroup?: string;
-  address: string;
-  status: 'active' | 'graduated' | 'dropped';
+  uniqueStudentId: string; // NGCMS-2026-XXXX
+  personalInfo: {
+    firstName: string;
+    lastName: string;
+    dob: Date;
+    gender: "male" | "female" | "other";
+    phone: string;
+    email: string;
+    address: string;
+    photo?: string; // Cloudinary URL
+  };
+  academicInfo: {
+    course: string;
+    batch: string;
+    department: mongoose.Types.ObjectId;
+    semester: number;
+    section?: string;
+    rollNumber?: string;
+    userId?: mongoose.Types.ObjectId;
+    collegeId?: mongoose.Types.ObjectId;
+    enrollmentDate: Date;
+    status: "active" | "inactive" | "graduated" | "dropped";
+  };
+  documents: {
+    name: string;
+    cloudinaryUrl: string;
+    uploadedAt: Date;
+  }[];
+  parentInfo: {
+    name: string;
+    phone: string;
+    email: string;
+    relation: string;
+  };
+  guardianInfo?: {
+    name: string;
+    phone: string;
+    relation: string;
+  };
+  previousEducation: {
+    institution: string;
+    qualification: string;
+    year: number;
+    percentage: number;
+  }[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const StudentSchema: Schema = new Schema({
-  userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
-  rollNumber: { type: String, required: true },
-  courseId: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
-  batchId: { type: Schema.Types.ObjectId, ref: 'Batch', required: true },
-  collegeId: { type: Schema.Types.ObjectId, ref: 'College', required: true },
-  parentUserId: { type: Schema.Types.ObjectId, ref: 'User' },
-  dob: { type: Date, required: true },
-  gender: { type: String, enum: ['male', 'female', 'other'], required: true },
-  bloodGroup: { type: String },
-  address: { type: String, required: true },
-  status: { type: String, enum: ['active', 'graduated', 'dropped'], default: 'active' },
-}, { timestamps: true });
+const StudentSchema: Schema = new Schema(
+  {
+    uniqueStudentId: { type: String, required: true, unique: true },
+    personalInfo: {
+      firstName: { type: String, required: true },
+      lastName: { type: String, required: true },
+      dob: { type: Date, required: true },
+      gender: { type: String, enum: ["male", "female", "other"], required: true },
+      phone: { type: String, required: true },
+      email: { type: String, required: true, unique: true },
+      address: { type: String, required: true },
+      photo: { type: String },
+    },
+    academicInfo: {
+      course: { type: String, required: true },
+      batch: { type: String, required: true },
+      department: { type: Schema.Types.ObjectId, ref: "Department", required: true },
+      semester: { type: Number, default: 1 },
+      section: { type: String },
+      rollNumber: { type: String },
+      userId: { type: Schema.Types.ObjectId, ref: "User" },
+      collegeId: { type: Schema.Types.ObjectId, ref: "College" },
+      enrollmentDate: { type: Date, default: Date.now },
+      status: {
+        type: String,
+        enum: ["active", "inactive", "graduated", "dropped"],
+        default: "active",
+      },
+    },
+    documents: [
+      {
+        name: { type: String, required: true },
+        cloudinaryUrl: { type: String, required: true },
+        uploadedAt: { type: Date, default: Date.now },
+      },
+    ],
+    parentInfo: {
+      name: { type: String, required: true },
+      phone: { type: String, required: true },
+      email: { type: String, required: true },
+      relation: { type: String, required: true },
+    },
+    guardianInfo: {
+      name: { type: String },
+      phone: { type: String },
+      relation: { type: String },
+    },
+    previousEducation: [
+      {
+        institution: { type: String },
+        qualification: { type: String },
+        year: { type: Number },
+        percentage: { type: Number },
+      },
+    ],
+  },
+  { timestamps: true }
+);
 
-StudentSchema.index({ rollNumber: 1, collegeId: 1 }, { unique: true });
-
-export default mongoose.model<IStudent>('Student', StudentSchema);
+export default mongoose.model<IStudent>("Student", StudentSchema);

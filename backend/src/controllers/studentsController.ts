@@ -1,0 +1,260 @@
+// FILE: backend/src/controllers/studentsController.ts
+import { Request, Response } from "express";
+import mongoose from "mongoose";
+import Student from "../models/Student.js";
+import Department from "../models/Department.js";
+import { generateStudentId } from "../utils/studentIdGenerator.js";
+import { parseStudentCSV } from "../utils/csvImporter.js";
+
+export const getStudents = async (req: Request, res: Response) => {
+  try {
+    const { course, batch, department, status, search } = req.query;
+    const query: any = {};
+    if (course) query["academicInfo.course"] = course;
+    if (batch) query["academicInfo.batch"] = batch;
+    if (department) query["academicInfo.department"] = department;
+    if (status) query["academicInfo.status"] = status;
+    if (search) {
+      query.$or = [
+        { "personalInfo.firstName": { $regex: search, $options: "i" } },
+        { "personalInfo.lastName": { $regex: search, $options: "i" } },
+        { uniqueStudentId: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const students = await Student.find(query).populate("academicInfo.department").sort({ createdAt: -1 });
+    res.status(200).json({ success: true, data: students, message: "Students fetched successfully" });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getStudentById = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const student = await Student.findOne({ uniqueStudentId: id }).populate("academicInfo.department");
+    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+    res.status(200).json({ success: true, data: student, message: "Student profile found" });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const createStudent = async (req: Request, res: Response) => {
+  try {
+    const studentData = req.body;
+    studentData.uniqueStudentId = await generateStudentId();
+    
+    const student = new Student(studentData);
+    await student.save();
+    
+    res.status(201).json({ success: true, data: student, message: "Student enrolled successfully" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const updateStudent = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const student = await Student.findOneAndUpdate({ uniqueStudentId: id }, req.body, { new: true });
+    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+    res.status(200).json({ success: true, data: student, message: "Student profile updated" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const bulkImportStudents = async (req: Request, res: Response) => {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: "No CSV file uploaded" });
+
+    const rawData = await parseStudentCSV(req.file.path);
+    const importedStudents = [];
+    const errors = [];
+
+    // Fetch departments for lookup
+    const departments = await Department.find();
+
+    for (const row of rawData) {
+      try {
+        const uniqueId = await generateStudentId();
+        
+        // Helper to find value regardless of case/spaces in header
+        const getVal = (keys: string[]) => {
+          const foundKey = Object.keys(row).find(k => 
+            keys.some(key => k.toLowerCase().replace(/\s/g, '') === key.toLowerCase().replace(/\s/g, ''))
+          );
+          return foundKey ? row[foundKey] : undefined;
+        };
+
+        // Resolve department
+        const deptVal = getVal(["departmentId", "department", "dept"]);
+        let deptId = mongoose.isValidObjectId(deptVal) ? deptVal : null;
+        
+        if (!deptId && deptVal) {
+          const matchedDept = departments.find(d => 
+            d.name.toLowerCase().includes(String(deptVal).toLowerCase())
+          );
+          
+          if (matchedDept) {
+            deptId = matchedDept._id;
+          } else {
+            // Auto-create department if not found (Demo fallback)
+            console.log(`Auto-creating department: ${deptVal}`);
+            const newDept = new Department({ name: deptVal });
+            await newDept.save();
+            departments.push(newDept);
+            deptId = newDept._id;
+          }
+        }
+
+        // Final fallback: Use "General" or some existing dept
+        if (!deptId) {
+          console.log(`No department found for value: "${deptVal}". Using fallback.`);
+          const defaultDept = departments[0] || await Department.findOneAndUpdate(
+            { name: "General" }, 
+            { name: "General" }, 
+            { upsert: true, new: true }
+          );
+          
+          if (defaultDept) {
+            deptId = defaultDept._id;
+            if (departments.length === 0) departments.push(defaultDept);
+          }
+        }
+
+        if (!deptId) {
+          throw new Error("Critical Failure: Could not resolve or create any department ID.");
+        }
+
+        // Map CSV row to Student Schema with fallbacks
+        const student = new Student({
+          uniqueStudentId: uniqueId,
+          personalInfo: {
+            firstName: getVal(["firstName", "first name", "name"]),
+            lastName: getVal(["lastName", "last name", "surname"]) || "N/A",
+            email: getVal(["email", "email address"]),
+            phone: getVal(["phone", "mobile", "contact"]),
+            gender: (getVal(["gender"]) || "other").toLowerCase(),
+            dob: getVal(["dob", "date of birth", "birthday"]) ? new Date(getVal(["dob", "date of birth", "birthday"])) : new Date(),
+            address: getVal(["address", "home address"]) || "N/A"
+          },
+          academicInfo: {
+            course: getVal(["course", "program"]) || "General",
+            batch: getVal(["batch", "year"]) || new Date().getFullYear().toString(),
+            department: deptId, 
+            status: "active"
+          },
+          parentInfo: {
+            name: getVal(["parentName", "guardian", "father name"]) || "N/A",
+            phone: getVal(["parentPhone", "parent contact"]) || "0000000000",
+            email: getVal(["parentEmail", "parent email"]) || "parent@example.com",
+            relation: getVal(["relation", "relationship"]) || "Guardian"
+          },
+          documents: []
+        });
+        await student.save();
+        importedStudents.push(student);
+      } catch (err: any) {
+        console.error(`IMPORT ROW ERROR (Row ${importedStudents.length + errors.length + 1}):`, err.message);
+        console.error("DATA:", JSON.stringify(row));
+        errors.push({ row, error: err.message });
+      }
+    }
+
+    res.status(201).json({ 
+      success: true, 
+      data: { imported: importedStudents.length, errors }, 
+      message: `Import complete. ${importedStudents.length} success, ${errors.length} failed.` 
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const uploadStudentPhoto = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!req.file && (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY)) {
+      // If no file and no cloudinary, or just no cloudinary, we can return a dummy
+      const student = await Student.findOneAndUpdate(
+        { uniqueStudentId: id },
+        { "personalInfo.photo": `http://${req.get('host') || 'localhost:5000'}/uploads/temp/demo-avatar.png` },
+        { new: true }
+      );
+      if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+      return res.status(200).json({ success: true, data: student, message: "Demo mode: Dummy photo set" });
+    }
+
+    if (!req.file) return res.status(400).json({ success: false, message: "No photo uploaded" });
+
+    const student = await Student.findOneAndUpdate(
+      { uniqueStudentId: id },
+      { "personalInfo.photo": req.file.path },
+      { new: true }
+    );
+    if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+
+    res.status(200).json({ success: true, data: student, message: "Photo uploaded successfully" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const getStudentStats = async (req: Request, res: Response) => {
+  try {
+    const totalStudents = await Student.countDocuments();
+    const activeStudents = await Student.countDocuments({ "academicInfo.status": "active" });
+    const droppedStudents = await Student.countDocuments({ "academicInfo.status": "dropped" });
+    
+    const newThisMonth = await Student.countDocuments({
+      createdAt: { $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) }
+    });
+
+    const dropoutRate = totalStudents > 0 ? (droppedStudents / totalStudents) * 100 : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalStudents,
+        activeStudents,
+        newThisMonth,
+        dropoutRate
+      },
+      message: "Student stats fetched successfully"
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+export const uploadDocs = async (req: Request, res: Response) => {
+  try {
+    if (!req.files || (req.files as any[]).length === 0) {
+      return res.status(400).json({ success: false, message: "No files uploaded" });
+    }
+
+    const files = req.files as any[];
+
+    // Fallback if Cloudinary is not configured
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY) {
+      console.warn("CLOUDINARY NOT CONFIGURED: Using dummy URLs for testing.");
+      const docs = files.map(f => ({
+        name: f.originalname,
+        cloudinaryUrl: `http://${req.get('host') || 'localhost:5000'}/uploads/temp/${f.filename}`,
+        uploadedAt: new Date()
+      }));
+      return res.status(200).json({ success: true, data: docs, message: "Demo mode: Files accepted (not stored)" });
+    }
+
+    const docs = files.map(f => ({
+      name: f.originalname,
+      cloudinaryUrl: f.path,
+      uploadedAt: new Date()
+    }));
+
+    res.status(200).json({ success: true, data: docs, message: "Documents uploaded successfully" });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

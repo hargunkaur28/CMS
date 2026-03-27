@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import College from '../models/College.js';
 import User from '../models/User.js';
+import Department from '../models/Department.js';
 import connectDB from './db.js';
 
 dotenv.config();
@@ -35,6 +36,23 @@ const seedData = async () => {
     });
 
     console.log('Super Admin Created');
+    
+    // 3. Create Default Departments
+    const depts = [
+      { name: 'Computer Science & Engineering', hod: 'Dr. Alan Turing', courses: ['B.Tech CSE', 'M.Tech CSE'] },
+      { name: 'Electronics & Communication', hod: 'Dr. Nikola Tesla', courses: ['B.Tech ECE', 'M.Tech ECE'] },
+      { name: 'Mechanical Engineering', hod: 'Dr. James Watt', courses: ['B.Tech ME'] },
+      { name: 'Business Administration', hod: 'Dr. Peter Drucker', courses: ['BBA', 'MBA'] }
+    ];
+
+    for (const dept of depts) {
+      await Department.findOneAndUpdate(
+        { name: dept.name },
+        dept,
+        { upsert: true, new: true }
+      );
+    }
+    console.log('Default Departments Created');
 
     process.exit();
   } catch (error) {
