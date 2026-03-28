@@ -1,65 +1,82 @@
-# NgCMS Project Handoff Document
+# NgCMS — Next-Gen College Management System | Handoff Document
+**Status**: 95% Core Functional (Admin & Teacher Portals Completed)
+**Last Updated**: 2026-03-29
 
-This document summarizes the recent architectural upgrades and functional integrations performed on the College Management System.
+## 🚀 System Architecture
 
-## 🚀 Active Workspace Architecture
-> [!IMPORTANT]  
-> The project has been consolidated. The directory **`d:\cms_new\apps\web-shell`** is the single source of truth for the frontend. The old `\frontend` folder is deprecated and should only be used as a reference for legacy logic.
-
-- **Frontend**: `apps/web-shell` (Next.js 15+, App Router, TailwindCSS)
-- **Backend**: `backend` (Express, Node.js, MongoDB)
-- **Shared UI**: `apps/web-shell/src/components/ui` (Reusable card and layout tokens)
-
-## 🛠️ Key Modules & Functional Upgrades
-
-### 1. Student Module (Slate UI)
-- Migrated the **Student Directory** and **Profile View** to the vibrant Slate-50 design system.
-- Standardized the `StudentProfileTabs` and `StudentStatusBadge` components.
-- All student data is fetched dynamically from the `api/students` collection.
-
-### 2. Academics Engine (Hybrid Routing)
-- Located at `/academics`.
-- **Relational Structure**: Successfully implemented the hierarchy: **Department → Course → Batch**.
-- **Data Binding**: Form validation and API interceptors are wired to extract the active `token` and `collegeId` from local storage.
-
-### 3. Attendance & Predictive Analysis
-- Located at `/attendance`.
-- **Live Roster Fetching**: Selecting a Batch triggers an automatic roster fetch of enrolled students from the database.
-- **Bulk Submission**: Uses a high-performance MongoDB `bulkWrite` operation to mark entire classrooms in one transaction.
-- **AI Recovery Metric**: Includes a logic engine that calculates how many consecutive classes a student needs to attend to recover to the 75% benchmark.
-
-### 4. Backend Additions
-- **Subject Model**: Added a new `Subject` collection to allow granular attendance tracking.
-- **Relational Data**: Updated `Batch` controllers to use `.populate()` for seamless Course-to-Batch mapping in the UI.
-
-## 🔑 Authentication Flow
-- **Encryption**: Uses JWT-based authorization.
-- **Interceptor**: Every frontend API call in `apps/web-shell/src/lib/api/` is programmed to append the `Bearer` token from `localStorage` automatically.
+- **Frontend**: `apps/web-shell` (Next.js 15, App Router, Tailwind CSS, TypeScript)
+- **Backend**: `backend` (Node.js, Express, MongoDB Atlas, Mongoose)
+- **Ports**: Frontend `3001` | Backend `5005`
+- **Auth**: JWT-based RBAC (Roles: `college_admin`, `super_admin`, `TEACHER`, `STUDENT`, `PARENT`)
 
 ---
 
-## 🚦 Running the Environment
+## 🏗️ Completed Portals & Modules
 
-### Backend
-```bash
-cd backend
-npm run dev:watch
-```
-*Runs on Port 5000*
+### 1. Admin Portal (`/admin`)
+Full institutional governance suite with monochrome institutional design:
+- **Dashboard**: Dynamic "Operations Hub" with enrollment trends, revenue stats, and AI Early Warning System.
+- **Admissions**: Kanban board lifecycle management (Applied → DocsVerified → Approved → Enrolled).
+- **SIS**: Global student registry with academic and personal record control.
+- **Faculty Management**: HRM suite with subject assignment and workload tracking.
+- **Academics**: Multi-level hierarchy (Department → Course → Subject → Batch).
+- **Attendance**: Global oversight with automated shortage detection (<75%).
+- **Exams**: Centralized scheduling and result publication engine.
+- **Fees**: Revenue tracking, payment logging, and structure definition.
+- **Communication**: Campus-wide broadcasts and role-targeted announcements.
+- **NAAC Compliance**: Criterion-based evidence vault (C1-C7).
 
-### Frontend (Web Shell)
-```bash
-cd apps/web-shell
-npm run dev
-```
-*Runs on Port 3001*
+### 2. Teacher Portal (`/teacher`)
+Streamlined workflow for faculty:
+- **My Schedule**: Dynamic timetable view.
+- **Attendance**: Bulk marking with roster fetching and attendance recovery metrics.
+- **Marks Entry**: Secure interface for term-wise grading and automatic calculation.
+- **Upload Center**: Cloudinary-integrated repository for syllabus and study materials.
+- **Students**: Targeted view of students assigned to the faculty's subjects.
 
 ---
 
-## 📝 Pending Tasks
-- [ ] **Exam Management**: Build the frontend UI for scheduling exams and recording marks.
-- [ ] **Fee System**: The backend support exists but remains unmapped in the `web-shell`.
-- [ ] **Library Inventory**: Modernize the legacy library UI to match the Slate-50 theme.
+## 🛠️ Technical Implementation Details
+
+### API Layer (`apps/web-shell/src/lib/api/`)
+- `admin.ts`: Unified utility for all administrative endpoints.
+- `api.ts`: Shared instance with interceptors for JWT token injection.
+- `exams.ts`: Specialized marks and result processing.
+
+### Backend Controllers (`backend/src/controllers/`)
+- `adminDashboardController.ts`: Real-time aggregation for institutional health.
+- `examsController.ts`: Complex logic for result calculation and publication.
+- `admissionController.ts`: Automation for student ID generation (`NGM-YYYY-XXXX`) and enrollment.
+
+### Role-Based Access Control
+- Enforced via `protect` and `authorize` middleware in `backend/src/middleware/auth.ts`.
+- Routes registered under `/api/admin` and `/api/teacher`.
+
+---
+
+## 🚦 Running the Project
+
+1. **Backend**:
+   ```bash
+   cd backend
+   npm run dev
+   ```
+   *Note: Ensure .env has MONGO_URI and JWT_SECRET.*
+
+2. **Frontend**:
+   ```bash
+   cd apps/web-shell
+   npm run dev
+   ```
+   *Access at http://localhost:3001*
+
+---
+
+## 📝 Pending & Next Steps
+- [ ] **Student/Parent Portals**: Build the frontend UI for `/student` and `/parent` (Backend logic largely exists).
+- [ ] **Library Module**: Modernize the legacy inventory UI to match the new monochrome architecture.
+- [ ] **Real-time Notifications**: Socket.io integration for instant campus-wide blasts.
+- [ ] **Mobile Optimization**: Final responsive audit for field-use (Attendance marking on mobile).
 
 ---
 **Maintained by Antigravity (AI Coding Assistant)**
