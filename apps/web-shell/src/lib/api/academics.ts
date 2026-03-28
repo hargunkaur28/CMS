@@ -1,6 +1,6 @@
 // FILE: apps/web-shell/src/lib/api/academics.ts
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "http://localhost:5005/api";
 
 export interface ApiResponse<T> {
   success?: boolean;

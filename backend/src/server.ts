@@ -18,9 +18,12 @@ import attendanceRoutes from './routes/attendance.js';
 import studentRoutes from './routes/students.js';
 import departmentRoutes from './routes/departments.js';
 import subjectRoutes from './routes/subjectRoutes.js';
+import examsRoutes from './routes/exams.js';
+import teacherRoutes from './routes/teacher.js';
+import adminRoutes from './routes/admin.routes.js';
 
 // Connect to MongoDB
-connectDB();
+await connectDB();
 
 const app = express();
 
@@ -45,6 +48,9 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/subjects', subjectRoutes);
+app.use('/api/exams', examsRoutes);
+app.use('/api/teacher', teacherRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('AI-Powered College Management System API is running...');
@@ -60,7 +66,7 @@ app.use((err: any, req: Request, res: Response, next: any) => {
   });
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5005;
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

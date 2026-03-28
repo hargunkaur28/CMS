@@ -1,211 +1,47 @@
-// FILE: backend/src/controllers/attendanceController.ts
-import { Request, Response } from "express";
-import Attendance from "../models/Attendance.js";
-import LeaveRequest from "../models/LeaveRequest.js";
-import Student from "../models/Student.js";
-import mongoose from "mongoose";
+import { Request, Response } from 'express';
+import Attendance from '../models/Attendance.ts';
 
 /**
- * Mark bulk attendance for a class
- * POST /api/attendance/bulk
+ * @desc    Mark attendance for a class
+ * @route   POST /api/teacher/attendance/mark
+ * @access  Private (Teacher)
  */
-export const markBulkAttendance = async (req: Request, res: Response) => {
+export const markAttendance = async (req: Request, res: Response) => {
   try {
-    const { batchId, courseId, subjectId, teacherId, date, records } = req.body;
+    const { classId, subjectId, date, records } = req.body;
+    const teacherId = req.user._id;
 
-    // records: [{ studentId, status, remarks }]
-    const operations = records.map((record: any) => ({
-      updateOne: {
-        filter: { 
-          studentId: record.studentId, 
-          subjectId, 
-          date: new Date(date) 
-        },
-        update: {
-          studentId: record.studentId,
-          teacherId,
-          subjectId,
-          courseId,
-          batchId,
-          date: new Date(date),
-          status: record.status,
-          remarks: record.remarks,
-          markedAt: new Date()
-        },
-        upsert: true
+    // Check for duplicate attendance (same class, subject, and date)
+    const existingDate = new Date(date);
+    existingDate.setHours(0, 0, 0, 0);
+
+    const existing = await Attendance.findOne({
+      classId,
+      subjectId,
+      date: {
+        $gte: existingDate,
+        $lt: new Date(existingDate.getTime() + 24 * 60 * 60 * 1000)
       }
-    }));
-
-    await Attendance.bulkWrite(operations);
-
-    res.status(200).json({ 
-      success: true, 
-      message: `Attendance marked for ${records.length} students` 
     });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
 
-/**
- * Get attendance overview for a batch/subject
- * GET /api/attendance
- */
-export const getAttendance = async (req: Request, res: Response) => {
-  try {
-    const { batchId, subjectId, startDate, endDate } = req.query;
-    const query: any = {};
-    
-    if (batchId) query.batchId = batchId;
-    if (subjectId) query.subjectId = subjectId;
-    if (startDate && endDate) {
-      query.date = { $gte: new Date(startDate as string), $lte: new Date(endDate as string) };
-    }
-
-    const records = await Attendance.find(query)
-      .populate("studentId", "personalInfo.firstName personalInfo.lastName uniqueStudentId")
-      .sort({ date: -1 });
-
-    res.status(200).json({ success: true, data: records });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Calculate attendance statistics and shortage alerts
- * GET /api/attendance/stats/:batchId
- */
-export const getAttendanceStats = async (req: Request, res: Response) => {
-  try {
-    const { batchId } = req.params;
-    const { subjectId } = req.query;
-
-    const match: any = { batchId };
-    if (subjectId) match.subjectId = subjectId;
-
-    const stats = await Attendance.aggregate([
-      { $match: match },
-      {
-        $group: {
-          _id: "$studentId",
-          totalClasses: { $sum: 1 },
-          presentCount: {
-            $sum: { $cond: [{ $in: ["$status", ["present", "late"]] }, 1, 0] }
-          }
-        }
-      },
-      {
-        $addFields: {
-          percentage: { 
-            $multiply: [{ $divide: ["$presentCount", "$totalClasses"] }, 100] 
-          }
-        }
-      },
-      {
-        $lookup: {
-          from: "students",
-          localField: "_id",
-          foreignField: "_id",
-          as: "studentInfo"
-        }
-      },
-      { $unwind: "$studentInfo" },
-      {
-        $project: {
-          studentId: "$_id",
-          name: { $concat: ["$studentInfo.personalInfo.firstName", " ", "$studentInfo.personalInfo.lastName"] },
-          uniqueId: "$studentInfo.uniqueStudentId",
-          totalClasses: 1,
-          presentCount: 1,
-          percentage: { $round: ["$percentage", 2] },
-          isShortage: { $lt: ["$percentage", 75] }
-        }
-      }
-    ]);
-
-    res.status(200).json({ success: true, data: stats });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
-/**
- * Get simulated schedule for today (Quick Mark)
- * GET /api/attendance/schedule
- */
-export const getTodaySchedule = async (req: Request, res: Response) => {
-  try {
-    // In a real system, this would query a 'Schedules' model.
-    // Here we simulate it by picking 4 subjects from the system.
-    const stats = await Attendance.aggregate([
-      {
-        $group: {
-          _id: { batchId: "$batchId", subjectId: "$subjectId" },
-          avgAttendance: { 
-            $avg: { $cond: [{ $in: ["$status", ["present", "late"]] }, 100, 0] } 
-          }
-        }
-      },
-      { $limit: 4 },
-      {
-        $project: {
-          batchId: "$_id.batchId",
-          subjectId: "$_id.subjectId",
-          avgAttendance: { $round: ["$avgAttendance", 0] }
-        }
-      }
-    ]);
-
-    // Fallback if no records exist yet
-    if (stats.length === 0) {
-      return res.status(200).json({
-        success: true,
-        data: [
-          { batchId: "BTECH-CSE-2024", subjectId: "Data Structures", avgAttendance: 85 },
-          { batchId: "BTECH-ECE-2024", subjectId: "Signals & Systems", avgAttendance: 72 }
-        ]
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: 'Attendance already marked for this class/subject on this date'
       });
     }
 
-    res.status(200).json({ success: true, data: stats });
-  } catch (error: any) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
+    const attendance = await Attendance.create({
+      teacherId,
+      classId,
+      subjectId,
+      date: existingDate,
+      records
+    });
 
-/**
- * Get Hub overview KPIs
- * GET /api/attendance/hub-stats
- */
-export const getHubStats = async (req: Request, res: Response) => {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const [todayMarked, totalStats, pendingLeaves] = await Promise.all([
-      Attendance.countDocuments({ date: { $gte: today } }),
-      Attendance.aggregate([
-        {
-          $group: {
-            _id: null,
-            avg: { $avg: { $cond: [{ $in: ["$status", ["present", "late"]] }, 100, 0] } }
-          }
-        }
-      ]),
-      LeaveRequest.countDocuments({ status: "pending" })
-    ]);
-
-    const avg = totalStats[0]?.avg || 0;
-
-    res.status(200).json({
+    res.status(201).json({
       success: true,
-      data: {
-        todayMarked,
-        avgAttendance: Math.round(avg),
-        pendingLeaves,
-        shortageCount: 0 // Would require a complex aggregate, simplified for hub
-      }
+      data: attendance
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -213,50 +49,106 @@ export const getHubStats = async (req: Request, res: Response) => {
 };
 
 /**
- * Leave Request Management
+ * @desc    Get attendance for a specific class
+ * @route   GET /api/teacher/attendance/:classId
+ * @access  Private (Teacher)
  */
-export const submitLeaveRequest = async (req: Request, res: Response) => {
+export const getClassAttendance = async (req: Request, res: Response) => {
   try {
-    const leave = new LeaveRequest(req.body);
-    await leave.save();
-    res.status(201).json({ success: true, data: leave, message: "Leave request submitted" });
-  } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
+    const { classId } = req.params;
+    const { subjectId } = req.query;
 
-export const getLeaveRequests = async (req: Request, res: Response) => {
-  try {
-    const { status, studentId } = req.query;
-    const query: any = {};
-    if (status) query.status = status;
-    if (studentId) query.studentId = studentId;
+    const attendance = await Attendance.find({ 
+      classId, 
+      ...(subjectId && { subjectId }) 
+    })
+    .sort({ date: -1 })
+    .populate('records.studentId', 'name rollNumber');
 
-    const leaves = await LeaveRequest.find(query)
-      .populate("studentId", "personalInfo.firstName personalInfo.lastName uniqueStudentId")
-      .sort({ createdAt: -1 });
-
-    res.status(200).json({ success: true, data: leaves });
+    res.status(200).json({
+      success: true,
+      data: attendance
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-export const reviewLeaveRequest = async (req: Request, res: Response) => {
+/**
+ * @desc    Get monthly attendance report
+ * @route   GET /api/teacher/attendance/report/monthly
+ * @access  Private (Teacher)
+ */
+export const getMonthlyReport = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { status, reviewedBy, remarks } = req.body;
+    const { classId, subjectId, month, year } = req.query;
+    const teacherId = req.user._id;
 
-    const leave = await LeaveRequest.findByIdAndUpdate(
-      id,
-      { status, reviewedBy, remarks, reviewedAt: new Date() },
-      { new: true }
-    );
+    if (!month || !year) {
+       return res.status(400).json({ success: false, message: 'Month and year are required' });
+    }
 
-    if (!leave) return res.status(404).json({ success: false, message: "Request not found" });
+    const startDate = new Date(Number(year), Number(month) - 1, 1);
+    const endDate = new Date(Number(year), Number(month), 0);
 
-    res.status(200).json({ success: true, data: leave, message: `Leave ${status}` });
+    const attendance = await Attendance.find({
+      teacherId,
+      ...(classId && { classId }),
+      ...(subjectId && { subjectId }),
+      date: { $gte: startDate, $lte: endDate }
+    }).populate('records.studentId', 'name rollNumber');
+
+    res.status(200).json({
+      success: true,
+      data: attendance
+    });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Get students with attendance shortage (< 75%)
+ * @route   GET /api/teacher/attendance/shortage
+ * @access  Private (Teacher)
+ */
+export const getShortageAlerts = async (req: Request, res: Response) => {
+  try {
+    const { classId, subjectId } = req.query;
+    const teacherId = req.user._id;
+
+    // This would ideally use an aggregation pipeline for efficiency
+    const attendances = await Attendance.find({
+      teacherId,
+      ...(classId && { classId }),
+      ...(subjectId && { subjectId })
+    });
+
+    const studentStats: Record<string, { present: number, total: number, name: string }> = {};
+
+    attendances.forEach(att => {
+      att.records.forEach(rec => {
+        const id = rec.studentId.toString();
+        if (!studentStats[id]) {
+          studentStats[id] = { present: 0, total: 0, name: '' };
+        }
+        studentStats[id].total += 1;
+        if (rec.status === 'Present') studentStats[id].present += 1;
+      });
+    });
+
+    const shortages = Object.entries(studentStats)
+      .map(([id, stats]) => ({
+        studentId: id,
+        percentage: (stats.present / stats.total) * 100
+      }))
+      .filter(s => s.percentage < 75);
+
+    res.status(200).json({
+      success: true,
+      data: shortages
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

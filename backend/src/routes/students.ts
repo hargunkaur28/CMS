@@ -9,14 +9,22 @@ import {
   uploadStudentPhoto,
   getStudentStats,
   uploadDocs,
+  getMyStudent,
 } from "../controllers/studentsController.js";
+import { protect } from "../middleware/auth.js";
 import { uploadPhoto, uploadDocument } from "../utils/cloudinaryUploader.js";
 import multer from "multer";
 
 const router = express.Router();
+console.log("STUDENT ROUTER INITIALIZED");
+router.use((req, res, next) => {
+  console.log(`[STUDENT ROUTER] ${req.method} ${req.url}`);
+  next();
+});
 const uploadCsv = multer({ dest: "uploads/temp/" }); // Direct multer for CSV
 
 // --- Directory & Stats ---
+router.get("/me", protect, getMyStudent);
 router.get("/", getStudents);
 router.get("/stats", getStudentStats);
 router.get("/:id", getStudentById);

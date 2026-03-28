@@ -2,35 +2,28 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IAttendance extends Document {
-  studentId: mongoose.Types.ObjectId;
   teacherId: mongoose.Types.ObjectId;
-  subjectId: string; // Could be ref to Subject if model exists
-  courseId: string;
-  batchId: string;
+  classId: mongoose.Types.ObjectId;
+  subjectId: mongoose.Types.ObjectId;
   date: Date;
-  status: "present" | "absent" | "late" | "excused";
-  markedAt: Date;
-  remarks?: string;
+  records: {
+    studentId: mongoose.Types.ObjectId;
+    status: 'Present' | 'Absent' | 'Leave';
+  }[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-const AttendanceSchema: Schema = new Schema(
-  {
-    studentId: { type: Schema.Types.ObjectId, ref: "Student", required: true },
-    teacherId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    subjectId: { type: String, required: true },
-    courseId: { type: String, required: true },
-    batchId: { type: String, required: true },
-    date: { type: Date, required: true },
-    status: {
-      type: String,
-      enum: ["present", "absent", "late", "excused"],
-      required: true,
-    },
-    markedAt: { type: Date, default: Date.now },
-    remarks: { type: String },
-  },
-  { timestamps: true }
-);
+const AttendanceSchema: Schema = new Schema({
+  teacherId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  classId: { type: Schema.Types.ObjectId, ref: 'Batch', required: true }, // Using Batch ref as classId for consistency
+  subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
+  date: { type: Date, required: true },
+  records: [{
+    studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
+    status: { type: String, enum: ['Present', 'Absent', 'Leave'], required: true }
+  }]
+}, { timestamps: true });
 
 // Index for quick performance on reports
 AttendanceSchema.index({ studentId: 1, date: 1 });

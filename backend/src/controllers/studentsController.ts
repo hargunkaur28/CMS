@@ -40,6 +40,30 @@ export const getStudentById = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Get the student profile for the current logged in user (student or parent)
+ */
+export const getMyStudent = async (req: Request, res: Response) => {
+  console.log("[GET_MY_STUDENT] Controller started");
+  try {
+    const user = (req as any).user;
+    console.log("[GET_MY_STUDENT] User role:", user?.role);
+    if (!user) return res.status(401).json({ success: false, message: "Not authorized" });
+
+    let student;
+    if (user.role === 'STUDENT') {
+      student = await Student.findOne({ "academicInfo.userId": user._id });
+    } else if (user.role === 'PARENT') {
+      student = await Student.findOne({ "parentInfo.email": user.email });
+    }
+
+    if (!student) return res.status(404).json({ success: false, message: "Student profile not found" });
+    res.status(200).json({ success: true, data: student });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const createStudent = async (req: Request, res: Response) => {
   try {
     const studentData = req.body;

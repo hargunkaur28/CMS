@@ -5,13 +5,10 @@ export interface IEnquiry extends Document {
   name: string;
   phone: string;
   email: string;
-  courseInterested: string;
-  source: "walk-in" | "online" | "referral";
-  status: "new" | "follow-up" | "applied" | "admitted" | "rejected";
-  notes: {
-    content: string;
-    createdAt: Date;
-  }[];
+  courseInterest: mongoose.Types.ObjectId;
+  source: 'walkin' | 'online' | 'referral' | 'other';
+  status: 'New' | 'Contacted' | 'Interested' | 'NotInterested';
+  notes: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,23 +18,18 @@ const EnquirySchema: Schema = new Schema(
     name: { type: String, required: true },
     phone: { type: String, required: true },
     email: { type: String, required: true },
-    courseInterested: { type: String, required: true },
+    courseInterest: { type: Schema.Types.ObjectId, ref: "Course", required: true },
     source: {
       type: String,
-      enum: ["walk-in", "online", "referral"],
+      enum: ["walkin", "online", "referral", "other"],
       default: "online",
     },
     status: {
       type: String,
-      enum: ["new", "follow-up", "applied", "admitted", "rejected"],
-      default: "new",
+      enum: ["New", "Contacted", "Interested", "NotInterested"],
+      default: "New",
     },
-    notes: [
-      {
-        content: { type: String, required: true },
-        createdAt: { type: Date, default: Date.now },
-      },
-    ],
+    notes: { type: String },
   },
   { timestamps: true }
 );

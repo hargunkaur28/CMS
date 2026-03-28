@@ -2,62 +2,60 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IApplication extends Document {
-  enquiryRef: mongoose.Types.ObjectId;
-  studentDetails: {
-    firstName: string;
-    lastName: string;
+  enquiryId: mongoose.Types.ObjectId;
+  personalDetails: {
+    name: string;
     dob: Date;
     gender: "male" | "female" | "other";
-    phone: string;
-    email: string;
     address: string;
-    parentName: string;
-    parentPhone: string;
   };
-  documents: {
-    name: string;
-    cloudinaryUrl: string;
-    uploadedAt: Date;
+  academicHistory: {
+    institution: string;
+    year: number;
+    percentage: number;
   }[];
-  status: "pending" | "under-review" | "approved" | "rejected";
-  assignedCourse: string;
-  assignedBatch: string;
-  seatNumber?: string;
-  admissionDate?: Date;
+  documents: {
+    type: string;
+    fileUrl: string;
+    verified: boolean;
+  }[];
+  courseId: mongoose.Types.ObjectId;
+  status: "Applied" | "DocsVerified" | "Approved" | "Rejected" | "Enrolled";
+  rejectionReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
 const ApplicationSchema: Schema = new Schema(
   {
-    enquiryRef: { type: Schema.Types.ObjectId, ref: "Enquiry", required: true },
-    studentDetails: {
-      firstName: { type: String, required: true },
-      lastName: { type: String, required: true },
+    enquiryId: { type: Schema.Types.ObjectId, ref: "Enquiry", required: true },
+    personalDetails: {
+      name: { type: String, required: true },
       dob: { type: Date, required: true },
       gender: { type: String, enum: ["male", "female", "other"], required: true },
-      phone: { type: String, required: true },
-      email: { type: String, required: true },
       address: { type: String, required: true },
-      parentName: { type: String, required: true },
-      parentPhone: { type: String, required: true },
     },
-    documents: [
+    academicHistory: [
       {
-        name: { type: String, required: true },
-        cloudinaryUrl: { type: String, required: true },
-        uploadedAt: { type: Date, default: Date.now },
+        institution: { type: String, required: true },
+        year: { type: Number, required: true },
+        percentage: { type: Number, required: true },
       },
     ],
+    documents: [
+      {
+        type: { type: String, required: true },
+        fileUrl: { type: String, required: true },
+        verified: { type: Boolean, default: false },
+      },
+    ],
+    courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
     status: {
       type: String,
-      enum: ["pending", "under-review", "approved", "rejected"],
-      default: "pending",
+      enum: ["Applied", "DocsVerified", "Approved", "Rejected", "Enrolled"],
+      default: "Applied",
     },
-    assignedCourse: { type: String, required: true },
-    assignedBatch: { type: String, required: true },
-    seatNumber: { type: String },
-    admissionDate: { type: Date },
+    rejectionReason: { type: String },
   },
   { timestamps: true }
 );

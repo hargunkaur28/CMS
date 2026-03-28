@@ -1,6 +1,6 @@
 // FILE: apps/web-shell/src/lib/api/students.ts
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = "http://localhost:5005/api";
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -16,6 +16,16 @@ export const getStudents = async (params?: any): Promise<ApiResponse<any[]>> => 
 
 export const getStudentById = async (id: string): Promise<ApiResponse<any>> => {
   const res = await fetch(`${API_URL}/students/${id}`);
+  return res.json();
+};
+
+export const getMyStudent = async (): Promise<ApiResponse<any>> => {
+  const token = localStorage.getItem("token");
+  const res = await fetch(`${API_URL}/students/me`, {
+    headers: {
+      "Authorization": `Bearer ${token}`
+    }
+  });
   return res.json();
 };
 

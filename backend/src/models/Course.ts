@@ -3,21 +3,26 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface ICourse extends Document {
   name: string;
   code: string;
+  duration: number; // years
+  department: string;
+  totalSeats: number;
   description?: string;
-  duration: number; // in semesters or years
-  collegeId: mongoose.Types.ObjectId;
+  subjects: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
 
-const CourseSchema: Schema = new Schema({
-  name: { type: String, required: true },
-  code: { type: String, required: true },
-  description: { type: String },
-  duration: { type: Number, required: true },
-  collegeId: { type: Schema.Types.ObjectId, ref: 'College', required: true },
-}, { timestamps: true });
+const CourseSchema: Schema = new Schema(
+  {
+    name: { type: String, required: true },
+    code: { type: String, required: true, unique: true },
+    duration: { type: Number, required: true },
+    department: { type: String, required: true },
+    totalSeats: { type: Number, required: true },
+    description: { type: String },
+    subjects: [{ type: Schema.Types.ObjectId, ref: "Subject" }],
+  },
+  { timestamps: true }
+);
 
-CourseSchema.index({ code: 1, collegeId: 1 }, { unique: true });
-
-export default mongoose.model<ICourse>('Course', CourseSchema);
+export default mongoose.model<ICourse>("Course", CourseSchema);

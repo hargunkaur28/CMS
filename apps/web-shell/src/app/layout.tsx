@@ -99,16 +99,90 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
               <nav className="flex-1 mt-4 px-3 space-y-0.5 overflow-y-auto custom-scrollbar">
                 <NavItem icon={<LayoutDashboard size={18} />} label="Dashboard" href="/" active={pathname === "/"} />
-                <NavItem icon={<GraduationCap size={18} />} label="Admissions" href="/admissions" active={pathname.startsWith("/admissions")} />
-                <NavItem icon={<Users size={18} />} label="Students" href="/students" active={pathname.startsWith("/students")} />
-                <NavItem icon={<BookOpen size={18} />} label="Academics" href="/academics" active={pathname.startsWith("/academics")} />
-                <NavItem icon={<Calendar size={18} />} label="Timetable" href="/timetable" active={pathname.startsWith("/timetable")} />
-                <NavItem icon={<ClipboardCheck size={18} />} label="Attendance" href="/attendance" active={pathname.startsWith("/attendance")} />
-                <NavItem icon={<FileText size={18} />} label="Exams" href="/exams" active={pathname.startsWith("/exams")} />
-                <NavItem icon={<CreditCard size={18} />} label="Finance" href="/finance" active={pathname.startsWith("/finance")} />
-                <NavItem icon={<Library size={18} />} label="Library" href="/library" active={pathname.startsWith("/library")} />
-                <NavItem icon={<Briefcase size={18} />} label="Placement" href="/placement" active={pathname.startsWith("/placement")} />
-                <NavItem icon={<Settings size={18} />} label="Settings" href="/settings" active={pathname.startsWith("/settings")} />
+                
+                <NavItem 
+                  icon={<GraduationCap size={18} />} 
+                  label="Admissions" 
+                  href="/admissions" 
+                  active={pathname.startsWith("/admissions")} 
+                  roles={['SUPER_ADMIN', 'COLLEGE_ADMIN']}
+                  currentUserRole={user?.role}
+                />
+                
+                <NavItem 
+                  icon={<Users size={18} />} 
+                  label="Students" 
+                  href="/students" 
+                  active={pathname.startsWith("/students")} 
+                  roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER']}
+                  currentUserRole={user?.role}
+                />
+                
+                <NavItem 
+                  icon={<BookOpen size={18} />} 
+                  label="Academics" 
+                  href="/academics" 
+                  active={pathname.startsWith("/academics")} 
+                  roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT', 'PARENT']}
+                  currentUserRole={user?.role}
+                />
+                
+                <NavItem 
+                  icon={<Calendar size={18} />} 
+                  label="Timetable" 
+                  href="/timetable" 
+                  active={pathname.startsWith("/timetable")} 
+                />
+                
+                <NavItem 
+                  icon={<ClipboardCheck size={18} />} 
+                  label="Attendance" 
+                  href="/attendance" 
+                  active={pathname.startsWith("/attendance")} 
+                  roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT', 'PARENT']}
+                  currentUserRole={user?.role}
+                />
+                
+                <NavItem 
+                  icon={<FileText size={18} />} 
+                  label="Exams" 
+                  href="/exams" 
+                  active={pathname.startsWith("/exams")} 
+                  roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT', 'PARENT']}
+                  currentUserRole={user?.role}
+                />
+                
+                <NavItem 
+                  icon={<CreditCard size={18} />} 
+                  label="Finance" 
+                  href="/finance" 
+                  active={pathname.startsWith("/finance")} 
+                  roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'PARENT', 'STUDENT']}
+                  currentUserRole={user?.role}
+                />
+                
+                <NavItem 
+                  icon={<Library size={18} />} 
+                  label="Library" 
+                  href="/library" 
+                  active={pathname.startsWith("/library")} 
+                />
+                
+                <NavItem 
+                  icon={<Briefcase size={18} />} 
+                  label="Placement" 
+                  href="/placement" 
+                  active={pathname.startsWith("/placement")} 
+                />
+                
+                <NavItem 
+                  icon={<Settings size={18} />} 
+                  label="Settings" 
+                  href="/settings" 
+                  active={pathname.startsWith("/settings")} 
+                  roles={['SUPER_ADMIN', 'COLLEGE_ADMIN']}
+                  currentUserRole={user?.role}
+                />
               </nav>
 
               <div className="p-4 border-t border-slate-800">
@@ -148,7 +222,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   );
 }
 
-function NavItem({ icon, label, href, active = false }: { icon: React.ReactNode, label: string, href: string, active?: boolean }) {
+function NavItem({ 
+  icon, 
+  label, 
+  href, 
+  active = false, 
+  roles,
+  currentUserRole 
+}: { 
+  icon: React.ReactNode, 
+  label: string, 
+  href: string, 
+  active?: boolean,
+  roles?: string[],
+  currentUserRole?: string
+}) {
+  if (roles && currentUserRole && !roles.includes(currentUserRole)) {
+    return null;
+  }
+
   return (
     <Link 
       href={href}

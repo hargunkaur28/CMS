@@ -1,23 +1,58 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IGradingScheme {
+  grade: 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D' | 'F';
+  minMarks: number;
+  maxMarks: number;
+  gradePoint: number;
+}
+
 export interface IExam extends Document {
-  title: string;
-  type: 'internal' | 'semester' | 'practical' | 'assignment';
-  subjectId: mongoose.Types.ObjectId;
-  batchId: mongoose.Types.ObjectId;
   collegeId: mongoose.Types.ObjectId;
-  date: Date;
+  code: string;
+  name: string;
+  examType: 'INTERNAL' | 'EXTERNAL' | 'PRACTICAL';
+  scheduleDate: Date;
+  duration: number; // in minutes
+  courses: mongoose.Types.ObjectId[];
+  subjects: mongoose.Types.ObjectId[];
   totalMarks: number;
+  passingMarks: number;
+  gradingScheme: IGradingScheme[];
+  status: 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'ARCHIVED';
+  publishedDate?: Date;
+  publishedBy?: mongoose.Types.ObjectId;
+  createdBy: mongoose.Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const ExamSchema: Schema = new Schema({
-  title: { type: String, required: true },
-  type: { type: String, enum: ['internal', 'semester', 'practical', 'assignment'], required: true },
-  subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
-  batchId: { type: Schema.Types.ObjectId, ref: 'Batch', required: true },
   collegeId: { type: Schema.Types.ObjectId, ref: 'College', required: true },
-  date: { type: Date, required: true },
+  code: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  examType: { type: String, enum: ['INTERNAL', 'EXTERNAL', 'PRACTICAL'], required: true },
+  scheduleDate: { type: Date, required: true },
+  duration: { type: Number, required: true },
+  courses: [{ type: Schema.Types.ObjectId, ref: 'Course', required: true }],
+  subjects: [{ type: Schema.Types.ObjectId, ref: 'Subject', required: true }],
   totalMarks: { type: Number, required: true },
+  passingMarks: { type: Number, required: true },
+  gradingScheme: [{
+    grade: { type: String, enum: ['A+', 'A', 'B+', 'B', 'C', 'D', 'F'], required: true },
+    minMarks: { type: Number, required: true },
+    maxMarks: { type: Number, required: true },
+    gradePoint: { type: Number, required: true }
+  }],
+  status: { type: String, enum: ['DRAFT', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED'], default: 'DRAFT' },
+  publishedDate: { type: Date },
+  publishedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+  createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
 }, { timestamps: true });
+
+// Optimize for common queries
+ExamSchema.index({ collegeId: 1, status: 1 });
+ExamSchema.index({ scheduleDate: 1 });
+ExamSchema.index({ code: 1, collegeId: 1 }, { unique: true });
 
 export default mongoose.model<IExam>('Exam', ExamSchema);
