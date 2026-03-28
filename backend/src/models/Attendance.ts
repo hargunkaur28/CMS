@@ -25,8 +25,8 @@ const AttendanceSchema: Schema = new Schema({
   }]
 }, { timestamps: true });
 
-// Index for quick performance on reports
-AttendanceSchema.index({ studentId: 1, date: 1 });
-AttendanceSchema.index({ batchId: 1, subjectId: 1, date: 1 });
+// Index for quick performance on reports and ensuring uniqueness per class/subject/date
+AttendanceSchema.index({ "records.studentId": 1, date: 1 });
+AttendanceSchema.index({ classId: 1, subjectId: 1, date: 1 }, { unique: true });
 
 export default mongoose.model<IAttendance>("Attendance", AttendanceSchema);

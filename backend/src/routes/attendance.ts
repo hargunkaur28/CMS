@@ -1,6 +1,7 @@
 // FILE: backend/src/routes/attendance.ts
 import express from "express";
 import * as attendanceController from "../controllers/attendanceController.js";
+import { protect } from "../middleware/auth.js";
 import { validate } from "../middleware/validate.js"; // Assume this middleware exists or is standard
 import * as attendanceValidator from "../validators/attendanceValidator.js";
 
@@ -13,6 +14,7 @@ router.post(
   attendanceController.markBulkAttendance
 );
 
+router.get("/me", protect, attendanceController.getMyAttendance);
 router.get("/", attendanceController.getAttendance);
 router.get("/stats/:batchId", attendanceController.getAttendanceStats);
 router.get("/hub-stats", attendanceController.getHubStats);

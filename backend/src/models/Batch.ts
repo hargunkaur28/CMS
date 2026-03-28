@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IBatch extends Document {
   name: string;
   courseId: mongoose.Types.ObjectId;
+  collegeId: mongoose.Types.ObjectId;
   year: number;
   sections: string[];
   students: mongoose.Types.ObjectId[];
@@ -14,6 +15,7 @@ const BatchSchema: Schema = new Schema(
   {
     name: { type: String, required: true },
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
+    collegeId: { type: Schema.Types.ObjectId, ref: "College", required: true },
     year: { type: Number, required: true },
     sections: [{ type: String }],
     students: [{ type: Schema.Types.ObjectId, ref: "Student" }],

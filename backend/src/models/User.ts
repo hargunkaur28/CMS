@@ -7,6 +7,7 @@ export interface IUser extends Document {
   password?: string;
   role: 'SUPER_ADMIN' | 'COLLEGE_ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT';
   collegeId?: mongoose.Types.ObjectId;
+  registrationId?: string;
   isActive: boolean;
   profilePicture?: string;
   matchPassword(password: string): Promise<boolean>;
@@ -18,6 +19,7 @@ const UserSchema: Schema = new Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT', 'PARENT'], required: true },
   collegeId: { type: Schema.Types.ObjectId, ref: 'College' },
+  registrationId: { type: String, unique: true, sparse: true },
   isActive: { type: Boolean, default: true },
   profilePicture: { type: String },
 }, { timestamps: true });

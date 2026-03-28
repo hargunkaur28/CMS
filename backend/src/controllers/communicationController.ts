@@ -67,3 +67,25 @@ export const sendMessage = async (req: Request, res: Response) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
+export const getConversation = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const { studentUserId } = req.params;
+
+    const messages = await Message.find({
+      $or: [
+        { sender: userId, receiver: studentUserId },
+        { sender: studentUserId, receiver: userId }
+      ]
+    })
+    .populate("sender", "name email role")
+    .populate("receiver", "name email role")
+    .sort({ createdAt: 1 });
+
+    res.status(200).json({ success: true, data: messages });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

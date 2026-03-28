@@ -269,3 +269,25 @@ export const fetchDashboardStats = async () => {
   const response = await axios.get(`${API_URL}/stats`, { headers: getAuthHeader() });
   return response.data;
 };
+
+// --- Academic Assignments ---
+
+export const fetchAssignments = async () => {
+  const response = await axios.get(`${API_URL}/assignments`, { headers: getAuthHeader() });
+  return response.data;
+};
+
+export const assignTeacher = async (payload: { teacherId: string; subjectId: string; batchId: string }) => {
+  const response = await axios.post(`${API_URL}/assign-teacher`, payload, { headers: getAuthHeader() });
+  return response.data;
+};
+
+export const removeTeacherAssignment = async (payload: { teacherId: string; subjectId: string; batchId: string }) => {
+  const response = await axios.delete(`${API_URL}/assign-teacher`, { data: payload, headers: getAuthHeader() });
+  return response.data;
+};
+
+export const assignStudentToBatch = async (payload: { studentId: string; batchId: string }) => {
+  const response = await axios.post(`${API_URL}/assign-student-batch`, payload, { headers: getAuthHeader() });
+  return response.data;
+};

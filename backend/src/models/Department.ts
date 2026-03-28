@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IDepartment extends Document {
   name: string;
+  collegeId: mongoose.Types.ObjectId;
   hod?: string;
   courses: string[];
   createdAt: Date;
@@ -11,7 +12,8 @@ export interface IDepartment extends Document {
 
 const DepartmentSchema: Schema = new Schema(
   {
-    name: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    collegeId: { type: Schema.Types.ObjectId, ref: "College", required: true },
     hod: { type: String },
     courses: [{ type: String }],
   },

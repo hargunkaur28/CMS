@@ -2,80 +2,77 @@
 
 import React from "react";
 import Card from "@/components/ui/Card";
+import { Award, CheckCircle2, XCircle, Download } from "lucide-react";
 
 interface ResultCardProps {
   result: any;
 }
 
 const ResultCard: React.FC<ResultCardProps> = ({ result }) => {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "PASS": return "bg-success-container text-success border-success";
-      case "FAIL": return "bg-error-container text-error border-error";
-      default: return "bg-surface-container text-surface-on-surface-variant";
-    }
-  };
+  const isPass = result.status === "PASS";
 
   return (
-    <Card className="p-6">
-      <div className="flex justify-between items-start mb-6">
-        <div>
-          <h3 className="text-xl font-bold text-surface-on-surface">{result.examId.name}</h3>
-          <p className="text-sm text-surface-on-surface-variant font-medium">Session: 2024-25</p>
+    <Card className="p-8 border-none bg-white shadow-ambient rounded-[2rem] overflow-hidden group hover:shadow-xl transition-all duration-500">
+      <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8">
+        <div className="flex gap-4 items-center">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform ${isPass ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+            <Award size={28} />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-slate-900 font-display tracking-tight">{result.examId?.name || "Term Examination"}</h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">Academic Session 2024-25</p>
+          </div>
         </div>
-        <div className={`px-4 py-1.5 rounded-full text-xs font-bold border ${getStatusColor(result.status)}`}>
-          {result.status}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant">
-          <p className="text-xs text-surface-on-surface-variant mb-1 uppercase font-bold tracking-wider">Obtained Marks</p>
-          <p className="text-2xl font-bold text-surface-on-surface">{result.totalMarksObtained}</p>
-        </div>
-        <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant">
-          <p className="text-xs text-surface-on-surface-variant mb-1 uppercase font-bold tracking-wider">Max Marks</p>
-          <p className="text-2xl font-bold text-surface-on-surface">{result.totalMaxMarks}</p>
-        </div>
-        <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant">
-          <p className="text-xs text-surface-on-surface-variant mb-1 uppercase font-bold tracking-wider">Percentage</p>
-          <p className="text-2xl font-bold text-primary">{result.percentage.toFixed(1)}%</p>
-        </div>
-        <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant">
-          <p className="text-xs text-surface-on-surface-variant mb-1 uppercase font-bold tracking-wider">CGPA</p>
-          <p className="text-2xl font-bold text-secondary-container-on-secondary-container">{result.cgpa.toFixed(2)}</p>
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-indigo-600 transition-all shadow-lg shadow-slate-900/10 active:scale-95">
+            <Download size={16} /> Marksheet
+          </button>
+          <div className={`px-5 py-2.5 rounded-xl text-xs font-black tracking-widest uppercase border shadow-sm ${
+            isPass ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'
+          }`}>
+            {result.status}
+          </div>
         </div>
       </div>
 
-      <div className="overflow-x-auto border border-outline-variant rounded-xl">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+        <StatItem label="Score" value={`${result.totalMarksObtained}/${result.totalMaxMarks}`} sub="Total Marks" color="text-slate-900" />
+        <StatItem label="Percentage" value={`${result.percentage.toFixed(1)}%`} sub="Overall Weight" color="text-indigo-600" />
+        <StatItem label="CGPA" value={result.cgpa.toFixed(2)} sub="Grade Point" color="text-amber-600" />
+        <StatItem label="Rank" value="A+" sub="Class Standing" color="text-emerald-600" />
+      </div>
+
+      <div className="overflow-hidden border border-slate-100 rounded-2xl bg-slate-50/30">
         <table className="w-full text-left">
-          <thead className="bg-surface-container text-xs text-surface-on-surface-variant font-bold uppercase tracking-wider">
-            <tr>
-              <th className="px-6 py-3">Subject</th>
-              <th className="px-6 py-3 text-center">Marks</th>
-              <th className="px-6 py-3 text-center">Grade</th>
-              <th className="px-6 py-3 text-center">Status</th>
+          <thead>
+            <tr className="bg-slate-50/80 border-b border-slate-100">
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subject Details</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Marks</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Grade</th>
+              <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Result</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-outline-variant bg-surface-container-lowest">
-            {result.subjects.map((subject: any) => (
-              <tr key={subject.subjectId} className="hover:bg-surface-container-low transition-all">
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {result.subjects.map((subject: any, idx: number) => (
+              <tr key={idx} className="hover:bg-slate-50/50 transition-all hover:translate-x-1 duration-200">
                 <td className="px-6 py-4">
-                  <p className="font-bold text-surface-on-surface">{subject.subjectName}</p>
-                  <p className="text-xs text-surface-on-surface-variant">Code: {subject.subjectId.code || "SUB-001"}</p>
+                  <p className="text-sm font-bold text-slate-900">{subject.subjectName}</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{subject.subjectId?.code || "SUB-001"}</p>
                 </td>
-                <td className="px-6 py-4 text-center font-bold text-surface-on-surface">
-                  {subject.marks} / {subject.maxMarks}
+                <td className="px-6 py-4 text-center">
+                  <p className="text-sm font-black text-slate-700">{subject.marks} <span className="text-slate-300 font-medium">/ {subject.maxMarks}</span></p>
                 </td>
-                <td className="px-6 py-4 text-center font-black text-primary">
-                  {subject.grade}
+                <td className="px-6 py-4 text-center">
+                  <span className="text-sm font-black text-indigo-600">{subject.grade}</span>
                 </td>
-                <td className="px-6 py-4">
-                   <div className="flex justify-center">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getStatusColor(subject.status)}`}>
-                        {subject.status}
-                    </span>
-                   </div>
+                <td className="px-6 py-4 text-right">
+                  <div className="flex items-center justify-end gap-1.5 font-black text-[10px] tracking-widest uppercase">
+                    {subject.status === 'PASS' ? (
+                      <><CheckCircle2 size={14} className="text-emerald-500" /> <span className="text-emerald-600">Qualified</span></>
+                    ) : (
+                      <><XCircle size={14} className="text-rose-500" /> <span className="text-rose-600">Failed</span></>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -86,4 +83,15 @@ const ResultCard: React.FC<ResultCardProps> = ({ result }) => {
   );
 };
 
+function StatItem({ label, value, sub, color }: any) {
+  return (
+    <div className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 group-hover:bg-white group-hover:shadow-sm transition-all">
+      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{label}</p>
+      <p className={`text-2xl font-black tracking-tight ${color}`}>{value}</p>
+      <p className="text-[10px] text-slate-400 font-medium mt-0.5">{sub}</p>
+    </div>
+  );
+}
+
 export default ResultCard;
+

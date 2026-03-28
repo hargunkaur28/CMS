@@ -12,7 +12,7 @@ export const getMyStudents = async (req: Request, res: Response) => {
     // In a real system, we'd query batches assigned to this teacher
     // For simplicity, listing all students but filtering fields
     const students = await Student.find()
-      .select('name rollNumber batchId section semester profilePicture')
+      .select('personalInfo academicInfo')
       .populate('userId', 'email isActive');
 
     res.status(200).json({ success: true, data: students });
@@ -32,7 +32,7 @@ export const getStudentProfile = async (req: Request, res: Response) => {
 
     // Strict field selection to strip sensitive info
     const student = await Student.findById(studentId)
-      .select('name rollNumber batchId section semester profilePicture academicHistory')
+      .select('personalInfo academicInfo academicHistory')
       .populate('userId', 'email name');
 
     if (!student) {

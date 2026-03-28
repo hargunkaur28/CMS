@@ -26,7 +26,7 @@ export const getAssignedExams = async (req: Request, res: Response) => {
 export const enterMarks = async (req: Request, res: Response) => {
   try {
     const { examId, studentId, subjectId, marksObtained, maxMarks, remarks } = req.body;
-    const teacherId = req.user._id;
+    const teacherId = (req as any).user?._id;
 
     if (marksObtained > maxMarks) {
       return res.status(400).json({ success: false, message: 'Marks obtained cannot exceed max marks' });
@@ -62,10 +62,10 @@ export const enterMarks = async (req: Request, res: Response) => {
 export const getMarksByExam = async (req: Request, res: Response) => {
   try {
     const { examId } = req.params;
-    const teacherId = req.user._id;
+    const teacherId = (req as any).user?._id;
 
     const marks = await Marks.find({ examId, teacherId })
-      .populate('studentId', 'name rollNumber')
+      .populate('studentId', 'personalInfo academicInfo')
       .populate('subjectId', 'name');
 
     res.status(200).json({ success: true, data: marks });
@@ -83,7 +83,7 @@ export const editMarks = async (req: Request, res: Response) => {
   try {
     const { markId } = req.params;
     const { marksObtained, remarks } = req.body;
-    const teacherId = req.user._id;
+    const teacherId = (req as any).user?._id;
 
     const marks = await Marks.findById(markId);
 

@@ -9,7 +9,7 @@ import Material from '../models/Material.js';
 export const uploadMaterial = async (req: Request, res: Response) => {
   try {
     const { title, description, type, classId, subjectId, dueDate } = req.body;
-    const teacherId = req.user._id;
+    const teacherId = (req as any).user?._id;
     const fileUrl = req.file?.path; // Provided by Cloudinary storage
 
     if (!fileUrl) {
@@ -40,7 +40,7 @@ export const uploadMaterial = async (req: Request, res: Response) => {
  */
 export const getMaterials = async (req: Request, res: Response) => {
   try {
-    const teacherId = req.user._id;
+    const teacherId = (req as any).user?._id;
     const materials = await Material.find({ teacherId })
       .populate('subjectId', 'name')
       .populate('classId', 'name')
@@ -60,7 +60,7 @@ export const getMaterials = async (req: Request, res: Response) => {
 export const deleteMaterial = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const teacherId = req.user._id;
+    const teacherId = (req as any).user?._id;
 
     const material = await Material.findById(id);
 

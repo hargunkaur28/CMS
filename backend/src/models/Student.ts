@@ -2,82 +2,100 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export interface IStudent extends Document {
+  uniqueStudentId: string;
   userId: mongoose.Types.ObjectId;
-  studentId: string; // NGM-2026-0001
+  collegeId?: mongoose.Types.ObjectId;
+  batchId?: mongoose.Types.ObjectId;  // Top-level for efficient querying
+  studentId?: string; // Compatibility alias
   personalInfo: {
-    name: string;
+    firstName: string;
+    lastName: string;
+    name?: string; // Compatibility alias
     dob: Date;
     gender: "male" | "female" | "other";
-    bloodGroup?: string;
     phone: string;
     email: string;
     address: string;
     photo?: string;
   };
-  parentInfo: {
-    fatherName: string;
-    motherName: string;
-    guardianPhone: string;
-    parentUserId?: mongoose.Types.ObjectId;
-  };
-  academic: {
-    courseId: mongoose.Types.ObjectId;
-    batchId: mongoose.Types.ObjectId;
-    section?: string;
+  academicInfo: {
+    course: string;
+    batch: string;
+    department: mongoose.Types.ObjectId;
+    status: "active" | "graduated" | "dropped";
     semester: number;
     rollNumber?: string;
+    enrollmentDate?: Date;
+  };
+  parentInfo: {
+    name: string;
+    phone: string;
+    email: string;
+    relation: string;
   };
   documents: {
-    type: string;
-    fileUrl: string;
+    name: string;
+    cloudinaryUrl: string;
     uploadedAt: Date;
   }[];
-  status: "Active" | "Detained" | "Alumni" | "Dropped";
   createdAt: Date;
   updatedAt: Date;
 }
 
 const StudentSchema: Schema = new Schema(
   {
-    userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    studentId: { type: String, required: true, unique: true },
+    uniqueStudentId: { type: String, required: true, unique: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    collegeId: { type: Schema.Types.ObjectId, ref: "College", index: true },
+    batchId: { type: Schema.Types.ObjectId, ref: "Batch", index: true },
+    studentId: { type: String }, // Virtual alias possible but field is safer for population
     personalInfo: {
-      name: { type: String, required: true },
+      firstName: { type: String, required: true },
+      lastName: { type: String, required: true },
+      name: { type: String }, 
       dob: { type: Date, required: true },
       gender: { type: String, enum: ["male", "female", "other"], required: true },
-      bloodGroup: { type: String },
       phone: { type: String, required: true },
       email: { type: String, required: true, unique: true },
       address: { type: String, required: true },
       photo: { type: String },
     },
-    parentInfo: {
-      fatherName: { type: String, required: true },
-      motherName: { type: String, required: true },
-      guardianPhone: { type: String, required: true },
-      parentUserId: { type: Schema.Types.ObjectId, ref: "User" },
-    },
-    academic: {
-      courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
-      batchId: { type: Schema.Types.ObjectId, ref: "Batch", required: true },
-      section: { type: String },
+    academicInfo: {
+      course: { type: String, required: true },
+      batch: { type: String, required: true },
+      department: { type: Schema.Types.ObjectId, ref: "Department", required: true },
+      status: { type: String, enum: ["active", "graduated", "dropped"], default: "active" },
       semester: { type: Number, default: 1 },
       rollNumber: { type: String },
+      enrollmentDate: { type: Date, default: Date.now },
+    },
+    parentInfo: {
+      name: { type: String, required: true },
+      phone: { type: String, required: true },
+      email: { type: String, required: true },
+      relation: { type: String, required: true },
     },
     documents: [
       {
-        type: { type: String, required: true },
-        fileUrl: { type: String, required: true },
+        name: { type: String, required: true },
+        cloudinaryUrl: { type: String, required: true },
         uploadedAt: { type: Date, default: Date.now },
       },
     ],
-    status: {
-      type: String,
-      enum: ["Active", "Detained", "Alumni", "Dropped"],
-      default: "Active",
-    },
   },
   { timestamps: true }
 );
+
+// Pre-save hook to sync compatibility fields
+StudentSchema.pre('save', function(next) {
+  const student = this as any;
+  if (student.personalInfo.firstName && student.personalInfo.lastName) {
+    student.personalInfo.name = `${student.personalInfo.firstName} ${student.personalInfo.lastName}`;
+  }
+  if (student.uniqueStudentId) {
+    student.studentId = student.uniqueStudentId;
+  }
+  next();
+});
 
 export default mongoose.model<IStudent>("Student", StudentSchema);

@@ -7,10 +7,14 @@ import {
   TrendingUp, 
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  ArrowRightLeft,
+  ArrowRight,
+  School
 } from "lucide-react";
 import StatsCard from "@/components/admin/StatsCard";
 import { fetchDashboardStats } from "@/lib/api/admin";
+import Link from "next/link";
 
 export default function AdminDashboard() {
   const [stats, setStats] = React.useState<any>(null);
@@ -62,12 +66,48 @@ export default function AdminDashboard() {
           description="Total fee collection this year"
         />
         <StatsCard 
-          icon={<AlertCircle className="text-rose-500" />} 
+          icon={<AlertCircle size={24} className="text-rose-500" />} 
           label="At-Risk Students" 
           value={loading ? "..." : stats?.atRiskCount || "0"} 
           trend="Managed by AI"
           description={loading ? "Analyzing..." : `${stats?.atRiskCount} require immediate intervention`}
         />
+      </div>
+
+      {/* Quick Access & Strategic Tools */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Link 
+          href="/admin/assignments"
+          className="group relative bg-indigo-600 rounded-[2.5rem] p-8 text-white shadow-2xl shadow-indigo-600/20 cursor-pointer hover:scale-[1.02] transition-all overflow-hidden block"
+        >
+           <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700" />
+           <div className="relative z-10">
+              <div className="flex items-center gap-4 mb-6">
+                 <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center">
+                    <ArrowRightLeft className="text-white" size={24} />
+                 </div>
+                 <h2 className="text-2xl font-black tracking-tighter uppercase leading-none">Academic Assignments</h2>
+              </div>
+              <p className="text-sm font-medium text-indigo-100 max-w-sm mb-8 leading-relaxed">
+                 Configure faculty subject-batch mappings and student enrollments. System-wide data sync enabled.
+              </p>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em]">
+                 Enter Portal <ArrowRight size={14} />
+              </div>
+           </div>
+        </Link>
+
+        <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 flex items-center gap-8 shadow-sm">
+           <div className="w-20 h-20 bg-emerald-50 text-emerald-600 rounded-3xl flex items-center justify-center shrink-0">
+               <School size={32} />
+           </div>
+           <div>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-1">Campus Hierarchy</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-loose">
+                 Manage Departments, Courses, and Batches across 4 distinct academic spheres.
+              </p>
+           </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

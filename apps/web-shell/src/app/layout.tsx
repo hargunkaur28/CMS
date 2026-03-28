@@ -29,6 +29,7 @@ import {
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { SocketProvider } from "@/components/providers/SocketProvider";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -79,6 +80,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     PARENT:        'bg-slate-500/20 text-slate-300',
   };
 
+  const isAdminRoute = pathname.startsWith("/admin");
+
   return (
     <html lang="en">
       <body className={`bg-slate-50 text-slate-900 ${!isLoginPage ? "h-screen flex" : ""}`}>
@@ -88,6 +91,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         ) : isLoginPage ? (
           children
+        ) : isAdminRoute ? (
+          /* Admin Portal handles its own sidebar and layout */
+          <div className="w-full h-full">
+            {children}
+          </div>
         ) : (
           <>
             {/* Dark Indigo Sidebar from Frontend */}
@@ -100,6 +108,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <nav className="flex-1 mt-4 px-3 space-y-0.5 overflow-y-auto custom-scrollbar">
                 <NavItem icon={<LayoutDashboard size={18} />} label="Dashboard" href="/" active={pathname === "/"} />
                 
+                {/* Administrative Section */}
                 <NavItem 
                   icon={<GraduationCap size={18} />} 
                   label="Admissions" 
@@ -117,19 +126,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER']}
                   currentUserRole={user?.role}
                 />
+
+                {/* Academic Section */}
+                <div className="pt-4 pb-2 px-3">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-3">Academic Hub</p>
+                </div>
                 
                 <NavItem 
                   icon={<BookOpen size={18} />} 
-                  label="Academics" 
+                  label="Subjects & Materials" 
                   href="/academics" 
                   active={pathname.startsWith("/academics")} 
-                  roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT', 'PARENT']}
-                  currentUserRole={user?.role}
                 />
                 
                 <NavItem 
                   icon={<Calendar size={18} />} 
-                  label="Timetable" 
+                  label="Schedule" 
                   href="/timetable" 
                   active={pathname.startsWith("/timetable")} 
                 />
@@ -137,24 +149,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <NavItem 
                   icon={<ClipboardCheck size={18} />} 
                   label="Attendance" 
-                  href="/attendance" 
-                  active={pathname.startsWith("/attendance")} 
-                  roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT', 'PARENT']}
-                  currentUserRole={user?.role}
+                  href={['STUDENT', 'PARENT'].includes(user?.role) ? '/student/attendance' : '/attendance'} 
+                  active={pathname.includes("/attendance")} 
                 />
                 
                 <NavItem 
                   icon={<FileText size={18} />} 
-                  label="Exams" 
-                  href="/exams" 
-                  active={pathname.startsWith("/exams")} 
-                  roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT', 'PARENT']}
-                  currentUserRole={user?.role}
+                  label="Exams & Results" 
+                  href={['STUDENT', 'PARENT'].includes(user?.role) ? '/exams/results' : '/exams'} 
+                  active={pathname.includes("/exams")} 
                 />
                 
+                {/* Operations Section */}
+                <div className="pt-4 pb-2 px-3">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-3">Campus Life</p>
+                </div>
+
                 <NavItem 
                   icon={<CreditCard size={18} />} 
-                  label="Finance" 
+                  label="Finance & Fees" 
                   href="/finance" 
                   active={pathname.startsWith("/finance")} 
                   roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'PARENT', 'STUDENT']}
@@ -163,7 +176,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 
                 <NavItem 
                   icon={<Library size={18} />} 
-                  label="Library" 
+                  label="Digital Library" 
                   href="/library" 
                   active={pathname.startsWith("/library")} 
                 />
@@ -183,6 +196,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   roles={['SUPER_ADMIN', 'COLLEGE_ADMIN']}
                   currentUserRole={user?.role}
                 />
+
               </nav>
 
               <div className="p-4 border-t border-slate-800">

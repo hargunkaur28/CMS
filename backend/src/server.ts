@@ -9,6 +9,8 @@ console.log("-------------------------------");
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import path from 'path';
+import { createServer } from 'http';
+import { initSocket } from './config/socket.js';
 import connectDB from './config/db.js';
 import authRoutes from './routes/authRoutes.js';
 import admissionsRoutes from './routes/admissions.js';
@@ -21,11 +23,17 @@ import subjectRoutes from './routes/subjectRoutes.js';
 import examsRoutes from './routes/exams.js';
 import teacherRoutes from './routes/teacher.js';
 import adminRoutes from './routes/admin.routes.js';
+import parentRoutes from './routes/parentRoutes.js';
+import libraryRoutes from './routes/library.js';
 
 // Connect to MongoDB
 await connectDB();
 
 const app = express();
+const httpServer = createServer(app);
+
+// Initialize Socket.io
+initSocket(httpServer);
 
 // Middleware
 app.use(cors());
@@ -51,6 +59,9 @@ app.use('/api/subjects', subjectRoutes);
 app.use('/api/exams', examsRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/parent', parentRoutes);
+app.use('/api/library', libraryRoutes);
+
 
 app.get('/', (req: Request, res: Response) => {
   res.send('AI-Powered College Management System API is running...');
@@ -68,6 +79,6 @@ app.use((err: any, req: Request, res: Response, next: any) => {
 
 const PORT = process.env.PORT || 5005;
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

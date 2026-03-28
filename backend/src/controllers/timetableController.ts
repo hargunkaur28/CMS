@@ -8,7 +8,7 @@ import Timetable from '../models/Timetable.js';
  */
 export const getTimetable = async (req: Request, res: Response) => {
   try {
-    const teacherId = req.user._id;
+    const teacherId = (req as any).user?._id;
     const timetable = await Timetable.find({ teacherId })
       .populate('subjectId', 'name code')
       .populate('classId', 'name section') // Assuming Batch might be used as Class
@@ -30,7 +30,7 @@ export const getTimetable = async (req: Request, res: Response) => {
  */
 export const getTodayTimetable = async (req: Request, res: Response) => {
   try {
-    const teacherId = req.user._id;
+    const teacherId = (req as any).user?._id;
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const today = days[new Date().getDay()];
 

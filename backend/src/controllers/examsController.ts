@@ -4,7 +4,9 @@ import Marks from "../models/Marks.js";
 import Result from "../models/Result.js";
 import HallTicket from "../models/HallTicket.js";
 import Student from "../models/Student.js";
+import Parent from "../models/Parent.js";
 import mongoose from "mongoose";
+import { emitToStudent, emitToBatch } from "../config/socket.js";
 import { calculateTotalMarks, calculateGrade, calculateCGPA } from "../services/gradeCalculator.js";
 
 /**
@@ -308,6 +310,15 @@ export const publishResults = async (req: Request, res: Response) => {
     if (resultOps.length > 0) await Result.bulkWrite(resultOps, { session });
     if (hallTicketOps.length > 0) await HallTicket.bulkWrite(hallTicketOps, { session });
 
+    // Emit real-time notifications to each student and parent
+    studentMarksMap.forEach((marks, studentId) => {
+      emitToStudent(studentId, "resultsPublished", { examId });
+    });
+    const batchId = (allMarks[0] as any)?.batchId;
+    if (batchId) {
+      emitToBatch(batchId.toString(), "resultsPublished", { examId });
+    }
+
     // 4. Update exam status
     exam.status = 'PUBLISHED';
     exam.publishedDate = new Date();
@@ -333,14 +344,26 @@ export const getResults = async (req: Request, res: Response) => {
     const { studentId, examId } = req.query;
     console.log(`[RESULTS API] studentId: "${studentId}", examId: "${examId}"`);
     const query: any = {};
+    const user = (req as any).user;
     const isValidObjectId = (id: any) => {
       if (!id || id === 'undefined' || id === 'null' || id === '') return false;
       return mongoose.Types.ObjectId.isValid(id);
     };
 
-    if (studentId && isValidObjectId(studentId)) {
+    if (user.role === 'STUDENT') {
+      const student = await Student.findOne({ userId: user._id });
+      if (!student) return res.status(404).json({ success: false, message: "Student profile not found" });
+      query.studentId = student._id;
+    } else if (user.role === 'PARENT') {
+      const parent = await Parent.findOne({ userId: user._id });
+      if (!parent || !parent.students.length) {
+        return res.status(404).json({ success: false, message: "No linked students found for this parent" });
+      }
+      query.studentId = parent.students[0]; // Default to first child for detailed view
+    } else if (studentId && isValidObjectId(studentId)) {
       query.studentId = studentId;
     }
+    
     if (examId && isValidObjectId(examId)) {
       query.examId = examId;
     }
@@ -348,10 +371,25 @@ export const getResults = async (req: Request, res: Response) => {
     console.log(`[RESULTS API] Generated query:`, JSON.stringify(query));
     const results = await Result.find(query)
       .populate("studentId", "personalInfo.firstName personalInfo.lastName uniqueStudentId")
-      .populate("examId", "name code")
+      .populate("examId", "name code totalMarks")
       .sort({ createdAt: -1 });
     
-    res.status(200).json({ success: true, data: results });
+    // 4. Calculate Aggregates
+    const totalExams = results.length;
+    const overallCgpa = totalExams > 0 
+      ? parseFloat((results.reduce((acc, r) => acc + r.cgpa, 0) / totalExams).toFixed(2))
+      : 0;
+    const latestPercentage = totalExams > 0 ? results[0].percentage : 0;
+
+    res.status(200).json({ 
+      success: true, 
+      data: {
+        overallCgpa,
+        latestPercentage,
+        totalExams,
+        results
+      } 
+    });
   } catch (error: any) {
     console.error(`[RESULTS API] Error:`, error.message);
     res.status(500).json({ success: false, message: error.message });

@@ -31,8 +31,6 @@ export default function ExamsDashboard() {
       setUser(parsedUser);
       if (parsedUser.collegeId && isValidObjectId(parsedUser.collegeId)) {
         setCollegeId(parsedUser.collegeId);
-      } else {
-        setCollegeId("69c6a87042c1f53f6f59b964"); 
       }
     }
   }, []);

@@ -43,21 +43,36 @@ export const getFacultyById = async (req: Request, res: Response) => {
 
 export const createFaculty = async (req: Request, res: Response) => {
   try {
-    const { personalInfo, qualification, experience, department } = req.body;
+    const { personalInfo, qualification, experience, department, collegeId } = req.body;
+    const adminUser = (req as any).user;
+
+    // Use provided collegeId or fallback to admin's collegeId
+    const finalCollegeId = collegeId || adminUser?.collegeId;
+
+    if (!finalCollegeId) {
+      return res.status(400).json({ success: false, message: 'collegeId is required.' });
+    }
 
     // 1. Create User
-    const employeeId = "EMP-" + Date.now().toString().slice(-4); // Temporary ID gen
+    const existingUser = await User.findOne({ email: personalInfo.email });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'User with this email already exists.' });
+    }
+
+    const employeeId = "EMP-" + Date.now().toString().slice(-6); 
     const user = new User({
       name: personalInfo.name,
       email: personalInfo.email,
-      password: "Welcome@Faculty",
+      password: "Welcome@Faculty", // Should be changed on first login
       role: "TEACHER",
+      collegeId: finalCollegeId
     });
     await user.save();
 
     // 2. Create Faculty Profile
     const faculty = new Faculty({
       userId: user._id,
+      collegeId: finalCollegeId,
       employeeId,
       personalInfo,
       qualification,
@@ -69,7 +84,8 @@ export const createFaculty = async (req: Request, res: Response) => {
 
     res.status(201).json({ success: true, data: faculty });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    console.error('[CREATE_FACULTY]', error.message);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

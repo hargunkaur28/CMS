@@ -8,8 +8,8 @@ import {
   getApplications,
   updateApplicationStatus,
   enrollStudent,
-  getAdmissionReports
-} from "../controllers/admissionController.js";
+  getAdmissionsReport
+} from "../controllers/admissionsController.js";
 import {
   getStudents,
   getStudentById,
@@ -17,7 +17,7 @@ import {
   softDeleteStudent,
   bulkImportStudents,
   updateStudentStatus
-} from "../controllers/studentController.js";
+} from "../controllers/studentsController.js";
 import {
   getFaculties,
   getFacultyById,
@@ -71,18 +71,30 @@ import {
   getComplianceStats
 } from "../controllers/naacController.js";
 import { getDashboardStats } from "../controllers/adminDashboardController.js";
+import {
+  assignTeacher,
+  assignStudentToBatch,
+  removeTeacherAssignment,
+  getAssignments
+} from "../controllers/adminAssignmentController.js";
 
 const router = express.Router();
 
-// All routes require protection and Admin authorization
+// All routes require protection and Admin authorization (uppercase normalized in middleware)
 router.use(protect);
-router.use(authorize("college_admin", "super_admin"));
+router.use(authorize("COLLEGE_ADMIN", "SUPER_ADMIN"));
 
 // Modules Registry
 // -------------------------------------------------------------
 
 // Dashboard Stats
 router.get("/stats", getDashboardStats);
+
+// Module 0: Academic Assignments
+router.get("/assignments", getAssignments);
+router.post("/assign-teacher", assignTeacher);
+router.delete("/assign-teacher", removeTeacherAssignment);
+router.post("/assign-student-batch", assignStudentToBatch);
 
 // Module 1: Admissions
 router.post("/enquiries", createEnquiry);
@@ -94,7 +106,7 @@ router.get("/applications", getApplications);
 router.put("/applications/:id", updateApplicationStatus);
 router.post("/applications/enroll", enrollStudent);
 
-router.get("/admissions/reports", getAdmissionReports);
+router.get("/admissions/reports", getAdmissionsReport);
 
 // Module 2: SIS (Student Information System)
 router.get("/students", getStudents);

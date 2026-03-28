@@ -16,17 +16,16 @@ import Card from "@/components/ui/Card";
 
 // Validation Schema
 const loginSchema = z.object({
-  email: z.string()
+  identifier: z.string()
     .trim()
-    .toLowerCase()
-    .email({ message: "Invalid institutional email address" }),
+    .min(3, { message: "Identifier is too short" }),
   password: z.string()
     .min(6, { message: "Security protocol requires at least 6 characters" })
 });
 
 export default function LoginPage() {
   const router = useRouter();
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({ identifier: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -93,14 +92,14 @@ export default function LoginPage() {
         <Card className="p-10 bg-white shadow-xl shadow-slate-200/50 relative border-t-4 border-t-indigo-600 rounded-3xl border-slate-100">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">Institutional Identifier</label>
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">Institutional Identifier (Email or ID)</label>
               <div className="relative group">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
                 <input 
                   type="text" 
-                  placeholder="name@institution.edu"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="name@institution.edu or ID-2024001"
+                  value={formData.identifier}
+                  onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-2xl pl-12 pr-4 py-3.5 text-sm outline-none text-slate-800 placeholder:text-slate-400 shadow-sm"
                 />
               </div>

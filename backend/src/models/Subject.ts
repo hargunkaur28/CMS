@@ -5,6 +5,7 @@ export interface ISubject extends Document {
   code: string;
   creditHours: number;
   courseId: mongoose.Types.ObjectId;
+  collegeId: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -15,6 +16,7 @@ const SubjectSchema: Schema = new Schema(
     code: { type: String, required: true, unique: true },
     creditHours: { type: Number, required: true },
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
+    collegeId: { type: Schema.Types.ObjectId, ref: "College", required: true },
   },
   { timestamps: true }
 );

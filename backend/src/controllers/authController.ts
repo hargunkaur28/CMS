@@ -3,10 +3,15 @@ import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
 
 export const loginUser = async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+  const { identifier, password } = req.body; // Changed email to identifier
 
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({
+      $or: [
+        { email: identifier },
+        { registrationId: identifier }
+      ]
+    });
 
     if (user && (await user.matchPassword(password))) {
       res.json({

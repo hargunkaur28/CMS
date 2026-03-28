@@ -47,19 +47,38 @@ export const getMyStudent = async (req: Request, res: Response) => {
   console.log("[GET_MY_STUDENT] Controller started");
   try {
     const user = (req as any).user;
-    console.log("[GET_MY_STUDENT] User role:", user?.role);
+    console.log("[GET_MY_STUDENT] User:", { id: user?._id, role: user?.role, collegeId: user?.collegeId });
+
     if (!user) return res.status(401).json({ success: false, message: "Not authorized" });
 
     let student;
+
     if (user.role === 'STUDENT') {
-      student = await Student.findOne({ "academicInfo.userId": user._id });
+      // Build query with multi-tenant isolation
+      const query: any = { userId: user._id };
+      if (user.collegeId) query.collegeId = user.collegeId;
+
+      console.log("[GET_MY_STUDENT] Querying with:", query);
+      student = await Student.findOne(query)
+        .populate("academicInfo.department", "name")
+        .select("-documents"); // Exclude heavy documents array from dashboard payload
+
     } else if (user.role === 'PARENT') {
-      student = await Student.findOne({ "parentInfo.email": user.email });
+      // For parents, look up via parentInfo email (existing approach)
+      student = await Student.findOne({ "parentInfo.email": user.email })
+        .populate("academicInfo.department", "name")
+        .select("-documents");
     }
 
-    if (!student) return res.status(404).json({ success: false, message: "Student profile not found" });
+    if (!student) {
+      console.warn(`[GET_MY_STUDENT] No student found for userId: ${user._id}, role: ${user.role}`);
+      return res.status(404).json({ success: false, message: "Student profile not found. Please contact the administration." });
+    }
+
+    console.log("[GET_MY_STUDENT] Found student:", student.uniqueStudentId);
     res.status(200).json({ success: true, data: student });
   } catch (error: any) {
+    console.error("[GET_MY_STUDENT] Unexpected error:", error.message);
     res.status(500).json({ success: false, message: error.message });
   }
 };
@@ -282,3 +301,25 @@ export const uploadDocs = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+export const softDeleteStudent = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    await Student.findOneAndUpdate({ uniqueStudentId: id }, { "academicInfo.status": "dropped" });
+    res.status(200).json({ success: true, message: "Student record archived" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const updateStudentStatus = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    await Student.findOneAndUpdate({ uniqueStudentId: id }, { "academicInfo.status": status });
+    res.status(200).json({ success: true, message: "Student status updated" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+

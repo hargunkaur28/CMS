@@ -1,80 +1,83 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useResults } from "@/hooks/useResults";
 import ResultCard from "@/components/exams/ResultCard";
-import { AlertCircle, GraduationCap, Award, BookOpen, Loader2 } from "lucide-react";
+import { AlertCircle, GraduationCap, Award, BookOpen, Clock, ChevronRight } from "lucide-react";
 import Card from "@/components/ui/Card";
-import { getMyStudent } from "@/lib/api/students";
+import Link from "next/link";
 
 export default function StudentResultsPortal() {
-  const [studentId, setStudentId] = useState<string>("");
-  const { results, loading, error } = useResults(studentId);
+  // Backend now automatically filters by the logged-in student's ID
+  const { results, loading, error } = useResults();
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const res = await getMyStudent();
-        if (res.success) {
-          setStudentId(res.data._id);
-        }
-      } catch (err) {
-        console.error("Failed to fetch student profile", err);
-        // Fallback to demo ID if needed
-        setStudentId("69c6a87042c1f53f6f59b964");
-      }
-    };
-    fetchProfile();
-  }, []);
-
-  if (loading) return <div className="py-24 text-center">Loading your results...</div>;
-  if (error) return <div className="py-24 text-center text-error">Error: {error}</div>;
+  if (loading) {
+    return (
+      <div className="h-[60vh] flex items-center justify-center">
+        <Clock className="animate-spin text-indigo-400" size={48} />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-      <div>
-        <h1 className="text-3xl font-bold text-surface-on-surface tracking-tight">Examination Results</h1>
-        <p className="text-sm text-surface-on-surface-variant mt-1">Track your academic performance and download marksheets</p>
-      </div>
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 max-w-7xl mx-auto w-full">
+      <header>
+        <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+          <Link href="/" className="hover:text-indigo-600 transition-colors">Dashboard</Link>
+          <ChevronRight size={10} />
+          <span className="text-slate-900">Academic Records</span>
+        </nav>
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Examination Results</h1>
+        <p className="text-sm text-slate-500 mt-1">Official transcripts and performance analytics for all registered terms.</p>
+      </header>
 
-      {results.length > 0 ? (
-        <div className="grid grid-cols-1 gap-8">
+      {results && results.length > 0 ? (
+        <div className="space-y-12">
+          {/* Summary Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <MiniStatCard label="Overall GPA" value="3.85" icon={<Award size={20} className="text-primary" />} />
-            <MiniStatCard label="Credits Earned" value="48" icon={<GraduationCap size={20} className="text-secondary-container-on-secondary-container" />} />
-            <MiniStatCard label="Current Standing" value="Good" icon={<div className="w-2.5 h-2.5 rounded-full bg-success shadow-sm shadow-success/50" />} />
+            <MiniStatCard label="Cumulative GPA" value="3.85" icon={<Award size={20} />} color="bg-indigo-50 text-indigo-600" />
+            <MiniStatCard label="Credits Earned" value="48" icon={<GraduationCap size={20} />} color="bg-emerald-50 text-emerald-600" />
+            <MiniStatCard label="Academic Status" value="EXCELLENT" icon={<div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />} color="bg-slate-900 text-white" />
           </div>
 
-          <div className="space-y-6">
-            <h2 className="text-xl font-bold text-surface-on-surface flex items-center gap-2">
-              <BookOpen size={20} className="text-primary" />
-              Published Marksheets
-            </h2>
-            {results.map((result) => (
-              <ResultCard key={result._id} result={result} />
-            ))}
+          {/* Marksheets Section */}
+          <div className="space-y-8">
+            <div className="flex items-center gap-3 border-b border-slate-100 pb-4">
+              <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+                <BookOpen size={20} />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900">Published Marksheets</h2>
+            </div>
+            
+            <div className="grid grid-cols-1 gap-8">
+              {results.map((result) => (
+                <ResultCard key={result._id} result={result} />
+              ))}
+            </div>
           </div>
         </div>
       ) : (
-        <div className="py-24 text-center bg-surface-container-lowest rounded-3xl border border-dashed border-outline">
-          <AlertCircle size={48} className="text-surface-on-surface-variant/20 mx-auto mb-4" />
-          <p className="text-lg font-bold text-surface-on-surface-variant uppercase tracking-widest text-center">No results published yet</p>
-        </div>
+        <Card className="py-24 text-center bg-white border border-dashed border-slate-200 rounded-[2rem] shadow-sm">
+          <AlertCircle size={48} className="text-slate-200 mx-auto mb-4" />
+          <p className="text-lg font-bold text-slate-400 uppercase tracking-widest">No results published yet</p>
+          <p className="text-sm text-slate-300 mt-2">Check back after your examinations are concluded.</p>
+        </Card>
       )}
     </div>
   );
 }
 
-function MiniStatCard({ label, value, icon }: any) {
+function MiniStatCard({ label, value, icon, color }: any) {
   return (
-    <Card className="p-6 border border-outline-variant bg-surface-container-lowest shadow-sm flex items-center justify-between group hover:shadow-md transition-all rounded-3xl">
+    <Card className="p-6 border-none bg-white shadow-ambient flex items-center justify-between group hover:scale-[1.02] transition-all rounded-[1.5rem]">
       <div>
-        <p className="text-[11px] font-black text-surface-on-surface-variant uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-2xl font-bold text-surface-on-surface">{value}</p>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+        <p className="text-3xl font-black text-slate-900 tracking-tight">{value}</p>
       </div>
-      <div className="p-4 bg-surface-container rounded-2xl flex items-center justify-center transition-all group-hover:scale-110">
+      <div className={`p-4 ${color} rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:rotate-12`}>
         {icon}
       </div>
     </Card>
   );
 }
+

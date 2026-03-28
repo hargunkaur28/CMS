@@ -35,14 +35,15 @@ const MarksSchema: Schema = new Schema({
 
 // Auto-grade logic
 MarksSchema.pre('save', function(next) {
-  const percentage = (this.marksObtained / this.maxMarks) * 100;
+  const marks = this as any;
+  const percentage = (marks.marksObtained / marks.maxMarks) * 100;
   
-  if (percentage >= 90) this.grade = 'A+';
-  else if (percentage >= 80) this.grade = 'A';
-  else if (percentage >= 70) this.grade = 'B';
-  else if (percentage >= 60) this.grade = 'C';
-  else if (percentage >= 50) this.grade = 'D';
-  else this.grade = 'F';
+  if (percentage >= 90) marks.grade = 'A+';
+  else if (percentage >= 80) marks.grade = 'A';
+  else if (percentage >= 70) marks.grade = 'B';
+  else if (percentage >= 60) marks.grade = 'C';
+  else if (percentage >= 50) marks.grade = 'D';
+  else marks.grade = 'F';
   
   next();
 });

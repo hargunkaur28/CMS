@@ -6,13 +6,20 @@ import * as marksController from '../controllers/marksController.js';
 import * as uploadController from '../controllers/uploadController.js';
 import * as teacherStudentController from '../controllers/teacherStudentController.js';
 import * as communicationController from '../controllers/communicationController.js';
-import { uploadDocument } from '../utils/cloudinaryUploader.js'; // Reusing existing Cloudinary config
+import * as teacherController from '../controllers/teacherController.js';
+import { uploadDocument } from '../utils/cloudinaryUploader.js';
 
 const router = express.Router();
 
 // Middleware stack for all routes
 router.use(protect);
 router.use(authorize('TEACHER'));
+
+// --- My Assignments (Filtered) ---
+router.get('/dashboard', teacherController.getTeacherDashboard);
+router.get('/my-batches', teacherController.getMyBatches);
+router.get('/my-subjects', teacherController.getMySubjects);
+router.get('/debug-assignments', teacherController.getDebugAssignments);
 
 // --- Timetable ---
 router.get('/timetable', timetableController.getTimetable);

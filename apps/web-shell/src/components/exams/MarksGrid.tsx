@@ -10,9 +10,10 @@ interface MarksGridProps {
   students: any[];
   courseId: string;
   batchId: string;
+  totalMarks: number;
 }
 
-const MarksGrid: React.FC<MarksGridProps> = ({ examId, subjects, students, courseId, batchId }) => {
+const MarksGrid: React.FC<MarksGridProps> = ({ examId, subjects, students, courseId, batchId, totalMarks }) => {
   const { enterMarks, loading, error: apiError } = useMarks(examId);
   const [localMarks, setLocalMarks] = useState<Record<string, any>>({});
   const [activeSubject, setActiveSubject] = useState(subjects[0]?._id);
@@ -40,7 +41,7 @@ const MarksGrid: React.FC<MarksGridProps> = ({ examId, subjects, students, cours
         courseId,
         batchId,
         components: [
-          { name: "Theory", maxMarks: 100, obtainedMarks: Number(marksValue) }
+          { name: "Main Exam", maxMarks: totalMarks, obtainedMarks: Number(marksValue) }
         ]
       });
     } catch (err) {
@@ -93,11 +94,16 @@ const MarksGrid: React.FC<MarksGridProps> = ({ examId, subjects, students, cours
                       <input
                         type="number"
                         min="0"
-                        max="100"
+                        max={totalMarks}
                         value={localMarks[student._id]?.[activeSubject] || ""}
-                        onChange={(e) => handleMarkChange(student._id, e.target.value)}
-                        className="w-20 bg-surface-container-lowest text-center p-2 rounded-lg border border-outline focus:outline-none focus:ring-2 focus:ring-primary h-10"
+                        onChange={(e) => {
+                           const val = Number(e.target.value);
+                           if (val > totalMarks) return;
+                           handleMarkChange(student._id, e.target.value);
+                        }}
+                        className="w-24 bg-slate-50 text-center font-bold text-slate-900 p-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 h-10 shadow-inner"
                       />
+                      <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase">Max: {totalMarks}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-center">

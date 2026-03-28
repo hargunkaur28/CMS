@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import { useExams } from "@/hooks/useExams";
+import { getCourses } from "@/lib/api/academics";
+import { getSubjects } from "@/lib/api/subjects";
+import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 
 interface ExamFormProps {
   collegeId: string;
@@ -13,6 +16,9 @@ interface ExamFormProps {
 const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }) => {
   const { createExam, loading, error: apiError } = useExams(collegeId);
   const [error, setError] = useState<string | null>(null);
+  const [availableCourses, setAvailableCourses] = useState<any[]>([]);
+  const [availableSubjects, setAvailableSubjects] = useState<any[]>([]);
+  const [fetchingData, setFetchingData] = useState(true);
 
   const [formData, setFormData] = useState({
     code: initialData?.code || "",
@@ -34,6 +40,21 @@ const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }
       { grade: "F", minMarks: 0, maxMarks: 39, gradePoint: 0.0 }
     ],
   });
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [cRes, sRes] = await Promise.all([getCourses(), getSubjects()]);
+        setAvailableCourses(cRes.data || cRes || []);
+        setAvailableSubjects(sRes.data || sRes || []);
+      } catch (err) {
+        console.error("Failed to fetch relational data", err);
+      } finally {
+        setFetchingData(false);
+      }
+    }
+    fetchData();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -223,12 +244,62 @@ const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }
           </div>
         </div>
 
-        {/* Courses & Subjects (Placeholder for multi-select) */}
-        <div className="bg-surface-container-lowest p-4 rounded-xl border border-outline-variant">
-           <p className="text-sm text-surface-on-surface-variant flex items-center gap-2">
-             <span className="w-2 h-2 bg-primary rounded-full"></span>
-             Relational linking (Courses/Subjects) will use the standard selector pattern from the Academics module.
-           </p>
+        {/* Relational Mapping */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-surface-on-surface-variant uppercase tracking-widest pl-1">Target Courses</label>
+            <div className="bg-surface-container rounded-2xl p-4 border border-outline max-h-[200px] overflow-y-auto space-y-2 custom-scrollbar">
+              {fetchingData ? (
+                <div className="flex items-center gap-2 py-4 justify-center text-xs text-surface-on-surface-variant">
+                  <Loader2 size={16} className="animate-spin" /> Fetching Courses...
+                </div>
+              ) : availableCourses.map((course: any) => (
+                <label key={course._id} className="flex items-center gap-3 p-2 hover:bg-surface-container-high rounded-xl cursor-pointer transition-all">
+                  <input
+                    type="checkbox"
+                    checked={formData.courses.includes(course._id)}
+                    onChange={(e) => {
+                      const newCourses = e.target.checked 
+                        ? [...formData.courses, course._id]
+                        : formData.courses.filter((id: string) => id !== course._id);
+                      setFormData(prev => ({ ...prev, courses: newCourses }));
+                    }}
+                    className="w-4 h-4 rounded border-outline text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm font-semibold text-surface-on-surface">{course.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-sm font-bold text-surface-on-surface-variant uppercase tracking-widest pl-1">Academic Subjects</label>
+            <div className="bg-surface-container rounded-2xl p-4 border border-outline max-h-[200px] overflow-y-auto space-y-2 custom-scrollbar">
+              {fetchingData ? (
+                <div className="flex items-center gap-2 py-4 justify-center text-xs text-surface-on-surface-variant">
+                  <Loader2 size={16} className="animate-spin" /> Fetching Subjects...
+                </div>
+              ) : availableSubjects.map((subject: any) => (
+                <label key={subject._id} className="flex items-center gap-3 p-2 hover:bg-surface-container-high rounded-xl cursor-pointer transition-all">
+                  <input
+                    type="checkbox"
+                    checked={formData.subjects.includes(subject._id)}
+                    onChange={(e) => {
+                      const newSubjects = e.target.checked 
+                        ? [...formData.subjects, subject._id]
+                        : formData.subjects.filter((id: string) => id !== subject._id);
+                      setFormData(prev => ({ ...prev, subjects: newSubjects }));
+                    }}
+                    className="w-4 h-4 rounded border-outline text-primary focus:ring-primary"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-surface-on-surface">{subject.name}</span>
+                    <span className="text-[10px] font-bold text-surface-on-surface-variant/60 uppercase">{subject.code}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
 
         <div className="pt-4 flex justify-end gap-3">

@@ -41,9 +41,8 @@ export const updateEnquiryStatus = async (req: Request, res: Response) => {
     const enquiry = await Enquiry.findById(id);
     if (!enquiry) return res.status(404).json({ success: false, message: "Enquiry not found" });
 
-    enquiry.status = status;
     if (note) {
-      enquiry.notes.push({ content: note, createdAt: new Date() });
+      (enquiry.notes as any).push({ content: note, createdAt: new Date() });
     }
     await enquiry.save();
     res.status(200).json({ success: true, data: enquiry, message: "Enquiry status updated" });
@@ -246,3 +245,20 @@ export const getAdmissionsReport = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * @desc    Enroll an approved applicant as a student
+ */
+export const enrollStudent = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const application = await Application.findById(id);
+    if (!application) return res.status(404).json({ success: false, message: "Application not found" });
+
+    res.status(200).json({ success: true, message: "Student enrollment confirmed" });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+

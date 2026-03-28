@@ -3,8 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, X, Clock, Save, ChevronDown, Calendar, Loader2 } from 'lucide-react';
-import { getBatches } from '@/lib/api/academics';
-import { getSubjects } from '@/lib/api/subjects';
+import { fetchMyBatches, fetchMySubjects } from '@/lib/api/teacher';
 import { getStudents } from '@/lib/api/students';
 import { markBulkAttendance } from '@/lib/api/attendance';
 import { cn } from '@/lib/utils';
@@ -57,25 +56,41 @@ export default function AttendanceMarker() {
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Initial Data Fetch
+  // Initial Data Fetch — only batches (subjects load per-batch on selection)
   useEffect(() => {
     async function init() {
       try {
-        const [batchRes, subjectRes] = await Promise.all([
-          getBatches(),
-          getSubjects()
-        ]);
-        setBatches(Array.isArray(batchRes) ? batchRes : (batchRes.data || []));
-        setSubjects(Array.isArray(subjectRes) ? subjectRes : (subjectRes.data || []));
+        const batchRes = await fetchMyBatches();
+        setBatches(Array.isArray(batchRes.data) ? batchRes.data : (batchRes.data || []));
       } catch (err) {
-        console.error("Initialization failed");
+        console.error("Failed to load assigned batches", err);
       }
     }
     init();
   }, []);
 
-  // Fetch Students when Batch Changes
+  // Load subjects when batch changes (strict: only subjects assigned in that batch)
   useEffect(() => {
+    if (!selectedBatch) {
+      setSubjects([]);
+      setSelectedSubject('');
+      return;
+    }
+    async function loadSubjects() {
+      try {
+        const subRes = await fetchMySubjects(selectedBatch);
+        const data = Array.isArray(subRes.data) ? subRes.data : [];
+        console.log("[TEACHER_SUBJECTS_LOADED]", { batchId: selectedBatch, count: data.length });
+        setSubjects(data);
+      } catch (err) {
+        console.error("Failed to load assigned subjects", err);
+      }
+    }
+    loadSubjects();
+  }, [selectedBatch]);
+  // Fetch Students when Parameters Change
+  useEffect(() => {
+    setIsSaved(false); // Reset saved state on any param change
     if (!selectedBatch) {
       setStudents([]);
       return;
@@ -98,7 +113,7 @@ export default function AttendanceMarker() {
       }
     }
     fetchRoster();
-  }, [selectedBatch]);
+  }, [selectedBatch, selectedSubject, selectedDate]);
 
   const isConfigured = selectedBatch && selectedSubject && selectedDate;
   const total = students.length;
@@ -115,7 +130,7 @@ export default function AttendanceMarker() {
   };
 
   const handleSave = async () => {
-    if (marked < total) return;
+    if (marked < total || isSaved) return; // Guard: prevent double-submission
     setIsSaving(true);
     try {
       const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -137,7 +152,8 @@ export default function AttendanceMarker() {
       const res = await markBulkAttendance(payload);
       if (res.success) {
         setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 3000);
+        // NO timeout reset — isSaved stays true until teacher changes batch/subject/date
+        // This prevents re-submission of the same session
       }
     } catch (err) {
       console.error("Save failed");
@@ -174,7 +190,12 @@ export default function AttendanceMarker() {
               className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 pr-12 text-sm font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm transition-all cursor-pointer"
             >
               <option value="">Select Domain...</option>
-              {subjects.map(s => <option key={s._id} value={s._id}>{s.name} ({s.code})</option>)}
+              {subjects.map((s, idx) => {
+                 const sid = s?._id || s?.subjectId || s?.id || `sub-${idx}`;
+                 const sName = s?.name || s?.subjectName || 'Unknown Subject';
+                 const sCode = s?.code || s?.subjectCode || '';
+                 return <option key={sid} value={sid}>{sName} {sCode ? `(${sCode})` : ''}</option>;
+              })}
             </select>
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none group-focus-within:text-indigo-600 transition-colors" />
           </div>
@@ -287,18 +308,18 @@ export default function AttendanceMarker() {
 
               <button
                 onClick={handleSave}
-                disabled={marked < total || isSaving}
+                disabled={marked < total || isSaving || isSaved}
                 className={cn(
                   "flex items-center gap-3 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl group",
                   isSaved
-                    ? 'bg-emerald-600 text-white shadow-emerald-600/30'
+                    ? 'bg-emerald-600 text-white shadow-emerald-600/30 cursor-not-allowed'
                     : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-600/30 disabled:opacity-40 disabled:hover:scale-100 hover:scale-[1.02] active:scale-95'
                 )}
               >
                 {isSaving ? (
                   <Loader2 size={16} className="animate-spin" />
                 ) : isSaved ? (
-                  <><Check size={16} /> Matrix Processed</>
+                  <><Check size={16} /> Session Locked — Change Subject to Continue</>
                 ) : (
                   <>
                     <Save size={16} /> 
