@@ -1,4 +1,3 @@
-// FILE: apps/web-shell/src/components/students/StudentProfileTabs.tsx
 "use client";
 
 import React from "react";
@@ -21,21 +20,21 @@ const tabs = [
 
 export default function StudentProfileTabs({ activeTab, setActiveTab }: StudentProfileTabsProps) {
   return (
-    <div className="flex border-b border-outline-variant/30 gap-1 overflow-x-auto no-scrollbar scroll-smooth">
+    <div className="flex border-b border-slate-100 gap-1 overflow-x-auto no-scrollbar scroll-smooth px-4">
       {tabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => setActiveTab(tab.id)}
           className={`flex items-center gap-2 px-6 py-4 text-xs font-bold uppercase tracking-wider transition-all relative shrink-0 ${
             activeTab === tab.id 
-            ? "text-primary-indigo" 
-            : "text-on-surface/30 hover:text-on-surface/60 hover:bg-surface-container-low"
+            ? "text-indigo-600" 
+            : "text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-t-xl"
           }`}
         >
           {tab.icon}
           {tab.label}
           {activeTab === tab.id && (
-            <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary-indigo rounded-t-full shadow-[0_-2px_8px_rgba(79,70,229,0.3)] animate-in slide-in-from-bottom-1 duration-300" />
+            <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600 rounded-t-full shadow-[0_-2px_8px_rgba(79,70,229,0.3)] animate-in slide-in-from-bottom-1 duration-300" />
           )}
         </button>
       ))}

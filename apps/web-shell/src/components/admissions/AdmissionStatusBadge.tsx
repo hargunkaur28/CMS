@@ -7,13 +7,13 @@ interface StatusBadgeProps {
 
 const statusConfig: Record<string, { label: string; classes: string }> = {
   // Enquiry Statuses
-  new: { label: "New", classes: "bg-blue-500/10 text-blue-500 border-blue-500/20" },
+  new: { label: "New", classes: "bg-surface-container-high text-on-surface border-outline-variant" },
   "follow-up": { label: "Follow-up", classes: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
-  applied: { label: "Applied", classes: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" },
+  applied: { label: "Applied", classes: "bg-black/10 text-black border-black/20" },
   admitted: { label: "Admitted", classes: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
   rejected: { label: "Rejected", classes: "bg-red-500/10 text-red-500 border-red-500/20" },
   // Application Statuses
-  pending: { label: "Pending", classes: "bg-slate-500/10 text-slate-500 border-slate-500/20" },
+  pending: { label: "Pending", classes: "bg-surface-container-high text-on-surface/60 border-outline-variant" },
   "under-review": { label: "Under Review", classes: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
   approved: { label: "Approved", classes: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
 };

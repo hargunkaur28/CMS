@@ -43,7 +43,7 @@ export default function ApplicationDrawer({ application, onClose, onUpdate }: Ap
         {/* Header */}
         <div className="p-6 border-b border-outline-variant flex items-center justify-between bg-surface-container-lowest">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-indigo-gradient rounded-2xl flex items-center justify-center text-white font-display font-bold text-lg">
+            <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center text-white font-display font-bold text-lg">
               {application.studentDetails.firstName[0]}{application.studentDetails.lastName[0]}
             </div>
             <div>
@@ -117,10 +117,10 @@ export default function ApplicationDrawer({ application, onClose, onUpdate }: Ap
                   href={doc.cloudinaryUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-4 bg-white rounded-2xl border border-outline-variant hover:border-primary-indigo/30 transition-all group"
+                  className="flex items-center justify-between p-4 bg-white rounded-2xl border border-outline-variant hover:border-black/30 transition-all group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg">
+                    <div className="p-2 bg-black/10 text-black rounded-lg">
                       <FileText size={18} />
                     </div>
                     <div>
@@ -128,7 +128,7 @@ export default function ApplicationDrawer({ application, onClose, onUpdate }: Ap
                       <p className="text-[10px] text-on-surface/40 uppercase font-bold">Uploaded {new Date(doc.uploadedAt).toLocaleDateString()}</p>
                     </div>
                   </div>
-                  <div className="text-[10px] font-bold text-primary-indigo opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="text-[10px] font-bold text-black opacity-0 group-hover:opacity-100 transition-opacity">
                     VIEW DOCUMENT
                   </div>
                 </a>
@@ -152,9 +152,9 @@ export default function ApplicationDrawer({ application, onClose, onUpdate }: Ap
           <button
             disabled={loading || application.status === "approved"}
             onClick={() => handleStatusUpdate("approved")}
-            className="flex-[1.5] py-4 bg-white text-black border-2 border-primary-indigo rounded-2xl font-bold text-sm shadow-xl hover:bg-surface-container-low transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+            className="flex-[1.5] py-4 bg-white text-emerald-600 border-2 border-emerald-500/50 rounded-2xl font-bold text-sm shadow-xl hover:bg-emerald-50 transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
           >
-            {loading ? <Loader2 size={18} className="animate-spin text-primary-indigo" /> : <><CheckCircle size={18} className="text-primary-indigo" /> Approve & Allot Seat</>}
+            {loading ? <Loader2 size={18} className="animate-spin text-emerald-600" /> : <><CheckCircle size={18} className="text-emerald-600" /> Approve & Allot Seat</>}
           </button>
         </div>
       </div>

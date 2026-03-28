@@ -1,4 +1,3 @@
-// FILE: apps/web-shell/src/app/login/page.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -81,68 +80,62 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full bg-white relative flex items-center justify-center p-6 overflow-hidden">
-      {/* Background Orbs - Neutralized */}
-      <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-black/5 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-black/5 rounded-full blur-[120px]" />
-
+    <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-6 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100/50 via-slate-50 to-slate-50">
       <div className="w-full max-w-md relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
         <div className="flex flex-col items-center mb-10 group">
-          <div className="w-16 h-16 bg-black rounded-[2rem] flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 duration-700">
+          <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-indigo-600/30 shadow-xl transition-all group-hover:scale-105 duration-500">
             <Sparkles className="text-white" size={32} />
           </div>
-          <h1 className="mt-6 text-2xl font-display font-black text-black tracking-tight">NGCMS</h1>
-          <p className="text-[10px] font-bold text-black/30 uppercase tracking-[0.4em] mt-1">St. Xavier's Digital Curator</p>
+          <h1 className="mt-8 text-3xl font-bold text-slate-900 tracking-tight">NgCMS ERP</h1>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">St. Xavier's Digital Curator</p>
         </div>
 
-        <Card className="p-10 bg-white shadow-ambient overflow-hidden relative border border-outline-variant">
-          <div className="absolute top-0 left-0 w-full h-1 bg-black" />
-          
+        <Card className="p-10 bg-white shadow-xl shadow-slate-200/50 relative border-t-4 border-t-indigo-600 rounded-3xl border-slate-100">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-black/40 uppercase tracking-widest pl-1">Institutional Identifier</label>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">Institutional Identifier</label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-black/20 group-focus-within:text-black transition-colors" size={18} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
                 <input 
                   type="text" 
                   placeholder="name@institution.edu"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-surface-container-low border-transparent focus:border-black/30 focus:bg-white transition-all rounded-2xl pl-12 pr-4 py-4 text-sm outline-none border shadow-sm placeholder:text-black/20 text-black"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-2xl pl-12 pr-4 py-3.5 text-sm outline-none text-slate-800 placeholder:text-slate-400 shadow-sm"
                 />
               </div>
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <div className="flex items-center justify-between pl-1 pr-1">
-                <label className="text-[10px] font-bold text-black/40 uppercase tracking-widest">Security Protocol</label>
-                <button type="button" className="text-[10px] font-bold text-black/40 hover:underline">Reset Key?</button>
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Security Protocol</label>
+                <button type="button" className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline">Reset Key?</button>
               </div>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-black/20 group-focus-within:text-black transition-colors" size={18} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
                 <input 
                   type="password" 
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full bg-surface-container-low border-transparent focus:border-black/30 focus:bg-white transition-all rounded-2xl pl-12 pr-4 py-4 text-sm outline-none border shadow-sm placeholder:text-black/20 text-black"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-2xl pl-12 pr-4 py-3.5 text-sm outline-none text-slate-800 placeholder:text-slate-400 shadow-sm"
                 />
               </div>
             </div>
 
             {error && (
-              <div className="p-4 bg-black/5 border border-black/10 rounded-2xl flex items-center gap-3 animate-in shake duration-500">
-                <AlertCircle className="text-black shrink-0" size={16} />
-                <p className="text-[11px] font-bold text-black leading-tight">{error}</p>
+              <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 animate-in shake duration-500">
+                <AlertCircle className="text-rose-600 shrink-0" size={18} />
+                <p className="text-xs font-bold text-rose-700 leading-tight">{error}</p>
               </div>
             )}
 
             <button 
               disabled={loading}
-              className="w-full h-14 bg-black text-white rounded-[1.5rem] font-bold text-sm shadow-xl flex items-center justify-center gap-3 transition-all hover:bg-neutral-800 active:scale-95 disabled:opacity-50 disabled:scale-100 group"
+              className="w-full h-14 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-3 transition-all hover:bg-indigo-700 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0 group"
             >
               {loading ? (
-                <Loader2 className="animate-spin" size={20} />
+                <Loader2 className="animate-spin text-white" size={20} />
               ) : (
                 <>
                   <span>Initialize Connection</span>
@@ -152,20 +145,19 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-on-surface/5 flex flex-col items-center gap-4">
-             <div className="flex items-center gap-2 text-on-surface/20">
+          <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center gap-4">
+             <div className="flex items-center gap-2 text-indigo-600/60 bg-indigo-50 px-3 py-1.5 rounded-full">
                 <ShieldCheck size={14} />
-                <span className="text-[10px] font-bold uppercase tracking-widest">Quantum Encryption Active</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider">Secure Connection Active</span>
              </div>
-             <p className="text-[10px] text-on-surface/30 text-center font-medium leading-relaxed">
-               Access restricted to authorized St. Xavier's personnel. <br />
-               Unauthenticated access attempts are logged.
+             <p className="text-[11px] text-slate-400 text-center font-medium leading-relaxed max-w-[280px]">
+               Access restricted to authorized personnel. Unauthenticated attempts are securely logged.
              </p>
           </div>
         </Card>
 
-        <p className="mt-10 text-center text-xs font-bold text-on-surface/20 uppercase tracking-[0.2em]">
-          NGCMS v.1.0 // 2026 ERP
+        <p className="mt-8 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+          NgCMS ERP v.1.0
         </p>
       </div>
     </div>

@@ -1,4 +1,3 @@
-// FILE: apps/web-shell/src/components/students/StudentStatusBadge.tsx
 import React from "react";
 
 interface StatusBadgeProps {
@@ -6,17 +5,17 @@ interface StatusBadgeProps {
 }
 
 const statusConfig: Record<string, { label: string; classes: string }> = {
-  active: { label: "Active", classes: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
-  inactive: { label: "Inactive", classes: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
-  graduated: { label: "Graduated", classes: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20" },
-  dropped: { label: "Dropped", classes: "bg-red-500/10 text-red-500 border-red-500/20" },
+  active: { label: "Active", classes: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+  inactive: { label: "Inactive", classes: "bg-amber-50 text-amber-600 border-amber-200" },
+  graduated: { label: "Graduated", classes: "bg-indigo-50 text-indigo-600 border-indigo-200" },
+  dropped: { label: "Dropped", classes: "bg-rose-50 text-rose-600 border-rose-200" },
 };
 
 export default function StudentStatusBadge({ status }: StatusBadgeProps) {
-  const config = statusConfig[status] || { label: status, classes: "bg-gray-500/10 text-gray-500 border-gray-500/20" };
+  const config = statusConfig[status] || { label: status, classes: "bg-slate-50 text-slate-500 border-slate-200" };
 
   return (
-    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${config.classes}`}>
+    <span className={`px-2.5 py-1 rounded-full text-[10px] bg-white font-bold uppercase tracking-wider border shadow-sm ${config.classes}`}>
       {config.label}
     </span>
   );

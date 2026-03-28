@@ -1,4 +1,3 @@
-// FILE: apps/web-shell/src/app/students/page.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -50,62 +49,62 @@ export default function StudentDirectory() {
       {/* Header Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-2xl font-display font-bold text-on-surface">Student Directory</h1>
-          <p className="text-sm text-on-surface/40 mt-1">Manage and track student lifecycles across departments</p>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Student Directory</h1>
+          <p className="text-sm text-slate-500 mt-1">Manage and track student lifecycles across departments</p>
         </div>
         
         <div className="flex items-center gap-3">
           <Link 
             href="/students/import"
-            className="flex items-center gap-2 px-4 py-2.5 bg-surface-container-low text-on-surface/60 hover:text-on-surface border border-outline-variant/30 rounded-xl transition-all font-bold text-xs"
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 rounded-xl transition-all font-bold text-xs shadow-sm"
           >
             <Upload size={16} /> Bulk Import
           </Link>
           <Link 
             href="/students/new"
-            className="bg-white text-black border-2 border-primary-indigo px-6 py-2.5 rounded-xl font-bold text-sm shadow-ambient flex items-center gap-2 hover:bg-surface-container-low active:scale-95 transition-all"
+            className="bg-indigo-600 text-white border-2 border-indigo-600 px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-600/20 flex items-center gap-2 hover:bg-indigo-700 active:scale-95 transition-all"
           >
-            <UserPlus size={18} className="text-primary-indigo" /> Enroll Student
+            <UserPlus size={18} className="text-white" /> Enroll Student
           </Link>
         </div>
       </div>
 
       {/* KPI Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <MiniStatCard label="Total Students" value={stats?.totalStudents || 0} icon={<Users size={16} />} />
-        <MiniStatCard label="Active" value={stats?.activeStudents || 0} icon={<div className="w-2 h-2 rounded-full bg-black/40" />} />
-        <MiniStatCard label="New This Month" value={stats?.newThisMonth || 0} icon={<TrendingUp size={16} className="text-black" />} />
-        <MiniStatCard label="Dropout Rate" value={`${stats?.dropoutRate?.toFixed(1) || 0}%`} icon={<AlertCircle size={16} className="text-black/40" />} />
+        <MiniStatCard label="Total Students" value={stats?.totalStudents || 0} icon={<Users size={18} className="text-indigo-600" />} color="bg-indigo-100" />
+        <MiniStatCard label="Active" value={stats?.activeStudents || 0} icon={<div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/50" />} color="bg-emerald-100" />
+        <MiniStatCard label="New This Month" value={stats?.newThisMonth || 0} icon={<TrendingUp size={18} className="text-amber-600" />} color="bg-amber-100" />
+        <MiniStatCard label="Dropout Rate" value={`${stats?.dropoutRate?.toFixed(1) || 0}%`} icon={<AlertCircle size={18} className="text-rose-600" />} color="bg-rose-100" />
       </div>
 
       {/* Filters Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/50 p-2 rounded-2xl border border-outline-variant/20">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-2 flex-1 max-w-md ml-2 group">
-          <Search size={18} className="text-black/20 group-focus-within:text-black transition-colors" />
+          <Search size={18} className="text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
           <input 
             type="text"
             placeholder="Search by name or unique ID..."
-            className="bg-transparent border-none text-sm font-bold text-black placeholder:text-black/20 outline-none w-full py-2"
+            className="bg-transparent border-none text-sm font-semibold text-slate-900 placeholder:text-slate-400 outline-none w-full py-2"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
         <div className="flex items-center gap-2 pr-2">
-          <button className="p-2 hover:bg-black/5 rounded-lg text-black/40 transition-all border border-transparent hover:border-outline-variant/30">
+          <button className="p-2.5 bg-slate-50 hover:bg-indigo-50 text-slate-500 hover:text-indigo-600 rounded-xl transition-all border border-slate-100">
             <Filter size={18} />
           </button>
-          <div className="w-px h-6 bg-outline-variant/30 mx-2" />
-          <div className="flex bg-white/50 p-1 rounded-xl border border-outline-variant/20">
+          <div className="w-px h-6 bg-slate-200 mx-2" />
+          <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
             <button 
               onClick={() => setViewMode("grid")}
-              className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-black text-white shadow-sm" : "text-black/20 hover:text-black/40"}`}
+              className={`p-1.5 rounded-lg transition-all ${viewMode === "grid" ? "bg-white text-indigo-600 shadow-sm border border-slate-200/50" : "text-slate-400 hover:text-slate-600"}`}
             >
               <Grid size={18} />
             </button>
             <button 
               onClick={() => setViewMode("list")}
-              className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-black text-white shadow-sm" : "text-black/20 hover:text-black/40"}`}
+              className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-white text-indigo-600 shadow-sm border border-slate-200/50" : "text-slate-400 hover:text-slate-600"}`}
             >
               <List size={18} />
             </button>
@@ -114,8 +113,8 @@ export default function StudentDirectory() {
       </div>
 
       {loading ? (
-        <div className="h-[400px] flex items-center justify-center bg-white/30 rounded-3xl border-2 border-dashed border-outline-variant">
-           <Loader2 className="animate-spin text-black" size={32} />
+        <div className="h-[400px] flex items-center justify-center bg-white rounded-3xl border border-slate-200 shadow-sm">
+           <Loader2 className="animate-spin text-indigo-600" size={32} />
         </div>
       ) : (
         <div className={viewMode === "grid" ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6" : "space-y-4"}>
@@ -123,9 +122,9 @@ export default function StudentDirectory() {
             <StudentCard key={student._id} student={student} />
           ))}
           {students.length === 0 && (
-            <div className="col-span-full py-24 text-center">
-               <AlertCircle size={48} className="text-black/10 mx-auto mb-4" />
-               <p className="text-lg font-display font-medium text-black/20 uppercase tracking-widest">No students found matching your criteria</p>
+            <div className="col-span-full py-24 text-center bg-white rounded-3xl border border-slate-200 shadow-sm">
+               <AlertCircle size={48} className="text-slate-200 mx-auto mb-4" />
+               <p className="text-lg font-bold text-slate-400 uppercase tracking-widest">No students found matching your criteria</p>
             </div>
           )}
         </div>
@@ -134,14 +133,14 @@ export default function StudentDirectory() {
   );
 }
 
-function MiniStatCard({ label, value, icon }: any) {
+function MiniStatCard({ label, value, icon, color }: any) {
   return (
-    <Card className="p-5 border-none bg-white flex items-center justify-between group">
+    <Card className="p-6 border border-slate-100 bg-white shadow-sm flex items-center justify-between group hover:shadow-md transition-all rounded-3xl">
       <div>
-        <p className="text-[10px] font-bold text-black/30 uppercase tracking-widest mb-1">{label}</p>
-        <p className="text-xl font-display font-bold text-black">{value}</p>
+        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
+        <p className="text-2xl font-bold text-slate-900">{value}</p>
       </div>
-      <div className="p-3 bg-black/5 rounded-xl text-black/20 group-hover:bg-black/10 group-hover:text-black transition-all">
+      <div className={`p-4 ${color} rounded-2xl flex items-center justify-center transition-all group-hover:scale-110`}>
         {icon}
       </div>
     </Card>

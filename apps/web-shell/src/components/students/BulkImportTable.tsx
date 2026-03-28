@@ -29,7 +29,7 @@ export default function BulkImportTable({ data }: BulkImportTableProps) {
                 <tr key={i} className="hover:bg-white transition-all group">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                       <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold text-xs uppercase">
+                       <div className="w-8 h-8 rounded-lg bg-black/10 text-black flex items-center justify-center font-bold text-xs uppercase">
                          {row.firstName?.[0] || "?"}{row.lastName?.[0] || "?"}
                        </div>
                        <div>
@@ -39,7 +39,7 @@ export default function BulkImportTable({ data }: BulkImportTableProps) {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-xs font-bold text-on-surface underline decoration-primary-indigo/30 underline-offset-4">{row.course}</p>
+                    <p className="text-xs font-bold text-on-surface underline decoration-black/30 underline-offset-4">{row.course}</p>
                     <p className="text-[10px] font-bold text-on-surface/40 uppercase tracking-tighter mt-1">{row.batch}</p>
                   </td>
                   <td className="px-6 py-4">

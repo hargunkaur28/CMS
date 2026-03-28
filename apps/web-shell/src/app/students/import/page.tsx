@@ -55,12 +55,12 @@ export default function StudentImportPage() {
       <header>
         <Link 
           href="/students" 
-          className="flex items-center gap-2 text-[10px] font-utility font-bold text-on-surface/30 uppercase tracking-[0.2em] mb-2 hover:text-primary-indigo transition-colors"
+          className="flex items-center gap-2 text-[10px] font-utility font-bold text-on-surface/30 uppercase tracking-[0.2em] mb-2 hover:text-black transition-colors"
         >
           <ChevronLeft size={12} /> Back to Directory
         </Link>
         <h1 className="text-3xl font-display font-bold text-on-surface tracking-tight flex items-center gap-4">
-          <Upload className="text-primary-indigo" size={32} />
+          <Upload className="text-black" size={32} />
           Bulk Data Onboarding
         </h1>
       </header>
@@ -70,9 +70,9 @@ export default function StudentImportPage() {
         <div className="lg:col-span-4 space-y-6">
           <Card className="p-8 bg-surface-container-lowest border-none shadow-ambient">
             <h3 className="text-sm font-bold text-on-surface uppercase tracking-widest mb-6">1. Upload CSV</h3>
-            <div className="relative border-2 border-dashed border-outline-variant rounded-2xl p-8 flex flex-col items-center justify-center gap-3 hover:border-primary-indigo/40 hover:bg-surface-container-low transition-all cursor-pointer group">
+            <div className="relative border-2 border-dashed border-outline-variant rounded-2xl p-8 flex flex-col items-center justify-center gap-3 hover:border-black/40 hover:bg-surface-container-low transition-all cursor-pointer group">
                <input type="file" accept=".csv" onChange={handleFileChange} className="absolute inset-0 opacity-0 cursor-pointer" />
-               <div className="w-12 h-12 bg-surface-container-low text-on-surface/20 rounded-xl flex items-center justify-center group-hover:bg-primary-indigo/10 group-hover:text-primary-indigo transition-all">
+               <div className="w-12 h-12 bg-surface-container-low text-on-surface/20 rounded-xl flex items-center justify-center group-hover:bg-black/10 group-hover:text-black transition-all">
                   <FileText size={24} />
                </div>
                <p className="text-xs font-bold text-on-surface/40 uppercase tracking-tighter">
@@ -84,16 +84,16 @@ export default function StudentImportPage() {
           <Card className="p-8 bg-surface-container-low/50 border-none">
              <h3 className="text-xs font-bold text-on-surface/40 uppercase tracking-[0.2em] mb-4">Instructions</h3>
              <ul className="space-y-3">
-                <li className="text-[11px] font-bold text-on-surface/60 flex gap-2">
-                   <div className="w-4 h-4 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-[10px] shrink-0">1</div>
+                 <li className="text-[11px] font-bold text-on-surface/60 flex gap-2">
+                   <div className="w-4 h-4 rounded-full bg-black/10 text-black flex items-center justify-center text-[10px] shrink-0">1</div>
                    Use the standard template (firstName, lastName, email, etc.)
                 </li>
                 <li className="text-[11px] font-bold text-on-surface/60 flex gap-2">
-                   <div className="w-4 h-4 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-[10px] shrink-0">2</div>
+                   <div className="w-4 h-4 rounded-full bg-black/10 text-black flex items-center justify-center text-[10px] shrink-0">2</div>
                    Ensure unique email addresses for all students.
                 </li>
                 <li className="text-[11px] font-bold text-on-surface/60 flex gap-2">
-                   <div className="w-4 h-4 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center text-[10px] shrink-0">3</div>
+                   <div className="w-4 h-4 rounded-full bg-black/10 text-black flex items-center justify-center text-[10px] shrink-0">3</div>
                    Department IDs must match existing system IDs.
                 </li>
              </ul>
@@ -108,9 +108,9 @@ export default function StudentImportPage() {
              <button 
                disabled={!file || loading}
                onClick={handleImport}
-               className="bg-white text-black border-2 border-primary-indigo px-10 py-4 rounded-2xl font-bold text-sm shadow-xl flex items-center gap-3 hover:bg-surface-container-low active:scale-95 transition-all disabled:opacity-30 disabled:pointer-events-none"
+               className="bg-white text-black border-2 border-black px-10 py-4 rounded-2xl font-bold text-sm shadow-xl flex items-center gap-3 hover:bg-surface-container-low active:scale-95 transition-all disabled:opacity-30 disabled:pointer-events-none"
              >
-               {loading ? <Loader2 size={18} className="animate-spin text-primary-indigo" /> : <><CheckCircle size={20} className="text-primary-indigo" /> Start Import Process</>}
+               {loading ? <Loader2 size={18} className="animate-spin text-black" /> : <><CheckCircle size={20} className="text-black" /> Start Import Process</>}
              </button>
           </div>
 

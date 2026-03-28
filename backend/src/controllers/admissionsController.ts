@@ -4,6 +4,7 @@ import Enquiry from "../models/Enquiry.js";
 import Application from "../models/Application.js";
 import Seat from "../models/Seat.js";
 import Department from "../models/Department.js";
+import Student from "../models/Student.js";
 
 // --- Enquiry Controllers ---
 
@@ -128,8 +129,51 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
       // Update enquiry to admitted
       await Enquiry.findByIdAndUpdate(application.enquiryRef, { status: "admitted" });
       
+      // -> START STUDENT ID GENERATION <-
+      let dept = await Department.findOne({ courses: application.assignedCourse });
+      if (!dept) {
+        dept = await Department.findOne();
+        if (!dept) {
+          dept = new Department({ name: "General Administration", courses: [application.assignedCourse] });
+          await dept.save();
+        }
+      }
+
+      const randomDigits = Math.floor(1000 + Math.random() * 9000);
+      const studentId = `NGCMS-${new Date().getFullYear()}-${randomDigits}`;
+
+      const newStudent = new Student({
+        uniqueStudentId: studentId,
+        personalInfo: {
+          firstName: application.studentDetails.firstName,
+          lastName: application.studentDetails.lastName,
+          dob: application.studentDetails.dob,
+          gender: application.studentDetails.gender,
+          phone: application.studentDetails.phone,
+          email: application.studentDetails.email,
+          address: application.studentDetails.address,
+        },
+        academicInfo: {
+          course: application.assignedCourse,
+          batch: application.assignedBatch,
+          department: dept._id,
+          semester: 1,
+          enrollmentDate: new Date(),
+          status: "active",
+        },
+        parentInfo: {
+          name: application.studentDetails.parentName,
+          phone: application.studentDetails.parentPhone,
+          email: "parent@example.com", // Mock since Application currently lacks parent email
+          relation: "Parent",
+        },
+        documents: application.documents,
+      });
+
+      await newStudent.save();
+      
       // Trigger WhatsApp Alert (Mock)
-      console.log(`WhatsApp Alert: Student ${application.studentDetails.firstName} Admitted to ${application.assignedCourse}`);
+      console.log(`WhatsApp Alert: Student ${application.studentDetails.firstName} Admitted to ${application.assignedCourse}. ID Generated: ${studentId}`);
     } else if (status === "rejected" && previousStatus === "approved") {
       // Revert seat if it was previously approved
       const seat = await Seat.findOne({ course: application.assignedCourse, batch: application.assignedBatch });

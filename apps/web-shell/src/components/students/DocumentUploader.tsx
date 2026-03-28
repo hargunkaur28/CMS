@@ -48,8 +48,8 @@ export default function DocumentUploader({ onUpload, maxFiles = 5 }: DocumentUpl
         onDrop={handleDrop}
         className={`relative border-2 border-dashed rounded-2xl p-8 transition-all flex flex-col items-center justify-center gap-3 cursor-pointer group ${
           isDragging 
-          ? "border-primary-indigo bg-primary-indigo/5 shadow-inner" 
-          : "border-outline-variant hover:border-primary-indigo/40 hover:bg-surface-container-low"
+          ? "border-black bg-black/5 shadow-inner" 
+          : "border-outline-variant hover:border-black/40 hover:bg-surface-container-low"
         }`}
       >
         <input
@@ -60,7 +60,7 @@ export default function DocumentUploader({ onUpload, maxFiles = 5 }: DocumentUpl
           accept=".pdf,.jpg,.jpeg,.png"
         />
         <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-colors ${
-          isDragging ? "bg-primary-indigo text-white" : "bg-surface-container text-on-surface/20 group-hover:bg-primary-indigo/10 group-hover:text-primary-indigo"
+          isDragging ? "bg-black text-white" : "bg-surface-container text-on-surface/20 group-hover:bg-black/10 group-hover:text-black"
         }`}>
           <Upload size={24} />
         </div>
@@ -75,7 +75,7 @@ export default function DocumentUploader({ onUpload, maxFiles = 5 }: DocumentUpl
           {selectedFiles.map((file, i) => (
             <div key={i} className="flex items-center justify-between p-3 bg-surface-container- lowest rounded-xl border border-outline-variant/30 group animate-in fade-in slide-in-from-left-4 duration-300">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-lg">
+                <div className="p-2 bg-black/10 text-black rounded-lg">
                   <FileText size={16} />
                 </div>
                 <div className="min-w-0">
@@ -85,7 +85,7 @@ export default function DocumentUploader({ onUpload, maxFiles = 5 }: DocumentUpl
               </div>
               <button
                 onClick={() => removeFile(i)}
-                className="p-1.5 hover:bg-red-500/10 text-on-surface/20 hover:text-red-500 rounded-lg transition-all"
+                className="p-1.5 hover:bg-black/10 text-on-surface/20 hover:text-black rounded-lg transition-all"
               >
                 <X size={16} />
               </button>

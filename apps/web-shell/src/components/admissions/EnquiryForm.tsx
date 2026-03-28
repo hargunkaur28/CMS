@@ -1,4 +1,3 @@
-// FILE: apps/web-shell/src/components/admissions/EnquiryForm.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -39,21 +38,21 @@ export default function EnquiryForm({ onSuccess, onClose }: EnquiryFormProps) {
   };
 
   return (
-    <div className="p-6 bg-surface-container-lowest rounded-2xl shadow-ambient border border-outline-variant max-w-lg w-full">
+    <div className="p-6 bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full relative z-50">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-display font-bold text-on-surface">New Admission Enquiry</h3>
-        <button onClick={onClose} className="p-2 hover:bg-surface-container rounded-lg text-on-surface/40 hover:text-on-surface transition-all">
+        <h3 className="text-xl font-bold text-slate-900">New Admission Enquiry</h3>
+        <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-all">
           <X size={20} />
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label className="text-xs font-bold text-on-surface/40 uppercase mb-1 block">Full Name</label>
+          <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Full Name</label>
           <input
             required
             type="text"
-            className="w-full bg-surface-container-low border-transparent focus:border-primary-indigo/30 focus:bg-white transition-all rounded-xl px-4 py-2.5 text-sm outline-none border"
+            className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-xl px-4 py-2.5 text-sm outline-none text-slate-800"
             placeholder="e.g. Rahul Sharma"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -62,22 +61,22 @@ export default function EnquiryForm({ onSuccess, onClose }: EnquiryFormProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="text-xs font-bold text-on-surface/40 uppercase mb-1 block">Phone Number</label>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Phone Number</label>
             <input
               required
               type="tel"
-              className="w-full bg-surface-container-low border-transparent focus:border-primary-indigo/30 focus:bg-white transition-all rounded-xl px-4 py-2.5 text-sm outline-none border"
+              className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-xl px-4 py-2.5 text-sm outline-none text-slate-800"
               placeholder="+91 98765-43210"
               value={formData.phone}
               onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
             />
           </div>
           <div>
-            <label className="text-xs font-bold text-on-surface/40 uppercase mb-1 block">Email Address</label>
+            <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Email Address</label>
             <input
               required
               type="email"
-              className="w-full bg-surface-container-low border-transparent focus:border-primary-indigo/30 focus:bg-white transition-all rounded-xl px-4 py-2.5 text-sm outline-none border"
+              className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-xl px-4 py-2.5 text-sm outline-none text-slate-800"
               placeholder="rahul@example.com"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -86,10 +85,10 @@ export default function EnquiryForm({ onSuccess, onClose }: EnquiryFormProps) {
         </div>
 
         <div>
-          <label className="text-xs font-bold text-on-surface/40 uppercase mb-1 block">Course Interested</label>
+          <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Course Interested</label>
           <select
             required
-            className="w-full bg-surface-container-low border-transparent focus:border-primary-indigo/30 focus:bg-white transition-all rounded-xl px-4 py-2.5 text-sm outline-none border appearance-none"
+            className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-xl px-4 py-2.5 text-sm outline-none text-slate-800 appearance-none"
             value={formData.courseInterested}
             onChange={(e) => setFormData({ ...formData, courseInterested: e.target.value })}
           >
@@ -102,10 +101,10 @@ export default function EnquiryForm({ onSuccess, onClose }: EnquiryFormProps) {
         </div>
 
         <div>
-          <label className="text-xs font-bold text-on-surface/40 uppercase mb-1 block">Lead Source</label>
+          <label className="text-xs font-bold text-slate-500 uppercase mb-1.5 block">Lead Source</label>
           <div className="flex gap-4">
             {["online", "walk-in", "referral"].map((source) => (
-              <label key={source} className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-outline-variant cursor-pointer hover:bg-surface-container transition-all has-[:checked]:bg-black has-[:checked]:text-white has-[:checked]:border-transparent">
+              <label key={source} className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-all has-[:checked]:bg-indigo-600 has-[:checked]:text-white has-[:checked]:border-indigo-600">
                 <input
                   type="radio"
                   name="source"
@@ -123,9 +122,9 @@ export default function EnquiryForm({ onSuccess, onClose }: EnquiryFormProps) {
           <button
             disabled={loading}
             type="submit"
-            className="w-full py-3 bg-white text-black border-2 border-primary-indigo rounded-xl font-bold text-sm shadow-ambient hover:bg-surface-container-low transition-all flex items-center justify-center gap-2"
+            className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-600/20 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-2"
           >
-            {loading ? <Loader2 size={18} className="animate-spin text-primary-indigo" /> : "Submit Enquiry"}
+            {loading ? <Loader2 size={18} className="animate-spin text-white" /> : "Submit Enquiry"}
           </button>
         </div>
       </form>

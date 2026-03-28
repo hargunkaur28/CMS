@@ -17,6 +17,7 @@ import batchRoutes from './routes/batchRoutes.js';
 import attendanceRoutes from './routes/attendance.js';
 import studentRoutes from './routes/students.js';
 import departmentRoutes from './routes/departments.js';
+import subjectRoutes from './routes/subjectRoutes.js';
 
 // Connect to MongoDB
 connectDB();
@@ -43,6 +44,7 @@ app.use('/api/batches', batchRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/departments', departmentRoutes);
+app.use('/api/subjects', subjectRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('AI-Powered College Management System API is running...');
