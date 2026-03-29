@@ -38,6 +38,11 @@ const FacultySchema: Schema = new Schema(
       email: { type: String },
       photo: { type: String },
     },
+    department: { type: String },
+    designation: { type: String, default: 'Assistant Professor' },
+    qualification: { type: String },
+    experience: { type: Number, default: 0 },
+    joiningDate: { type: Date, default: Date.now },
     status: {
       type: String,
       enum: ['Active', 'On-Leave', 'Resigned'],

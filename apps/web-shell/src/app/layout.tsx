@@ -112,8 +112,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <NavItem 
                   icon={<GraduationCap size={18} />} 
                   label="Admissions" 
-                  href="/admissions" 
-                  active={pathname.startsWith("/admissions")} 
+                  href={['SUPER_ADMIN', 'COLLEGE_ADMIN'].includes(user?.role) ? "/admin/admissions" : "/admissions"} 
+                  active={pathname.startsWith("/admissions") || pathname.startsWith("/admin/admissions")} 
                   roles={['SUPER_ADMIN', 'COLLEGE_ADMIN']}
                   currentUserRole={user?.role}
                 />
@@ -121,8 +121,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <NavItem 
                   icon={<Users size={18} />} 
                   label="Students" 
-                  href="/students" 
-                  active={pathname.startsWith("/students")} 
+                  href={['SUPER_ADMIN', 'COLLEGE_ADMIN'].includes(user?.role) ? "/admin/students" : "/students"} 
+                  active={pathname.startsWith("/students") || pathname.startsWith("/admin/students")} 
                   roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER']}
                   currentUserRole={user?.role}
                 />
@@ -135,28 +135,40 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <NavItem 
                   icon={<BookOpen size={18} />} 
                   label="Subjects & Materials" 
-                  href="/academics" 
-                  active={pathname.startsWith("/academics")} 
+                  href={['SUPER_ADMIN', 'COLLEGE_ADMIN'].includes(user?.role) ? "/admin/academics" : "/academics"} 
+                  active={pathname.startsWith("/academics") || pathname.startsWith("/admin/academics")} 
                 />
                 
                 <NavItem 
                   icon={<Calendar size={18} />} 
                   label="Schedule" 
-                  href="/timetable" 
-                  active={pathname.startsWith("/timetable")} 
+                  href={
+                    user?.role === 'TEACHER' ? '/teacher/timetable' : 
+                    ['COLLEGE_ADMIN', 'SUPER_ADMIN'].includes(user?.role) ? '/admin/timetable' : 
+                    '/timetable'
+                  } 
+                  active={pathname.includes("timetable")} 
                 />
                 
                 <NavItem 
                   icon={<ClipboardCheck size={18} />} 
                   label="Attendance" 
-                  href={['STUDENT', 'PARENT'].includes(user?.role) ? '/student/attendance' : '/attendance'} 
+                  href={
+                    user?.role === 'STUDENT' ? '/student/attendance' : 
+                    ['COLLEGE_ADMIN', 'SUPER_ADMIN'].includes(user?.role) ? '/admin/attendance' : 
+                    '/attendance'
+                  } 
                   active={pathname.includes("/attendance")} 
                 />
                 
                 <NavItem 
                   icon={<FileText size={18} />} 
                   label="Exams & Results" 
-                  href={['STUDENT', 'PARENT'].includes(user?.role) ? '/exams/results' : '/exams'} 
+                  href={
+                    user?.role === 'STUDENT' ? '/exams/results' : 
+                    ['COLLEGE_ADMIN', 'SUPER_ADMIN'].includes(user?.role) ? '/admin/exams' : 
+                    '/exams'
+                  } 
                   active={pathname.includes("/exams")} 
                 />
                 
@@ -168,8 +180,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <NavItem 
                   icon={<CreditCard size={18} />} 
                   label="Finance & Fees" 
-                  href="/finance" 
-                  active={pathname.startsWith("/finance")} 
+                  href={['SUPER_ADMIN', 'COLLEGE_ADMIN'].includes(user?.role) ? "/admin/fees" : "/finance"} 
+                  active={pathname.startsWith("/finance") || pathname.startsWith("/admin/fees")} 
                   roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'PARENT', 'STUDENT']}
                   currentUserRole={user?.role}
                 />

@@ -16,14 +16,15 @@ router.use(protect);
 router.use(authorize('TEACHER'));
 
 // --- My Assignments (Filtered) ---
-router.get('/dashboard', teacherController.getTeacherDashboard);
 router.get('/my-batches', teacherController.getMyBatches);
 router.get('/my-subjects', teacherController.getMySubjects);
-router.get('/debug-assignments', teacherController.getDebugAssignments);
+router.get('/subjects', teacherController.getAssignedSubjects);
+router.get('/batches', teacherController.getAssignedBatches);
+router.get('/debug-assignments', authorize('COLLEGE_ADMIN', 'SUPER_ADMIN'), teacherController.getDebugAssignments);
 
 // --- Timetable ---
-router.get('/timetable', timetableController.getTimetable);
-router.get('/timetable/today', timetableController.getTodayTimetable);
+router.get('/timetable', timetableController.getTeacherTimetable);
+router.get('/timetable/today', timetableController.getTodaySchedule);
 
 // --- Attendance ---
 router.post('/attendance/mark', attendanceController.markAttendance);

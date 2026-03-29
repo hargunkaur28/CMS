@@ -33,13 +33,15 @@ export default function StudentTable({ students, onDelete, onEdit }: StudentTabl
                       <img src={student.personalInfo.photo} alt={student.personalInfo.name} className="w-full h-full object-cover" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold text-xs">
-                        {student.personalInfo.name[0]}
+                        {student.personalInfo?.name?.[0] || student.personalInfo?.firstName?.[0] || '?'}
                       </div>
                     )}
                   </div>
                   <div className="space-y-0.5">
-                    <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{student.personalInfo.name}</p>
-                    <p className="text-[9px] font-medium text-slate-400">{student.personalInfo.email}</p>
+                    <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight">
+                      {student.personalInfo?.name || `${student.personalInfo?.firstName} ${student.personalInfo?.lastName}`}
+                    </p>
+                    <p className="text-[9px] font-medium text-slate-400">{student.personalInfo?.email}</p>
                   </div>
                 </div>
               </td>
@@ -50,34 +52,38 @@ export default function StudentTable({ students, onDelete, onEdit }: StudentTabl
               </td>
               <td className="px-6 py-4">
                 <div className="space-y-0.5">
-                  <p className="text-[10px] font-bold text-slate-900 uppercase tracking-tight">{student.academic.courseId?.name || "B.Tech CS"}</p>
-                  <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">{student.academic.batchId?.name || "2024-28"}</p>
+                  <p className="text-[10px] font-bold text-slate-900 uppercase tracking-tight">
+                    {student.academicInfo?.course || "General"}
+                  </p>
+                  <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">
+                    {student.academicInfo?.batch || "N/A"}
+                  </p>
                 </div>
               </td>
               <td className="px-6 py-4">
                 <span className={cn(
                   "text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border",
-                  student.status === "Active" ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                  student.status === "Detained" ? "bg-amber-50 text-amber-600 border-amber-100" :
-                  "bg-rose-50 text-rose-600 border-rose-100"
+                  (student.academicInfo?.status?.toLowerCase() === "active" || student.status === "Active") ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
+                  student.academicInfo?.status?.toLowerCase() === "dropped" ? "bg-rose-50 text-rose-600 border-rose-100" :
+                  "bg-amber-50 text-amber-600 border-amber-100"
                 )}>
-                  {student.status}
+                  {student.academicInfo?.status || student.status || "active"}
                 </span>
               </td>
               <td className="px-6 py-4">
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                   <button 
-                     onClick={() => onEdit(student._id)}
-                     className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-all"
-                   >
-                     <Edit2 size={14} />
-                   </button>
-                   <button 
-                     onClick={() => onDelete(student._id)}
-                     className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg border border-transparent hover:border-rose-100 transition-all"
-                   >
-                     <Trash2 size={14} />
-                   </button>
+                    <button 
+                      onClick={() => onEdit(student.uniqueStudentId)}
+                      className="p-1.5 text-slate-400 hover:text-slate-900 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-all"
+                    >
+                      <Edit2 size={14} />
+                    </button>
+                    <button 
+                      onClick={() => onDelete(student.uniqueStudentId)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-white rounded-lg border border-transparent hover:border-rose-100 transition-all"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                 </div>
               </td>
             </tr>

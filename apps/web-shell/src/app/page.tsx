@@ -30,29 +30,41 @@ import { useSocket } from "@/components/providers/SocketProvider";
 import { fetchTodayTimetable as fetchTeacherTimetable, fetchTeacherDashboardStats } from "@/lib/api/teacher";
 import { cn } from "@/lib/utils";
 
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const [role, setRole] = React.useState<string | null>(null);
+  const router = useRouter();
 
   React.useEffect(() => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
-    setRole(user.role || "COLLEGE_ADMIN");
-  }, []);
+    const userRole = user.role;
+    setRole(userRole);
+    
+    // Strategic Redirection to Specialized Portals
+    if (userRole === "COLLEGE_ADMIN" || userRole === "SUPER_ADMIN") {
+      router.push("/admin");
+    } else if (userRole === "TEACHER") {
+      router.push("/teacher");
+    }
+  }, [router]);
 
-  if (!role) return null;
+  // Loading or Redirecting State
+  if (!role || role === "COLLEGE_ADMIN" || role === "SUPER_ADMIN" || role === "TEACHER") return (
+    <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+       <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   switch (role) {
-    case "SUPER_ADMIN":
-      return <SuperAdminDashboard />;
     case "TEACHER":
       return <TeacherDashboard />;
     case "STUDENT":
       return <StudentDashboard />;
     case "PARENT":
       return <ParentDashboard />;
-    case "COLLEGE_ADMIN":
     default:
-      return <AdminDashboard />;
+      return null;
   }
 }
 

@@ -2,6 +2,7 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import Student from "../models/Student.js";
+import User from "../models/User.js";
 import Department from "../models/Department.js";
 import { generateStudentId } from "../utils/studentIdGenerator.js";
 import { parseStudentCSV } from "../utils/csvImporter.js";
@@ -9,7 +10,8 @@ import { parseStudentCSV } from "../utils/csvImporter.js";
 export const getStudents = async (req: Request, res: Response) => {
   try {
     const { course, batch, department, status, search } = req.query;
-    const query: any = {};
+    const collegeId = (req as any).user.collegeId;
+    const query: any = { collegeId }; // Only show students for this college
     if (course) query["academicInfo.course"] = course;
     if (batch) query["academicInfo.batch"] = batch;
     if (department) query["academicInfo.department"] = department;
@@ -32,7 +34,8 @@ export const getStudents = async (req: Request, res: Response) => {
 export const getStudentById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const student = await Student.findOne({ uniqueStudentId: id }).populate("academicInfo.department");
+    const collegeId = (req as any).user.collegeId;
+    const student = await Student.findOne({ uniqueStudentId: id, collegeId }).populate("academicInfo.department");
     if (!student) return res.status(404).json({ success: false, message: "Student not found" });
     res.status(200).json({ success: true, data: student, message: "Student profile found" });
   } catch (error: any) {
@@ -44,10 +47,8 @@ export const getStudentById = async (req: Request, res: Response) => {
  * Get the student profile for the current logged in user (student or parent)
  */
 export const getMyStudent = async (req: Request, res: Response) => {
-  console.log("[GET_MY_STUDENT] Controller started");
   try {
     const user = (req as any).user;
-    console.log("[GET_MY_STUDENT] User:", { id: user?._id, role: user?.role, collegeId: user?.collegeId });
 
     if (!user) return res.status(401).json({ success: false, message: "Not authorized" });
 
@@ -58,7 +59,6 @@ export const getMyStudent = async (req: Request, res: Response) => {
       const query: any = { userId: user._id };
       if (user.collegeId) query.collegeId = user.collegeId;
 
-      console.log("[GET_MY_STUDENT] Querying with:", query);
       student = await Student.findOne(query)
         .populate("academicInfo.department", "name")
         .select("-documents"); // Exclude heavy documents array from dashboard payload
@@ -71,11 +71,9 @@ export const getMyStudent = async (req: Request, res: Response) => {
     }
 
     if (!student) {
-      console.warn(`[GET_MY_STUDENT] No student found for userId: ${user._id}, role: ${user.role}`);
       return res.status(404).json({ success: false, message: "Student profile not found. Please contact the administration." });
     }
 
-    console.log("[GET_MY_STUDENT] Found student:", student.uniqueStudentId);
     res.status(200).json({ success: true, data: student });
   } catch (error: any) {
     console.error("[GET_MY_STUDENT] Unexpected error:", error.message);
@@ -87,7 +85,19 @@ export const createStudent = async (req: Request, res: Response) => {
   try {
     const studentData = req.body;
     studentData.uniqueStudentId = await generateStudentId();
+    studentData.collegeId = (req as any).user.collegeId;
+
+    // Create a corresponding User account for the student
+    const newUser = new User({
+      name: `${studentData.personalInfo.firstName} ${studentData.personalInfo.lastName}`,
+      email: studentData.personalInfo.email,
+      password: "Student@123", // Default password
+      role: "STUDENT",
+      collegeId: studentData.collegeId
+    });
+    await newUser.save();
     
+    studentData.userId = newUser._id;
     const student = new Student(studentData);
     await student.save();
     
@@ -100,7 +110,8 @@ export const createStudent = async (req: Request, res: Response) => {
 export const updateStudent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const student = await Student.findOneAndUpdate({ uniqueStudentId: id }, req.body, { new: true });
+    const collegeId = (req as any).user.collegeId;
+    const student = await Student.findOneAndUpdate({ uniqueStudentId: id, collegeId }, req.body, { new: true });
     if (!student) return res.status(404).json({ success: false, message: "Student not found" });
     res.status(200).json({ success: true, data: student, message: "Student profile updated" });
   } catch (error: any) {
@@ -116,8 +127,11 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
     const importedStudents = [];
     const errors = [];
 
+    const adminUser = (req as any).user;
+    const collegeId = adminUser.collegeId;
+    
     // Fetch departments for lookup
-    const departments = await Department.find();
+    const departments = await Department.find({ collegeId });
 
     for (const row of rawData) {
       try {
@@ -144,8 +158,7 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
             deptId = matchedDept._id;
           } else {
             // Auto-create department if not found (Demo fallback)
-            console.log(`Auto-creating department: ${deptVal}`);
-            const newDept = new Department({ name: deptVal });
+            const newDept = new Department({ name: deptVal, collegeId });
             await newDept.save();
             departments.push(newDept);
             deptId = newDept._id;
@@ -154,10 +167,9 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
 
         // Final fallback: Use "General" or some existing dept
         if (!deptId) {
-          console.log(`No department found for value: "${deptVal}". Using fallback.`);
           const defaultDept = departments[0] || await Department.findOneAndUpdate(
-            { name: "General" }, 
-            { name: "General" }, 
+            { name: "General", collegeId }, 
+            { name: "General", collegeId }, 
             { upsert: true, new: true }
           );
           
@@ -171,23 +183,48 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
           throw new Error("Critical Failure: Could not resolve or create any department ID.");
         }
 
+        // Force a valid Date or fallback
+        const dobStr = getVal(["dob", "date of birth", "birthday"]);
+        const dob = (dobStr && !isNaN(Date.parse(dobStr))) ? new Date(dobStr) : new Date();
+
+        // Create a corresponding User account first
+        const studentEmail = getVal(["email", "email address"]);
+        const firstName = getVal(["firstName", "first name", "name"]);
+        const lastName = getVal(["lastName", "last name", "surname"]) || "N/A";
+
+        if (!studentEmail || !firstName) {
+          throw new Error("Missing required identity fields (Email or Name)");
+        }
+
+        const newUser = new User({
+          name: `${firstName} ${lastName}`,
+          email: studentEmail,
+          password: "Student@123", // Default password
+          role: "STUDENT",
+          collegeId
+        });
+        await newUser.save();
+
         // Map CSV row to Student Schema with fallbacks
         const student = new Student({
           uniqueStudentId: uniqueId,
+          userId: newUser._id,
+          collegeId, // IMPORTANT: Link imported student to the current admin's college
           personalInfo: {
-            firstName: getVal(["firstName", "first name", "name"]),
-            lastName: getVal(["lastName", "last name", "surname"]) || "N/A",
-            email: getVal(["email", "email address"]),
-            phone: getVal(["phone", "mobile", "contact"]),
+            firstName,
+            lastName,
+            email: studentEmail,
+            phone: getVal(["phone", "mobile", "contact"]) || "0000000000",
             gender: (getVal(["gender"]) || "other").toLowerCase(),
-            dob: getVal(["dob", "date of birth", "birthday"]) ? new Date(getVal(["dob", "date of birth", "birthday"])) : new Date(),
+            dob,
             address: getVal(["address", "home address"]) || "N/A"
           },
           academicInfo: {
             course: getVal(["course", "program"]) || "General",
             batch: getVal(["batch", "year"]) || new Date().getFullYear().toString(),
-            department: deptId, 
-            status: "active"
+            department: deptId,
+            status: "active",
+            semester: 1
           },
           parentInfo: {
             name: getVal(["parentName", "guardian", "father name"]) || "N/A",
@@ -305,7 +342,8 @@ export const uploadDocs = async (req: Request, res: Response) => {
 export const softDeleteStudent = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    await Student.findOneAndUpdate({ uniqueStudentId: id }, { "academicInfo.status": "dropped" });
+    const collegeId = (req as any).user.collegeId;
+    await Student.findOneAndUpdate({ uniqueStudentId: id, collegeId }, { "academicInfo.status": "dropped" });
     res.status(200).json({ success: true, message: "Student record archived" });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
@@ -316,7 +354,8 @@ export const updateStudentStatus = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    await Student.findOneAndUpdate({ uniqueStudentId: id }, { "academicInfo.status": status });
+    const collegeId = (req as any).user.collegeId;
+    await Student.findOneAndUpdate({ uniqueStudentId: id, collegeId }, { "academicInfo.status": status });
     res.status(200).json({ success: true, message: "Student status updated" });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

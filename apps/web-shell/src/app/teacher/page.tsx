@@ -158,15 +158,16 @@ export default function TeacherDashboard() {
                            <span className="text-lg leading-tight">{item.period}</span>
                         </div>
                         <div>
-                           <h4 className="font-bold text-slate-900 text-lg">{item.subjectId.name}</h4>
+                           <h4 className="font-bold text-slate-900 text-lg">{item.subjectId?.name}</h4>
                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs font-semibold text-slate-400 uppercase tracking-tighter">
                               <span className="flex items-center gap-1"><Clock size={12} /> {item.startTime} - {item.endTime}</span>
                               <span className="flex items-center gap-1">• Room {item.room}</span>
-                              <span className="flex items-center gap-1">• Batch {item.batch}</span>
+                              <span className="flex items-center gap-1">• Batch {item.batchId?.name}</span>
+                              <span className="flex items-center gap-1">• Sec {item.section}</span>
                            </div>
                         </div>
                      </div>
-                     <Link href="/teacher/attendance" className="p-3 bg-slate-50 text-slate-900 rounded-2xl hover:bg-slate-900 hover:text-white transition-all">
+                     <Link href={`/teacher/attendance/mark?subjectId=${item.subjectId?._id}&batchId=${item.batchId?._id}`} className="p-3 bg-slate-50 text-slate-900 rounded-2xl hover:bg-slate-900 hover:text-white transition-all">
                         <ChevronRight size={20} />
                      </Link>
                   </div>

@@ -60,8 +60,6 @@ export const assignTeacher = async (req: Request, res: Response) => {
     faculty.assignedSubjects.push({ subjectId: new mongoose.Types.ObjectId(subjectId), batchId: new mongoose.Types.ObjectId(batchId) } as any);
     await faculty.save();
 
-    console.log(`[ASSIGN] Teacher ${teacherUser.name} → Subject ${subject.name} in Batch ${batch.name}`);
-
     res.status(200).json({
       success: true,
       message: `${teacherUser.name} assigned to ${subject.name} in ${batch.name}`,
@@ -102,8 +100,6 @@ export const assignStudentToBatch = async (req: Request, res: Response) => {
       batch.students.push(studentId);
       await batch.save();
     }
-
-    console.log(`[ASSIGN] Student ${student.uniqueStudentId} → Batch ${batch.name}`);
 
     res.status(200).json({
       success: true,

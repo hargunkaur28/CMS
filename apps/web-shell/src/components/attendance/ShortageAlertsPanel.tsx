@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, TrendingDown, Flame, Info, Loader2, ChevronDown, Search } from 'lucide-react';
+import { AlertTriangle, TrendingDown, Flame, Info, Loader2, ChevronDown, Search, Check } from 'lucide-react';
 import { getAttendanceStats } from '@/lib/api/attendance';
 import { getBatches } from '@/lib/api/academics';
 import { cn } from '@/lib/utils';

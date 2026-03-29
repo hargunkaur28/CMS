@@ -1,5 +1,6 @@
 import express from "express";
 import { protect, authorize } from "../middleware/auth.js";
+import multer from "multer";
 import {
   createEnquiry,
   getEnquiries,
@@ -77,8 +78,14 @@ import {
   removeTeacherAssignment,
   getAssignments
 } from "../controllers/adminAssignmentController.js";
+import {
+  createTimetableEntry,
+  getFullTimetable,
+  getConflicts
+} from "../controllers/timetableController.js";
 
 const router = express.Router();
+const uploadCsv = multer({ dest: "uploads/temp/" });
 
 // All routes require protection and Admin authorization (uppercase normalized in middleware)
 router.use(protect);
@@ -113,7 +120,7 @@ router.get("/students", getStudents);
 router.get("/students/:id", getStudentById);
 router.put("/students/:id", updateStudent);
 router.delete("/students/:id", softDeleteStudent);
-router.post("/students/bulk-import", bulkImportStudents);
+router.post("/students/bulk-import", uploadCsv.single("file"), bulkImportStudents);
 router.put("/students/:id/status", updateStudentStatus);
 
 // Module 3: Faculty Management
@@ -170,6 +177,9 @@ router.post("/naac/documents", uploadNaacDocument);
 router.put("/naac/documents/:id/status", updateDocumentStatus);
 router.get("/naac/stats", getComplianceStats);
 
-// Modules 2-9 will be added here...
+// Module 10: Timetable
+router.get("/timetable", getFullTimetable);
+router.post("/timetable", createTimetableEntry);
+router.get("/timetable/conflicts", getConflicts);
 
 export default router;

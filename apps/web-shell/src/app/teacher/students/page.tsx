@@ -5,6 +5,7 @@ import StudentCard from "@/components/teacher/StudentCard";
 import api from "@/lib/api";
 import { Search, Filter, RotateCcw, Users, LayoutGrid, List } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 export default function StudentsPage() {
   const [students, setStudents] = useState([]);

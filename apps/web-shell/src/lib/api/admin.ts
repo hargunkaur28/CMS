@@ -59,8 +59,22 @@ export const updateStudent = async (id: string, data: any) => {
   return response.data;
 };
 
+export const createStudent = async (data: any) => {
+  const response = await axios.post(`${API_URL}/students`, data, { headers: getAuthHeader() });
+  return response.data;
+};
+
 export const deleteStudent = async (id: string) => {
   const response = await axios.delete(`${API_URL}/students/${id}`, { headers: getAuthHeader() });
+  return response.data;
+};
+
+export const bulkImportStudents = async (file: File) => {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await axios.post(`${API_URL}/students/bulk-import`, formData, { 
+    headers: getAuthHeader() 
+  });
   return response.data;
 };
 

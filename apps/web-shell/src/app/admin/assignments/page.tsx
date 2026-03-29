@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Users, BookOpen, School, UserCheck, Trash2,
@@ -66,8 +67,13 @@ function RegisterTeacherModal({ isOpen, onClose, onRefresh }: any) {
   const [formData, setFormData] = useState({ name: '', email: '', department: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!isOpen || !mounted) return null;
 
   const handleRegister = async () => {
     if (!formData.name || !formData.email) { setError('Name and Email are required.'); return; }
@@ -87,9 +93,9 @@ function RegisterTeacherModal({ isOpen, onClose, onRefresh }: any) {
     } finally { setLoading(false); }
   };
 
-  return (
+  return createPortal(
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-md">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-slate-900/80 backdrop-blur-md">
         <motion.div 
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -111,15 +117,17 @@ function RegisterTeacherModal({ isOpen, onClose, onRefresh }: any) {
           </div>
 
           <div className="space-y-6">
-            <Select 
-              label="Full Legal Name" 
-              value={formData.name} 
-              onChange={(val: string) => setFormData({...formData, name: val})}
-              options={[]} 
-              placeholder="e.g. Dr. Richard Feynman"
-              icon={UserCheck}
-            />
-            {/* Using raw inputs for text for simplicity in this specific modal */}
+            <div className="space-y-2.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">Full Legal Name</label>
+              <input 
+                type="text" 
+                placeholder="e.g. Dr. Richard Feynman"
+                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:outline-none focus:border-indigo-500/50 focus:ring-4 focus:ring-indigo-500/5 transition-all"
+                value={formData.name}
+                onChange={e => setFormData({...formData, name: e.target.value})}
+              />
+            </div>
+            {/* ... other code remained the same ... */}
             <div className="space-y-2.5">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] pl-1">University Email</label>
               <input 
@@ -154,7 +162,8 @@ function RegisterTeacherModal({ isOpen, onClose, onRefresh }: any) {
           </button>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 

@@ -1,6 +1,6 @@
 // FILE: apps/web-shell/src/lib/api/academics.ts
 
-const API_URL = "http://localhost:5005/api";
+export const API_URL = "http://localhost:5005/api";
 
 export interface ApiResponse<T> {
   success?: boolean;
@@ -8,7 +8,7 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
-const getHeaders = () => {
+export const getHeaders = () => {
   const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
   return {
     "Content-Type": "application/json",

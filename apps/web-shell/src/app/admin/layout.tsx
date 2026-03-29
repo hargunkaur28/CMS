@@ -16,10 +16,11 @@ import {
   ArrowRightLeft,
   Sparkles,
   Search,
-  Settings
+  Settings,
+  LogOut
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -38,6 +39,13 @@ const NAV_ITEMS = [
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.push("/login");
+  };
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
@@ -125,6 +133,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="w-12 h-12 rounded-2xl bg-slate-900 border-2 border-white flex items-center justify-center text-white font-black text-xs shadow-xl rotate-3 hover:rotate-0 transition-all cursor-pointer">
                    RK
                 </div>
+                <button 
+                  onClick={handleLogout}
+                  className="p-3 bg-slate-50 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all border border-transparent hover:border-rose-100 group/logout"
+                  title="Secure Logout"
+                >
+                   <LogOut size={18} className="group-hover/logout:-translate-x-0.5 transition-transform" />
+                </button>
              </div>
           </div>
         </header>

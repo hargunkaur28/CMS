@@ -5,7 +5,8 @@ import User from "../models/User.js";
 export const getFaculties = async (req: Request, res: Response) => {
   try {
     const { department, status, search } = req.query;
-    let query: any = {};
+    const collegeId = (req as any).user.collegeId;
+    let query: any = { collegeId };
 
     if (department) query["department"] = department;
     if (status) query["status"] = status;
@@ -18,7 +19,7 @@ export const getFaculties = async (req: Request, res: Response) => {
     }
 
     const faculties = await Faculty.find(query)
-      .populate("userId", "email role")
+      .populate("userId", "name email role")
       .populate("assignedSubjects")
       .sort({ employeeId: 1 });
 
@@ -43,7 +44,7 @@ export const getFacultyById = async (req: Request, res: Response) => {
 
 export const createFaculty = async (req: Request, res: Response) => {
   try {
-    const { personalInfo, qualification, experience, department, collegeId } = req.body;
+    const { personalInfo, qualification, experience, department, designation, joiningDate, collegeId } = req.body;
     const adminUser = (req as any).user;
 
     // Use provided collegeId or fallback to admin's collegeId
@@ -78,6 +79,8 @@ export const createFaculty = async (req: Request, res: Response) => {
       qualification,
       experience,
       department,
+      designation,
+      joiningDate: joiningDate || new Date(),
       status: "Active"
     });
     await faculty.save();
@@ -91,7 +94,9 @@ export const createFaculty = async (req: Request, res: Response) => {
 
 export const updateFaculty = async (req: Request, res: Response) => {
   try {
-    const faculty = await Faculty.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const collegeId = (req as any).user.collegeId;
+    const faculty = await Faculty.findOneAndUpdate({ _id: req.params.id, collegeId }, req.body, { new: true });
+    if (!faculty) return res.status(404).json({ success: false, message: "Faculty not found" });
     res.status(200).json({ success: true, data: faculty });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
@@ -100,7 +105,9 @@ export const updateFaculty = async (req: Request, res: Response) => {
 
 export const softDeleteFaculty = async (req: Request, res: Response) => {
   try {
-    const faculty = await Faculty.findByIdAndUpdate(req.params.id, { status: "Resigned" }, { new: true });
+    const collegeId = (req as any).user.collegeId;
+    const faculty = await Faculty.findOneAndUpdate({ _id: req.params.id, collegeId }, { status: "Resigned" }, { new: true });
+    if (!faculty) return res.status(404).json({ success: false, message: "Faculty not found" });
     res.status(200).json({ success: true, data: faculty, message: "Faculty marked as Resigned" });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
@@ -111,7 +118,9 @@ export const assignSubjects = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const { subjectIds } = req.body;
-    const faculty = await Faculty.findByIdAndUpdate(id, { assignedSubjects: subjectIds }, { new: true });
+    const collegeId = (req as any).user.collegeId;
+    const faculty = await Faculty.findOneAndUpdate({ _id: id, collegeId }, { assignedSubjects: subjectIds }, { new: true });
+    if (!faculty) return res.status(404).json({ success: false, message: "Faculty not found" });
     res.status(200).json({ success: true, data: faculty });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });

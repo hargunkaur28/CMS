@@ -9,23 +9,30 @@ interface AuthRequest extends Request {
 export const protect = async (req: AuthRequest, res: Response, next: NextFunction) => {
   let token;
 
+  console.log(`[AUTH] Checking header: "${req.headers.authorization}"`);
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
+      console.log(`[AUTH] Token extracted: ${token.substring(0, 10)}...`);
       const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+      console.log(`[AUTH] Token decoded successfully. ID: ${decoded.id}`);
 
       req.user = await User.findById(decoded.id).select('-password');
       if (!req.user) {
         return res.status(401).json({ message: 'Not authorized, user no longer exists' });
       }
       return next();
-    } catch (error) {
-      console.error('[AUTH ERROR]', error);
+    } catch (error: any) {
+      console.error('[AUTH ERROR] Token verification failure:', error.message);
+      if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ message: 'Token expired' });
+      }
       return res.status(401).json({ message: 'Not authorized, token failed' });
     }
   }
 
   if (!token) {
+    console.warn('[AUTH] Access denied: No token provided in headers');
     return res.status(401).json({ message: 'Not authorized, no token' });
   }
 };
