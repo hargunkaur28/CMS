@@ -1,70 +1,49 @@
-# 📘 Project Handover: NgCMS Academic Ecosystem
+# Project Handover: NgCMS Institutional ERP
 
-This document summarizes the **Academic Assignment & Permission Architecture** implemented today. The system is now a fully functional, multi-tenant ERP prototype with strict data isolation and a premium "Indigo Operations" aesthetic.
+## 📌 Project Overview
+**NgCMS** is a multi-tenant institutional management system (ERP) designed for colleges and universities. It features a strict role-based access control (RBAC) system with tailored experiences for Administrators, Teachers, Students, and Parents.
 
----
+## 🚀 Current Technical Status
+- **Backend**: Node.js/Express, MongoDB (Mongoose), JWT Auth.
+- **Frontend**: Next.js 14+ (App Router), Tailwind CSS (Premium Monochrome/Slated Theme).
+- **Multi-Tenancy**: All data models (`Student`, `Faculty`, `Department`, etc.) are scoped to a `collegeId` extracted from the authenticated user's token.
 
-## 🚀 Key Achievements (Today)
+## 🛠️ Core Features Implemented
+### 1. SIS (Student Information System)
+- **Bulk Import**: CSV-based student enrollment with intelligent header mapping.
+- **Auto-Account Creation**: Each enrolled student automatically gets a `User` account (`role: 'STUDENT'`, default password: `Student@123`).
+- **Student Actions**: Implementation of Soft-Delete ("Drop") and Profile Editing.
+- **Status Filtering**: Registry supports filtering by Active, Dropped, and All statuses.
 
-### 1. 🧱 Academic Assignment Engine
-Implemented the core workflow for linking the academic hierarchy:
-- **Admin Portal (`/admin/assignments`)**: A new "Operations Hub" where admins can map **Teachers** to **Subjects** within specific **Batches**.
-- **Self-Healing Profiles**: When an admin assigns a teacher, the system automatically detects if a `Faculty` profile exists; if not, it creates one (ID: `EMPXXXXXX`) on the fly.
-- **Bi-Directional Sync**: Changes in the admin portal now immediately propagate to the teacher's dashboard and attendance roster.
+### 2. Admin Portal (`/admin`)
+- **Premium Dashboard**: Real-time KPI cards for enrollment, revenue, and attendance.
+- **Academic Orchestration**: Tools for assigning faculty to subjects and batches.
+- **Navigation Unification**: Administrators are redirected to `/admin` on login, and all root navigation links are automatically prefixed to ensure UI consistency.
 
-### 2. 🔐 Security & Permission Integrity
-- **Strict ID Normalization**: All backend checks now explicitly normalize `ObjectIds` to strings. This resolved the "403 Forbidden" issues when teachers tried to mark attendance.
-- **Tenant Isolation (`collegeId`)**: Every assignment and attendance log is scoped to a specific `collegeId`. Cross-college access is strictly denied at the controller level.
-- **Fail-Fast Authorization**: The attendance engine now verifies teacher-subject-batch mappings before every write operation.
+### 3. Teacher Portal (`/teacher`)
+- Specialized dashboard for attendance marking, result publishing, and timetable management.
 
-### 3. 🎨 Premium "Indigo" UI/UX
-- **Admin Dashboard**: Overhauled the landing page (`/`) with strategic KPIs and a high-contrast "Academic Assignments" card.
-- **Admin Sidebar**: Upgraded from monochromatic white to a deep **Slate-950** with **Indigo-600** active states.
-- **Teacher Dashboard**: Replaced hardcoded placeholders with **Dynamic Grouping**. Teachers now see their subjects grouped logically by Batch.
-- **KPI Accuracy**: Implemented unique student counting (Set-based) to ensure teachers see their true "Direct Reach" without double-counting students from multiple subjects.
+## 🔗 Critical Routing Logic
+- **Root Level (`/`)**: Acts as a role-based traffic controller.
+  - `COLLEGE_ADMIN` / `SUPER_ADMIN` -> Redirects to `/admin`.
+  - `TEACHER` -> Redirects to `/teacher`.
+  - `STUDENT` / `PARENT` -> Uses the root-level dashboard and generic sidebar.
 
-### 4. 🛠️ Developer Tooling
-- **Debug Endpoint**: `GET /api/teacher/debug-assignments` allows teammates to instantly verify which subjects and batches are linked to a teacher's JWT session.
+## ⚠️ Important Implementation Details
+- **Identity Sync**: Functional buttons (Edit/Drop) in the `StudentTable` pass the `uniqueStudentId` (e.g., `NGCMS-2026-XXXX`) to the backend, NOT the MongoDB `_id`. This is critical for SIS consistency.
+- **Department Auto-Creation**: Missing departments encountered during CSV import are automatically created and assigned to the current administrator's `collegeId`.
 
----
+## 📂 Key File Paths
+- **Admin UI**: `apps/web-shell/src/app/admin/`
+- **SIS Logic**: `backend/src/controllers/studentsController.ts`
+- **API Client**: `apps/web-shell/src/lib/api/admin.ts`
+- **Global Layout**: `apps/web-shell/src/app/layout.tsx` (Handles root sidebar and auth checks).
+- **Admin Layout**: `apps/web-shell/src/app/admin/layout.tsx` (Handles the "Admin Portal" sidebar).
 
-## 📂 File Architecture (Key Changes)
-
-| Component | File Path | Responsibility |
-| :--- | :--- | :--- |
-| **Admin UI** | `apps/web-shell/src/app/admin/assignments/page.tsx` | Mapping interface & Faculty registration. |
-| **Logic** | `backend/src/controllers/adminAssignmentController.ts` | Backend wiring for Teacher/Student mappings. |
-| **Auth** | `backend/src/controllers/attendanceController.ts` | Strict authorization & ID normalization. |
-| **Analytics** | `backend/src/controllers/teacherController.ts` | Unique student stats & batch grouping. |
-| **Sidebar** | `apps/web-shell/src/app/admin/layout.tsx` | Global dark-theme navigation. |
-
----
-
-## 🛠️ Environment Setup
-
-1.  **Seed Data**: Run `npm run seed` in the backend to populate the system with 4 standardized teachers (Hopper, Feynman, Turing, Tesla) and 10 academic subjects.
-2.  **Credentials**: 
-    - **Admin**: `admin@university.edu` / `password123`
-    - **Teacher**: `hopper@git.edu` / `password123` (Note: single 'n' in `feynman@git.edu`).
+## 📝 To-Do / Next Steps
+1.  **Repository Cleanup**: There is significant duplication between root folders (e.g., `src/app/students`) and admin folders (`src/app/admin/students`). The admin versions are the current "Source of Truth."
+2.  **Timetable Generator**: Finalize the conflict-detection logic for automated scheduling.
+3.  **Finance Module**: Connect the "Strategic Revenue" KPI to real fee payment logs.
 
 ---
-
-## ⏭️ Next Steps for the Team
-
-### 🏫 1. Student & Parent Portals
-- **Sync Attendance**: Ensure the `StudentDashboard` and `ParentDashboard` correctly reflect the logs created by the teacher (currently using placeholders).
-- **Subject Materials**: Link the "Digital Library" module to the newly created `Subject` IDs.
-
-### 📅 2. Timetable Integration
-- The `TeacherDashboard` has a "Timebound Schedule" section that currently returns "No Sessions Logged". 
-- Need to finalize the **Timetable Generator** which will feed this section based on the teacher assignments.
-
-### 📊 3. Grading Module
-- Extend the `marksController.ts` to use the same `{ subjectId, batchId }` filtering logic as attendance to ensure teachers only enter grades for their assigned classes.
-
----
-
-> [!IMPORTANT]
-> **Production Note**: Ensure that all `console.warn` and `console.log("[TEACHER_SUBJECTS_LOADED]")` tags are removed or moved to a dedicated logger before final deployment.
-
-**Project Status: Academic Core Stable ✅**
+*Handover generated by Antigravity AI on 2026-03-29.*
