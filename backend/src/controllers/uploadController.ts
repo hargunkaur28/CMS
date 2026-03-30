@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import Material from '../models/Material.js';
+import Student from '../models/Student.js';
+import Batch from '../models/Batch.js';
 
 /**
  * @desc    Upload material (Handled by Multer middleware before reaching here)
@@ -80,3 +82,39 @@ export const deleteMaterial = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * @desc    Get materials for the current student
+ * @route   GET /api/students/materials
+ */
+export const getStudentMaterials = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const collegeId = (req as any).user?.collegeId;
+
+    const student = await Student.findOne({ userId, collegeId });
+    if (!student) return res.status(404).json({ success: false, message: "Student profile not found" });
+
+    let batchId = student.batchId;
+
+    // FALLBACK: Lookup by name
+    if (!batchId && student.academicInfo?.batch) {
+       const resolvedBatch = await Batch.findOne({ name: student.academicInfo.batch, collegeId });
+       if (resolvedBatch) batchId = resolvedBatch._id;
+    }
+
+    if (!batchId) {
+      return res.status(400).json({ success: false, message: "Student is not assigned to a valid batch" });
+    }
+
+    const materials = await Material.find({ classId: batchId })
+      .populate('subjectId', 'name')
+      .populate('teacherId', 'name')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ success: true, data: materials });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

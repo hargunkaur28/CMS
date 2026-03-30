@@ -167,11 +167,11 @@ export default function CommunicationPage() {
                            )}
                          >
                             <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold", selectedStudent?._id === stu._id ? "bg-white text-slate-900" : "bg-slate-100 text-slate-400")}>
-                               {stu.name[0]}
+                               {(stu.personalInfo?.firstName || '?')[0]}
                             </div>
                             <div className="min-w-0">
-                               <p className="text-sm font-bold truncate">{stu.name}</p>
-                               <p className={cn("text-[10px] uppercase font-medium tracking-tighter truncate", selectedStudent?._id === stu._id ? "text-slate-400" : "text-slate-500")}>{stu.rollNumber}</p>
+                               <p className="text-sm font-bold truncate">{`${stu.personalInfo?.firstName || ''} ${stu.personalInfo?.lastName || ''}`.trim()}</p>
+                               <p className={cn("text-[10px] uppercase font-medium tracking-tighter truncate", selectedStudent?._id === stu._id ? "text-slate-400" : "text-slate-500")}>{stu.academicInfo?.rollNumber || 'N/A'}</p>
                             </div>
                          </button>
                        ))}
@@ -185,20 +185,20 @@ export default function CommunicationPage() {
                        <>
                           <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
                              <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black">
-                                {selectedStudent.name[0]}
+                                {(selectedStudent.personalInfo?.firstName || '?')[0]}
                              </div>
                              <div>
-                                <h3 className="font-bold text-slate-900">{selectedStudent.name}</h3>
+                                <h3 className="font-bold text-slate-900">{`${selectedStudent.personalInfo?.firstName || ''} ${selectedStudent.personalInfo?.lastName || ''}`.trim()}</h3>
                                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Active Conversation</p>
                              </div>
                           </div>
                           
                           <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-slate-50/20">
                              {messages.map((msg: any) => (
-                               <div key={msg._id} className={cn("flex flex-col max-w-[80%]", msg.senderId === selectedStudent.userId._id ? "items-start" : "items-end ml-auto")}>
+                               <div key={msg._id} className={cn("flex flex-col max-w-[80%]", (msg.senderId?._id || msg.senderId) === selectedStudent.userId._id ? "items-start" : "items-end ml-auto")}>
                                   <div className={cn(
                                      "p-4 rounded-3xl text-sm shadow-sm",
-                                     msg.senderId === selectedStudent.userId._id ? "bg-white text-slate-900 rounded-tl-none border border-slate-100" : "bg-slate-900 text-white rounded-tr-none"
+                                     (msg.senderId?._id || msg.senderId) === selectedStudent.userId._id ? "bg-white text-slate-900 rounded-tl-none border border-slate-100" : "bg-slate-900 text-white rounded-tr-none"
                                   )}>
                                      {msg.content}
                                   </div>

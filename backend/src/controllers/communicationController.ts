@@ -2,17 +2,28 @@ import { Request, Response } from "express";
 import Announcement from "../models/Announcement.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
+import Student from "../models/Student.js";
+import Parent from "../models/Parent.js";
+import Faculty from "../models/Faculty.js";
+import Batch from "../models/Batch.js";
 
-// --- Announcements ---
+// ====================================================================
+// ANNOUNCEMENTS
+// ====================================================================
 
+/**
+ * GET /teacher/announcements  (Teacher context)
+ * Returns announcements created by this teacher
+ */
 export const getAnnouncements = async (req: Request, res: Response) => {
   try {
+    const userId = (req as any).user?._id;
     const { targetAudience } = req.query;
-    let query: any = {};
+    let query: any = { senderId: userId };
     if (targetAudience) query.targetAudience = targetAudience;
 
     const announcements = await Announcement.find(query)
-      .populate("createdBy", "name role")
+      .populate("senderId", "name role")
       .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: announcements });
@@ -21,33 +32,235 @@ export const getAnnouncements = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * POST /teacher/announcements  (Teacher context)
+ * Create a new announcement
+ */
 export const createAnnouncement = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
     const announcement = new Announcement({
       ...req.body,
-      createdBy: (req as any).user?._id
+      senderId: user._id,
     });
     await announcement.save();
-    
-    // Logic to push notifications to target audience would go here
-    
+
     res.status(201).json({ success: true, data: announcement });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
 
-// --- Direct Messaging ---
-
-export const getMessages = async (req: Request, res: Response) => {
+/**
+ * GET /students/announcements  (Student context)
+ * Returns all announcements (for the student's batch or broadcast)
+ */
+export const getStudentAnnouncements = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?._id;
+
+    // Find the student profile to get batch info
+    const student = await Student.findOne({ userId });
+    const batchName = student?.academicInfo?.batch || null;
+
+    // Always include "all" / broadcast announcements.
+    // Also include batch-specific ones if the student belongs to a batch.
+    const orConditions: any[] = [
+      { targetClass: "all" },
+      { targetClass: { $exists: false } },
+      { targetClass: "" },
+      { targetClass: null },
+    ];
+
+    if (batchName) {
+      orConditions.push({ targetClass: batchName });
+    }
+
+    const announcements = await Announcement.find({ $or: orConditions })
+      .populate("senderId", "name role")
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.status(200).json({ success: true, data: announcements });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * GET /parent/me/announcements  (Parent context)
+ * Returns announcements relevant to the linked child's batch
+ */
+export const getParentAnnouncements = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const parent = await Parent.findOne({ userId });
+
+    if (!parent || !parent.students.length) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const student = await Student.findById(parent.students[0]);
+    const batchName = student?.academicInfo?.batch || null;
+
+    const query: any = {};
+    if (batchName) {
+      query.$or = [
+        { targetClass: batchName },
+        { targetClass: "all" },
+        { targetClass: { $exists: false } },
+        { targetClass: "" },
+      ];
+    }
+
+    const announcements = await Announcement.find(query)
+      .populate("senderId", "name role")
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.status(200).json({ success: true, data: announcements });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ====================================================================
+// CONTACTS — Get Teachers for Students / Parents
+// ====================================================================
+
+/**
+ * GET /students/my-teachers  (Student context)
+ * Returns teachers assigned to this student's batch
+ */
+export const getStudentTeachers = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const student = await Student.findOne({ userId });
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student profile not found" });
+    }
+
+    const collegeId = student.collegeId;
+    let batchId = student.batchId;
+
+    // Batch fallback by name
+    if (!batchId && student.academicInfo?.batch) {
+      const batch = await Batch.findOne({ name: student.academicInfo.batch, collegeId });
+      if (batch) batchId = batch._id;
+    }
+
+    if (!batchId) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    // Find faculty assigned to this batch (batch lives inside assignedSubjects[])
+    const faculty = await Faculty.find({
+      collegeId,
+      "assignedSubjects.batchId": batchId,
+    }).populate("userId", "name email profilePicture");
+
+    const teachers = faculty
+      .filter((f) => f.userId) // Safety filter
+      .map((f) => ({
+        _id: f._id,
+        userId: f.userId,
+        name: (f.userId as any).name,
+        email: (f.userId as any).email,
+        profilePicture: (f.userId as any).profilePicture,
+        department: f.department,
+        designation: f.designation,
+      }));
+
+    res.status(200).json({ success: true, data: teachers });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * GET /parent/me/teachers  (Parent context)
+ * Returns teachers of the linked child's batch
+ */
+export const getParentTeachers = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const parent = await Parent.findOne({ userId });
+
+    if (!parent || !parent.students.length) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const student = await Student.findById(parent.students[0]);
+    if (!student) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const collegeId = student.collegeId;
+    let batchId = student.batchId;
+
+    if (!batchId && student.academicInfo?.batch) {
+      const batch = await Batch.findOne({ name: student.academicInfo.batch, collegeId });
+      if (batch) batchId = batch._id;
+    }
+
+    if (!batchId) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const faculty = await Faculty.find({
+      collegeId,
+      "assignedSubjects.batchId": batchId,
+    }).populate("userId", "name email profilePicture");
+
+    const teachers = faculty
+      .filter((f) => f.userId)
+      .map((f) => ({
+        _id: f._id,
+        userId: f.userId,
+        name: (f.userId as any).name,
+        email: (f.userId as any).email,
+        profilePicture: (f.userId as any).profilePicture,
+        department: f.department,
+        designation: f.designation,
+      }));
+
+    res.status(200).json({ success: true, data: teachers });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ====================================================================
+// DIRECT MESSAGING
+// ====================================================================
+
+/**
+ * GET /teacher/messages/:studentUserId  (Teacher context)
+ * GET /students/messages/:teacherUserId  (Student context)
+ * GET /parent/me/messages/:teacherUserId  (Parent context)
+ * Returns the conversation between the authenticated user and the other party
+ */
+export const getConversation = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const { otherUserId } = req.params;
+
     const messages = await Message.find({
-      $or: [{ sender: userId }, { receiver: userId }]
+      $or: [
+        { senderId: userId, receiverId: otherUserId },
+        { senderId: otherUserId, receiverId: userId },
+      ],
     })
-    .populate("sender", "name email role")
-    .populate("receiver", "name email role")
-    .sort({ createdAt: -1 });
+      .populate("senderId", "name email role profilePicture")
+      .populate("receiverId", "name email role profilePicture")
+      .sort({ createdAt: 1 });
+
+    // Auto-mark received messages as read
+    await Message.updateMany(
+      { senderId: otherUserId, receiverId: userId, isRead: false },
+      { $set: { isRead: true } }
+    );
 
     res.status(200).json({ success: true, data: messages });
   } catch (error: any) {
@@ -55,33 +268,108 @@ export const getMessages = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * POST /teacher/messages  (Teacher context)
+ * POST /students/messages  (Student context)
+ * Sends a direct message from the authenticated user
+ */
 export const sendMessage = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const { receiverId, content } = req.body;
+
+    if (!receiverId || !content) {
+      return res.status(400).json({ success: false, message: "receiverId and content are required" });
+    }
+
     const message = new Message({
-      ...req.body,
-      sender: (req as any).user?._id
+      senderId: user._id,
+      receiverId,
+      senderRole: user.role,
+      content,
+      collegeId: user.collegeId,
     });
     await message.save();
+
+    // Populate for response
+    await message.populate("senderId", "name email role profilePicture");
+    await message.populate("receiverId", "name email role profilePicture");
+
+    // Emit real-time notification via socket
+    try {
+      const { getIO } = await import("../config/socket.js");
+      const io = getIO();
+      io.to(`user_${receiverId}`).emit("newMessage", {
+        message,
+        from: { _id: user._id, name: user.name, role: user.role },
+      });
+    } catch (socketErr) {
+      // Socket emission is best-effort, don't fail the API call
+      console.log("[SOCKET] Failed to emit newMessage:", socketErr);
+    }
+
     res.status(201).json({ success: true, data: message });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }
 };
 
-export const getConversation = async (req: Request, res: Response) => {
+/**
+ * POST /parent/me/messages  (Parent context)
+ * Sends a message from parent to a teacher
+ */
+export const parentSendMessage = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { receiverId, content } = req.body;
+
+    if (!receiverId || !content) {
+      return res.status(400).json({ success: false, message: "receiverId and content are required" });
+    }
+
+    const message = new Message({
+      senderId: user._id,
+      receiverId,
+      senderRole: "PARENT",
+      content,
+      collegeId: user.collegeId,
+    });
+    await message.save();
+
+    await message.populate("senderId", "name email role profilePicture");
+    await message.populate("receiverId", "name email role profilePicture");
+
+    // Emit real-time notification
+    try {
+      const { getIO } = await import("../config/socket.js");
+      const io = getIO();
+      io.to(`user_${receiverId}`).emit("newMessage", {
+        message,
+        from: { _id: user._id, name: user.name, role: user.role },
+      });
+    } catch (socketErr) {
+      console.log("[SOCKET] Failed to emit newMessage:", socketErr);
+    }
+
+    res.status(201).json({ success: true, data: message });
+  } catch (error: any) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * GET /teacher/messages  (existing — get all messages for teacher)
+ * Returns all conversations grouped by contact
+ */
+export const getMessages = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?._id;
-    const { studentUserId } = req.params;
-
     const messages = await Message.find({
-      $or: [
-        { sender: userId, receiver: studentUserId },
-        { sender: studentUserId, receiver: userId }
-      ]
+      $or: [{ senderId: userId }, { receiverId: userId }],
     })
-    .populate("sender", "name email role")
-    .populate("receiver", "name email role")
-    .sort({ createdAt: 1 });
+      .populate("senderId", "name email role profilePicture")
+      .populate("receiverId", "name email role profilePicture")
+      .sort({ createdAt: -1 });
 
     res.status(200).json({ success: true, data: messages });
   } catch (error: any) {
@@ -89,3 +377,41 @@ export const getConversation = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * GET /students/messages/unread-count  (Student context)
+ * GET /parent/me/messages/unread-count  (Parent context)
+ * Returns the count of unread messages
+ */
+export const getUnreadCount = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const count = await Message.countDocuments({
+      receiverId: userId,
+      isRead: false,
+    });
+    res.status(200).json({ success: true, data: { count } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * PUT /students/messages/:messageId/read  (Student context)
+ * PUT /parent/me/messages/:messageId/read  (Parent context)
+ * Mark a specific message as read
+ */
+export const markAsRead = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const { messageId } = req.params;
+
+    await Message.findOneAndUpdate(
+      { _id: messageId, receiverId: userId },
+      { $set: { isRead: true } }
+    );
+
+    res.status(200).json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

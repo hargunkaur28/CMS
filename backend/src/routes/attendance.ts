@@ -10,6 +10,7 @@ const router = express.Router();
 // Attendance Records
 router.post(
   "/bulk", 
+  protect,
   validate(attendanceValidator.bulkMark), 
   attendanceController.markBulkAttendance
 );

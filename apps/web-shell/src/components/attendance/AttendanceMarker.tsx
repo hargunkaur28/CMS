@@ -142,11 +142,18 @@ export default function AttendanceMarker() {
         subjectId: selectedSubject,
         teacherId: user.id || '60b8d295f13a3c1a488c0b71',
         date: selectedDate,
-        records: students.map(s => ({
-          studentId: s.id,
-          status: s.status,
-          remarks: ''
-        }))
+        records: students.map(s => {
+          let status: 'Present' | 'Absent' | 'Leave' = 'Present';
+          if (s.status === 'absent') status = 'Absent';
+          else if (s.status === 'excused') status = 'Leave';
+          else if (s.status === 'present' || s.status === 'late') status = 'Present';
+          
+          return {
+            studentId: s.id,
+            status,
+            remarks: ''
+          };
+        })
       };
 
       const res = await markBulkAttendance(payload);

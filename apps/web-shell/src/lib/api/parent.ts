@@ -32,9 +32,18 @@ export const fetchMyStudentResults = async () => {
 };
 
 /**
- * Fetch a comprehensive overview of all linked children (Legacy)
+ * Fetch the linked student's timetable (from parent context)
  */
-export const fetchChildrenOverview = async () => {
-  const response = await axios.get(`${API_URL}/children/overview`, { headers: getAuthHeader() });
+export const fetchMyStudentTimetable = async () => {
+  const response = await axios.get(`${API_URL}/me/timetable`, { headers: getAuthHeader() });
   return response.data;
 };
+
+/**
+ * Fetch the linked student's fees and payments (from parent context)
+ */
+export const fetchMyStudentFees = async () => {
+  const response = await axios.get(`${API_URL}/me/fees`, { headers: getAuthHeader() });
+  return response.data;
+};
+

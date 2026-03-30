@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import Timetable from '../models/Timetable.js';
+import Student from '../models/Student.js';
+import Batch from '../models/Batch.js';
 import mongoose from 'mongoose';
 
 /**
@@ -232,6 +234,138 @@ export const getTodaySchedule = async (req: Request, res: Response) => {
     res.status(200).json({
       success: true,
       data: enrichedTimetable
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Get student's full weekly timetable (by batch)
+ * @route   GET /api/student/timetable
+ * @access  Private (Student)
+ */
+export const getStudentTimetable = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const collegeId = (req as any).user?.collegeId;
+
+    if (!userId || !collegeId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const student = await Student.findOne({ userId, collegeId });
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student profile not found' });
+    }
+
+    let batchId = student.batchId;
+
+    // FALLBACK: If batchId is missing, lookup by name from academicInfo
+    if (!batchId && student.academicInfo?.batch) {
+      console.log(`[TIMETABLE FALLBACK] Resolving batch for student ${student._id} via name: ${student.academicInfo.batch}`);
+      const resolvedBatch = await Batch.findOne({ 
+        name: student.academicInfo.batch,
+        collegeId 
+      });
+      if (resolvedBatch) batchId = resolvedBatch._id;
+    }
+
+    if (!batchId) {
+      return res.status(400).json({ success: false, message: 'Student is not assigned to a valid batch' });
+    }
+
+    const timetable = await Timetable.find({ 
+      collegeId, 
+      batchId,
+      isActive: true 
+    })
+
+      .populate('subjectId', 'name code')
+      .populate('teacherId', 'name email')
+      .sort({ period: 1 });
+
+    const results = await Timetable.find({ 
+      collegeId, 
+      batchId: student.batchId,
+      isActive: true 
+    })
+      .populate('subjectId', 'name code')
+      .populate('teacherId', 'name email')
+      .sort({ period: 1 });
+
+    // Group by dayOfWeek
+    const grouped = results.reduce((acc: any, entry: any) => {
+      const day = entry.dayOfWeek;
+      if (!acc[day]) acc[day] = [];
+      acc[day].push(entry);
+      return acc;
+    }, {});
+
+    res.status(200).json({
+      success: true,
+      data: grouped
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * @desc    Get student's timetable for today
+ * @route   GET /api/student/timetable/today
+ * @access  Private (Student)
+ */
+export const getStudentTodaySchedule = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const collegeId = (req as any).user?.collegeId;
+    
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const today = days[new Date().getDay()];
+
+    if (today === 'Sunday') {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    const student = await Student.findOne({ userId, collegeId });
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+    
+    let batchId = student.batchId;
+
+    // FALLBACK: Lookup by name
+    if (!batchId && student.academicInfo?.batch) {
+       const resolvedBatch = await Batch.findOne({ name: student.academicInfo.batch, collegeId });
+       if (resolvedBatch) batchId = resolvedBatch._id;
+    }
+
+    if (!batchId) {
+      return res.status(400).json({ success: false, message: 'Student is not assigned to a valid batch' });
+    }
+
+    const timetable = await Timetable.find({ 
+      collegeId,
+      batchId,
+      dayOfWeek: today,
+      isActive: true
+    })
+
+
+      .populate('subjectId', 'name code')
+      .populate('teacherId', 'name email')
+      .sort({ period: 1 });
+
+    const now = new Date();
+    const currentTimeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    const enriched = timetable.map((entry: any) => ({
+      ...entry.toObject(),
+      isUpcoming: entry.startTime > currentTimeStr
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: enriched
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

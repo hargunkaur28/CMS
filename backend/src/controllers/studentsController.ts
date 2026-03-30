@@ -6,14 +6,32 @@ import User from "../models/User.js";
 import Department from "../models/Department.js";
 import { generateStudentId } from "../utils/studentIdGenerator.js";
 import { parseStudentCSV } from "../utils/csvImporter.js";
+import Batch from "../models/Batch.js";
+import FeeStructure from "../models/FeeStructure.js";
+import Payment from "../models/Payment.js";
 
 export const getStudents = async (req: Request, res: Response) => {
   try {
-    const { course, batch, department, status, search } = req.query;
-    const collegeId = (req as any).user.collegeId;
-    const query: any = { collegeId }; // Only show students for this college
+    const { course, batch, batchId, department, status, search } = req.query;
+    const collegeId = (req as any).user?.collegeId;
+    
+    const query: any = {};
+    if (collegeId) query.collegeId = collegeId;
+
     if (course) query["academicInfo.course"] = course;
     if (batch) query["academicInfo.batch"] = batch;
+    if (batchId) {
+      // Robust lookup: check both new batchId (ObjectId) and legacy academicInfo.batch (string)
+      // If batchId looks like a valid ObjectId, use it; otherwise just use the batch string match
+      if (mongoose.Types.ObjectId.isValid(batchId as string)) {
+        query.$or = [
+          { batchId: batchId },
+          { "academicInfo.batch": { $regex: new RegExp(batchId as string, 'i') } }
+        ];
+      } else {
+        query["academicInfo.batch"] = batchId;
+      }
+    }
     if (department) query["academicInfo.department"] = department;
     if (status) query["academicInfo.status"] = status;
     if (search) {
@@ -362,3 +380,63 @@ export const updateStudentStatus = async (req: Request, res: Response) => {
   }
 };
 
+export const getMyFees = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user._id;
+    const collegeId = (req as any).user.collegeId;
+
+    const student = await Student.findOne({ userId, collegeId });
+    if (!student) return res.status(404).json({ success: false, message: "Student profile not found" });
+
+    let batchId = student.batchId;
+
+    // FALLBACK: Lookup by name
+    if (!batchId && student.academicInfo?.batch) {
+       const resolvedBatch = await Batch.findOne({ name: student.academicInfo.batch, collegeId });
+       if (resolvedBatch) batchId = resolvedBatch._id;
+    }
+
+    if (!batchId) {
+      return res.status(400).json({ success: false, message: "Student is not assigned to a valid batch" });
+    }
+
+    const batch = await Batch.findById(batchId);
+    if (!batch || !batch.courseId) {
+       return res.status(400).json({ success: false, message: "Course mapping missing for batch" });
+    }
+
+    const courseId = batch.courseId;
+
+    console.log(`[DEBUG] getMyFees: studentFound=${!!student}, batchId=${batchId}, courseId=${courseId}`);
+
+    const [structures, payments] = await Promise.all([
+      FeeStructure.find({ courseId }),
+      Payment.find({ studentId: student._id }).populate("feeStructureId").sort({ createdAt: -1 })
+    ]);
+
+    console.log(`[DEBUG] getMyFees: structures=${structures.length}, payments=${payments.length}`);
+
+    const totalPaid = payments.reduce((acc, p) => acc + (p.status === 'Paid' ? p.amountPaid : 0), 0);
+    const totalDues = structures.reduce((acc, s) => {
+       const components = s.components || [];
+       return acc + components.reduce((sum: number, c: any) => sum + (c.amount || 0), 0);
+    }, 0);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        structures,
+        payments,
+        summary: {
+           totalDues,
+           totalPaid,
+           balance: totalDues - totalPaid
+        }
+      }
+    });
+
+  } catch (error: any) {
+    console.error(`[GET_MY_FEES_ERROR] userId=${(req as any).user?._id}:`, error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

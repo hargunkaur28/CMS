@@ -7,12 +7,17 @@ import { cn } from "@/lib/utils";
 
 interface Student {
   _id: string;
-  name: string;
-  rollNumber: string;
+  personalInfo?: {
+    firstName: string;
+    lastName: string;
+    photo?: string;
+  };
+  academicInfo?: {
+    rollNumber: string;
+  };
   batchId?: { name: string };
   section?: string;
   semester?: number;
-  profilePicture?: string;
 }
 
 interface StudentCardProps {
@@ -20,14 +25,17 @@ interface StudentCardProps {
 }
 
 export default function StudentCard({ student }: StudentCardProps) {
+  const fullName = `${student.personalInfo?.firstName || ''} ${student.personalInfo?.lastName || ''}`.trim();
+  const profilePicture = student.personalInfo?.photo;
+
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:shadow-slate-900/5 transition-all group">
       <div className="flex items-start justify-between mb-4">
         <div className="relative">
-          {student.profilePicture ? (
+          {profilePicture ? (
             <img 
-              src={student.profilePicture} 
-              alt={student.name} 
+              src={profilePicture} 
+              alt={fullName} 
               className="w-20 h-20 rounded-2xl object-cover ring-4 ring-slate-50 group-hover:ring-slate-100 transition-all"
             />
           ) : (
@@ -45,10 +53,10 @@ export default function StudentCard({ student }: StudentCardProps) {
       </div>
 
       <div className="space-y-1">
-        <h3 className="text-lg font-bold text-slate-900 group-hover:text-slate-900 transition-colors">{student.name}</h3>
+        <h3 className="text-lg font-bold text-slate-900 group-hover:text-slate-900 transition-colors uppercase truncate">{fullName || "Unknown Student"}</h3>
         <p className="text-xs font-medium text-slate-500 flex items-center gap-1.5 uppercase tracking-tighter">
           <Hash size={12} className="text-slate-300" />
-          {student.rollNumber}
+          {student.academicInfo?.rollNumber || "No Roll #"}
         </p>
       </div>
 

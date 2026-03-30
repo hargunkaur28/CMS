@@ -67,12 +67,36 @@ export default function TeacherDashboard() {
      </div>
   );
 
+  const getCurrentClass = () => {
+    const now = new Date();
+    const currentTime = now.getHours() * 100 + now.getMinutes();
+
+    return todayClasses.find((c: any) => {
+      const [startH, startM] = c.startTime.split(':').map(Number);
+      const [endH, endM] = c.endTime.split(':').map(Number);
+      const start = startH * 100 + startM;
+      const end = endH * 100 + endM;
+      return currentTime >= start && currentTime <= end;
+    });
+  };
+
+  const liveClass = getCurrentClass();
+
   return (
-    <div className="space-y-10">
+    <div className="space-y-10 pb-20">
       {/* Welcome Header */}
-      <div>
-        <h1 className="text-4xl font-black text-slate-900 tracking-tight">Portal Overview</h1>
-        <p className="text-slate-500 mt-2 font-medium">Monitoring academic performance and schedule for Spring Semester 2024.</p>
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase">Portal <span className="text-indigo-600">Overview</span></h1>
+          <p className="text-slate-500 mt-2 font-medium">Monitoring academic performance and schedule for Spring Semester 2024.</p>
+        </div>
+        
+        {liveClass && (
+           <div className="bg-indigo-600 px-6 py-4 rounded-[2rem] flex items-center gap-4 animate-bounce shadow-xl shadow-indigo-600/20">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              <span className="text-white text-[10px] font-black uppercase tracking-widest">Live Session In Progress: Period {liveClass.period}</span>
+           </div>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -150,7 +174,33 @@ export default function TeacherDashboard() {
             </div>
             
             <div className="space-y-4">
-               {todayClasses.length > 0 ? todayClasses.map((item: any) => (
+               {liveClass && (
+                  <div className="bg-indigo-600 p-8 rounded-[2.5rem] border border-indigo-500 flex flex-col md:flex-row items-center justify-between shadow-2xl shadow-indigo-600/30 group">
+                     <div className="flex items-center gap-6">
+                        <div className="w-16 h-16 bg-white text-indigo-600 rounded-2xl flex flex-col items-center justify-center font-black">
+                           <span className="text-[10px] uppercase leading-none opacity-60">LIVE</span>
+                           <span className="text-xl leading-tight">{liveClass.period}</span>
+                        </div>
+                        <div>
+                           <p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.2em] mb-1">Ongoing Session</p>
+                           <h4 className="font-black text-white text-2xl uppercase tracking-tight">{liveClass.subjectId?.name}</h4>
+                           <div className="flex items-center gap-4 mt-2 text-xs font-bold text-indigo-100 uppercase tracking-widest">
+                              <span>Room {liveClass.room}</span>
+                              <span>•</span>
+                              <span>Batch {liveClass.batchId?.name}</span>
+                           </div>
+                        </div>
+                     </div>
+                     <Link 
+                        href={`/teacher/attendance/mark?subjectId=${liveClass.subjectId?._id}&batchId=${liveClass.batchId?._id}`}
+                        className="mt-6 md:mt-0 px-8 py-4 bg-white text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl group-hover:bg-slate-50 transition-all flex items-center gap-2"
+                     >
+                        Mark Presence <ChevronRight size={16} />
+                     </Link>
+                  </div>
+               )}
+
+               {todayClasses.filter((c: any) => c._id !== liveClass?._id).length > 0 ? todayClasses.filter((c: any) => c._id !== liveClass?._id).map((item: any) => (
                   <div key={item._id} className="bg-white p-5 rounded-3xl border border-slate-100 flex items-center justify-between hover:border-slate-300 transition-all shadow-sm">
                      <div className="flex items-center gap-4">
                         <div className="w-14 h-14 bg-slate-900 text-white rounded-2xl flex flex-col items-center justify-center font-bold">

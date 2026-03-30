@@ -3,6 +3,10 @@ import Parent from "../models/Parent.js";
 import Student from "../models/Student.js";
 import Attendance from "../models/Attendance.js";
 import Result from "../models/Result.js";
+import Timetable from "../models/Timetable.js";
+import FeeStructure from "../models/FeeStructure.js";
+import Payment from "../models/Payment.js";
+import Batch from "../models/Batch.js";
 
 /**
  * Get the parent profile and linked student(s)
@@ -133,3 +137,127 @@ export const getMyStudentResults = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * GET /api/parent/me/timetable
+ */
+export const getMyStudentTimetable = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const parent = await Parent.findOne({ userId: user._id });
+    if (!parent || !parent.students.length) throw new Error("No linked students");
+
+    const studentId = parent.students[0];
+    const student = await Student.findById(studentId);
+    if (!student) throw new Error("Student profile not found");
+
+    let batchId = student.batchId;
+    const collegeId = student.collegeId;
+
+    // FALLBACK: Lookup by name
+    if (!batchId && student.academicInfo?.batch) {
+       console.log(`[PARENT TIMETABLE FALLBACK] Resolving batch for student ${studentId} via name: ${student.academicInfo.batch}`);
+       const resolvedBatch = await Batch.findOne({ name: student.academicInfo.batch, collegeId });
+       if (resolvedBatch) batchId = resolvedBatch._id;
+    }
+
+    if (!batchId) {
+      return res.status(400).json({ success: false, message: "Student is not assigned to a valid batch" });
+    }
+
+    console.log(`[DEBUG] Parent Timetable Fetch: studentId=${studentId}, batchId=${batchId}`);
+
+    const timetable = await Timetable.find({ collegeId, batchId, isActive: true })
+      .populate("subjectId", "name code")
+      .populate("teacherId", "name email")
+      .sort({ period: 1 });
+
+    const grouped = timetable.reduce((acc: any, entry: any) => {
+      const day = entry.dayOfWeek;
+      if (!acc[day]) acc[day] = [];
+      acc[day].push(entry);
+      return acc;
+    }, {});
+
+    res.status(200).json({ success: true, data: grouped });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * GET /api/parent/me/fees
+ */
+export const getMyStudentFees = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const parent = await Parent.findOne({ userId: user._id });
+    if (!parent || !parent.students.length) throw new Error("No linked students");
+
+    const studentId = parent.students[0];
+    const student = await Student.findById(studentId);
+    if (!student) throw new Error("Student profile not found");
+
+    let batchId = student.batchId;
+    const collegeId = student.collegeId;
+
+    // FALLBACK: Lookup by name
+    if (!batchId && student.academicInfo?.batch) {
+       console.log(`[PARENT FEE FALLBACK] Resolving batch for student ${studentId} via name: ${student.academicInfo.batch}`);
+       const resolvedBatch = await Batch.findOne({ name: student.academicInfo.batch, collegeId });
+       if (resolvedBatch) batchId = resolvedBatch._id;
+    }
+
+    if (!batchId) {
+      return res.status(400).json({ success: false, message: "Student is not assigned to a valid batch" });
+    }
+
+    // Correct Flow: student -> batchId -> courseId -> FeeStructure
+    const batch = await Batch.findById(batchId);
+    if (!batch || !batch.courseId) {
+      console.error(`[ERROR] Invalid batch-course mapping for student ${studentId}. batchId: ${batchId}`);
+      return res.status(400).json({ success: false, message: "Invalid batch-course mapping" });
+    }
+
+    const courseId = batch.courseId;
+
+    console.log(`[DEBUG] Parent Fee Fetch: student=${studentId}, batch=${batchId}, course=${courseId}`);
+
+    
+    // 1. Get Fee Structures for the student's course
+    const structures = await FeeStructure.find({ 
+      courseId
+    });
+
+
+    // 2. Get Payment History
+    const payments = await Payment.find({ studentId })
+      .populate("feeStructureId")
+      .sort({ createdAt: -1 });
+
+    const totalPaid = payments.reduce((acc, p) => acc + (p.status === 'Paid' ? p.amountPaid : 0), 0);
+    
+    // Calculate total dues from structures
+    const totalDues = structures.reduce((acc, s) => {
+      const structAmount = s.components.reduce((sum, comp) => sum + comp.amount, 0);
+      return acc + structAmount;
+    }, 0);
+
+    res.status(200).json({ 
+      success: true, 
+      data: { 
+        structures, 
+        payments,
+        summary: {
+          totalDues,
+          totalPaid,
+          balance: totalDues - totalPaid
+        }
+      } 
+    });
+
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+

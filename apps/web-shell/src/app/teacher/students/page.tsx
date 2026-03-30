@@ -29,10 +29,13 @@ export default function StudentsPage() {
     fetchData();
   }, []);
 
-  const filteredStudents = students.filter((s: any) => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.rollNumber.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredStudents = students.filter((s: any) => {
+    const fullName = `${s.personalInfo?.firstName || ''} ${s.personalInfo?.lastName || ''}`.trim();
+    const rollNumber = s.academicInfo?.rollNumber || "";
+    
+    return fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           rollNumber.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   if (loading) return <div className="animate-pulse space-y-8">
      <div className="h-10 w-64 bg-slate-200 rounded-lg"></div>
@@ -124,29 +127,32 @@ export default function StudentsPage() {
                  </tr>
               </thead>
               <tbody>
-                 {filteredStudents.map((s: any) => (
-                    <tr key={s._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
-                       <td className="p-4">
-                          <div className="flex items-center gap-3">
-                             <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xs">
-                                {s.name[0]}
-                             </div>
-                             <span className="text-sm font-bold text-slate-900">{s.name}</span>
-                          </div>
-                       </td>
-                       <td className="p-4 text-xs font-medium text-slate-600 uppercase tracking-tighter">{s.rollNumber}</td>
-                       <td className="p-4 text-xs font-bold text-slate-700">{s.batchId?.name || "N/A"}</td>
-                       <td className="p-4 text-xs font-bold text-slate-700">{s.section || "A"}</td>
-                       <td className="p-4 text-right pr-8">
-                          <Link 
-                            href={`/teacher/students/${s._id}`}
-                            className="text-xs font-black text-slate-900 uppercase tracking-widest hover:underline"
-                          >
-                             Profile
-                          </Link>
-                       </td>
-                    </tr>
-                 ))}
+                  {filteredStudents.map((s: any) => {
+                     const fullName = `${s.personalInfo?.firstName || ''} ${s.personalInfo?.lastName || ''}`.trim();
+                     return (
+                        <tr key={s._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
+                           <td className="p-4">
+                              <div className="flex items-center gap-3">
+                                 <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold text-xs uppercase">
+                                    {fullName[0] || '?'}
+                                 </div>
+                                 <span className="text-sm font-bold text-slate-900">{fullName}</span>
+                              </div>
+                           </td>
+                           <td className="p-4 text-xs font-medium text-slate-600 uppercase tracking-tighter">{s.academicInfo?.rollNumber || "N/A"}</td>
+                           <td className="p-4 text-xs font-bold text-slate-700">{s.batchId?.name || "N/A"}</td>
+                           <td className="p-4 text-xs font-bold text-slate-700">{s.section || "A"}</td>
+                           <td className="p-4 text-right pr-8">
+                              <Link 
+                                href={`/teacher/students/${s._id}`}
+                                className="text-xs font-black text-slate-900 uppercase tracking-widest hover:underline"
+                              >
+                                 Profile
+                              </Link>
+                           </td>
+                        </tr>
+                     );
+                  })}
               </tbody>
            </table>
         </div>

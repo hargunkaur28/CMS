@@ -16,6 +16,11 @@ export interface IFaculty extends Document {
     email?: string;
     photo?: string;
   };
+  department?: string;
+  designation?: string;
+  qualification?: string;
+  experience?: number;
+  joiningDate?: Date;
   status: 'Active' | 'On-Leave' | 'Resigned';
   createdAt: Date;
   updatedAt: Date;

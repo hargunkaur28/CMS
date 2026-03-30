@@ -50,7 +50,8 @@ router.get('/students/:studentId', teacherStudentController.getStudentProfile);
 // --- Communication ---
 router.post('/announcements', communicationController.createAnnouncement);
 router.get('/announcements', communicationController.getAnnouncements);
+router.get('/messages', communicationController.getMessages);
 router.post('/messages', communicationController.sendMessage);
-router.get('/messages/:studentUserId', communicationController.getConversation);
+router.get('/messages/:otherUserId', communicationController.getConversation);
 
 export default router;

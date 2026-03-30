@@ -5,6 +5,8 @@ import Application from "../models/Application.js";
 import Seat from "../models/Seat.js";
 import Department from "../models/Department.js";
 import Student from "../models/Student.js";
+import Batch from "../models/Batch.js";
+import User from "../models/User.js";
 
 // --- Enquiry Controllers ---
 
@@ -141,8 +143,20 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
       const randomDigits = Math.floor(1000 + Math.random() * 9000);
       const studentId = `NGCMS-${new Date().getFullYear()}-${randomDigits}`;
 
+      // Resolve actual batchId from string name
+      const batchDoc = await Batch.findOne({ 
+        name: application.assignedBatch,
+        courseId: application.assignedCourse // Note: If assignedCourse is a string, this might need a course lookup too.
+      });
+      
+      if (!batchDoc) {
+        console.warn(`[ENROLLMENT] Could not find Batch document for name "${application.assignedBatch}". Student batchId will be null.`);
+      }
+
       const newStudent = new Student({
         uniqueStudentId: studentId,
+        batchId: batchDoc?._id, // LINK RESOLVED ID HERE
+
         personalInfo: {
           firstName: application.studentDetails.firstName,
           lastName: application.studentDetails.lastName,

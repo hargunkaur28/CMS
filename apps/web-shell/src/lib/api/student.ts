@@ -32,10 +32,34 @@ export const fetchMyResults = async () => {
 };
 
 /**
- * Fetch the logged-in student's timetable
- * (Note: Currently uses general timetable, but can be filtered in the future)
+ * Fetch the logged-in student's full weekly timetable
  */
 export const fetchMyTimetable = async () => {
-  const response = await axios.get(`${API_URL}/teacher/timetable`, { headers: getAuthHeader() });
+  const response = await axios.get(`${API_URL}/students/timetable`, { headers: getAuthHeader() });
   return response.data;
 };
+
+/**
+ * Fetch the logged-in student's schedule for today
+ */
+export const fetchMyTodaySchedule = async () => {
+  const response = await axios.get(`${API_URL}/students/timetable/today`, { headers: getAuthHeader() });
+  return response.data;
+};
+
+/**
+ * Fetch the logged-in student's financial portfolio
+ */
+export const fetchMyFees = async () => {
+  const response = await axios.get(`${API_URL}/students/fees`, { headers: getAuthHeader() });
+  return response.data;
+};
+
+/**
+ * Fetch the logged-in student's academic materials (PDFs, Notes)
+ */
+export const fetchMyMaterials = async () => {
+  const response = await axios.get(`${API_URL}/students/materials`, { headers: getAuthHeader() });
+  return response.data;
+};
+

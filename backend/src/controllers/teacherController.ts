@@ -11,6 +11,8 @@ import Attendance from '../models/Attendance.js';
 export const getAssignedSubjects = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
+    const { batchId } = req.query;
+
     const faculty = await Faculty.findOne({ userId: user._id, collegeId: user.collegeId })
       .populate('assignedSubjects.subjectId', 'name code creditHours');
 
@@ -18,9 +20,16 @@ export const getAssignedSubjects = async (req: Request, res: Response) => {
       return res.status(200).json({ success: true, data: [] });
     }
 
+    // Filter by batchId if provided
+    let assignments = faculty.assignedSubjects;
+    if (batchId) {
+       const batchIdStr = batchId.toString();
+       assignments = assignments.filter((a: any) => a.batchId?.toString() === batchIdStr);
+    }
+
     // Deduplicate subjects
     const subjectMap = new Map<string, any>();
-    faculty.assignedSubjects.forEach((a: any) => {
+    assignments.forEach((a: any) => {
       const s = a.subjectId;
       if (s && !subjectMap.has(s._id.toString())) {
         subjectMap.set(s._id.toString(), s);
@@ -42,10 +51,6 @@ export const getAssignedBatches = async (req: Request, res: Response) => {
     const user = (req as any).user;
     const { subjectId } = req.query;
 
-    if (!subjectId) {
-      return res.status(400).json({ success: false, message: 'subjectId is required' });
-    }
-
     const faculty = await Faculty.findOne({ userId: user._id, collegeId: user.collegeId })
       .populate('assignedSubjects.batchId', 'name year sections');
 
@@ -53,12 +58,20 @@ export const getAssignedBatches = async (req: Request, res: Response) => {
       return res.status(200).json({ success: true, data: [] });
     }
 
-    // Filter by subjectId
-    const subjectIdStr = subjectId.toString();
-    const batches = faculty.assignedSubjects
-      .filter((a: any) => a.subjectId.toString() === subjectIdStr)
-      .map((a: any) => a.batchId)
-      .filter(Boolean);
+    // Filter by subjectId if provided
+    let batches = [];
+    if (subjectId) {
+      const subjectIdStr = subjectId.toString();
+      batches = faculty.assignedSubjects
+        .filter((a: any) => a.subjectId.toString() === subjectIdStr)
+        .map((a: any) => a.batchId)
+        .filter(Boolean);
+    } else {
+      // Get all unique batches
+      batches = faculty.assignedSubjects.map((a: any) => a.batchId).filter(Boolean);
+    }
+
+    // Deduplicate batches
 
     // Deduplicate batches
     const batchMap = new Map<string, any>();

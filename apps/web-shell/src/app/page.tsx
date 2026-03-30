@@ -24,8 +24,8 @@ import {
   Award,
   ClipboardCheck
 } from "lucide-react";
-import { fetchMyProfile, fetchMyAttendance, fetchMyResults } from "@/lib/api/student";
-import { fetchMyStudentProfile, fetchMyStudentAttendance, fetchMyStudentResults, fetchChildrenOverview } from "@/lib/api/parent";
+import { fetchMyProfile, fetchMyAttendance, fetchMyResults, fetchMyTodaySchedule } from "@/lib/api/student";
+import { fetchMyStudentProfile, fetchMyStudentAttendance, fetchMyStudentResults, fetchMyStudentTimetable, fetchMyStudentFees } from "@/lib/api/parent";
 import { useSocket } from "@/components/providers/SocketProvider";
 import { fetchTodayTimetable as fetchTeacherTimetable, fetchTeacherDashboardStats } from "@/lib/api/teacher";
 import { cn } from "@/lib/utils";
@@ -175,15 +175,19 @@ function ParentDashboard() {
   const [parentData, setParentData] = React.useState<any>(null);
   const [children, setChildren] = React.useState<any[]>([]);
   const [selectedChildIndex, setSelectedChildIndex] = React.useState(0);
+  const [childSchedule, setChildSchedule] = React.useState<any[]>([]);
+  const [fees, setFees] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     const loadData = async () => {
       try {
-        const [profileRes, attendanceRes, resultsRes] = await Promise.all([
+        const [profileRes, attendanceRes, resultsRes, timetableRes, feesRes] = await Promise.all([
           fetchMyStudentProfile(),
           fetchMyStudentAttendance(),
-          fetchMyStudentResults()
+          fetchMyStudentResults(),
+          fetchMyStudentTimetable(),
+          fetchMyStudentFees()
         ]);
         if (profileRes.success) setParentData(profileRes.data);
         if (profileRes.success) {
@@ -193,7 +197,7 @@ function ParentDashboard() {
             _id: student._id,
             batchId: student.academicInfo?.batchId || student.batchId 
           }]));
-
+          
           setChildren([{ 
             student: student, 
             attendance: attendanceRes.data.records, 
@@ -204,6 +208,14 @@ function ParentDashboard() {
             }
           }]);
         }
+        if (timetableRes.success) {
+           // Get today's slots from the grouped weekly timetable
+           const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+           const today = days[new Date().getDay()];
+           setChildSchedule(timetableRes.data[today] || []);
+        }
+        if (feesRes.success) setFees(feesRes.data);
+
       } catch (err) {
         console.error("Failed to load parent dashboard data", err);
       } finally {
@@ -298,7 +310,17 @@ function ParentDashboard() {
               icon={<GradIcon size={20} />} 
               color="bg-amber-50 text-amber-600 border border-amber-100" 
             />
+            <KPICard 
+              title="Financial Status" 
+              value={`₹${fees?.summary?.balance || 0}`} 
+              trend={fees?.summary?.balance <= 0 ? "All Clear" : "Pending"} 
+              trendUp={fees?.summary?.balance <= 0} 
+              subtitle="Pending Dues" 
+              icon={<CreditCard size={20} />} 
+              color={fees?.summary?.balance <= 0 ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-rose-50 text-rose-600 border border-rose-100"} 
+            />
           </div>
+
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl">
@@ -525,15 +547,17 @@ function StudentDashboard() {
   const [profile, setProfile] = React.useState<any>(null);
   const [attendanceData, setAttendanceData] = React.useState<any>(null);
   const [resultsData, setResultsData] = React.useState<any>(null);
+  const [schedule, setSchedule] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     const loadData = async () => {
       try {
-        const [profileRes, attendanceRes, resultsRes] = await Promise.all([
+        const [profileRes, attendanceRes, resultsRes, scheduleRes] = await Promise.all([
           fetchMyProfile(),
           fetchMyAttendance(),
-          fetchMyResults()
+          fetchMyResults(),
+          fetchMyTodaySchedule()
         ]);
         if (profileRes.success) {
           setProfile(profileRes.data);
@@ -545,6 +569,8 @@ function StudentDashboard() {
         }
         if (attendanceRes.success) setAttendanceData(attendanceRes.data);
         if (resultsRes.success) setResultsData(resultsRes.data);
+        if (scheduleRes.success) setSchedule(scheduleRes.data);
+
       } catch (err) {
         console.error("Failed to load student dashboard data", err);
       } finally {
@@ -691,16 +717,37 @@ function StudentDashboard() {
         </Card>
 
         <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl">
-          <h2 className="text-xl font-bold text-slate-900 mb-6 font-display">Academic Calendar</h2>
-          <div className="space-y-6">
-            <EventRow month="APR" day="12" title="Mid-term Exams" sub="Discrete Mathematics" color="bg-rose-50 text-rose-600" />
-            <EventRow month="APR" day="15" title="Project Demo" sub="DBMS Laboratory" color="bg-amber-50 text-amber-600" />
-            <EventRow month="APR" day="22" title="Guest Lecture" sub="AI in Enterprise" color="bg-indigo-50 text-indigo-600" />
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-slate-900 font-display">Today's Schedule</h2>
+            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <Calendar size={16} />
+            </div>
           </div>
-          <button className="w-full mt-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">
-            View Full Schedule
-          </button>
+          <div className="space-y-6">
+            {schedule.length > 0 ? schedule.map((slot, i) => (
+              <EventRow 
+                key={i} 
+                month="TOD" 
+                day={slot.startTime} 
+                title={slot.subjectId?.name || "Class"} 
+                sub={`${slot.room || 'TBD'} | Period ${slot.period}`} 
+                color={slot.isUpcoming ? "bg-indigo-50 text-indigo-600" : "bg-emerald-50 text-emerald-600"} 
+              />
+            )) : (
+              <div className="py-12 text-center opacity-40">
+                <Clock size={32} className="mx-auto mb-4 text-slate-300" />
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No Sessions Logged Today</p>
+              </div>
+            )}
+          </div>
+          <Link 
+            href="/timetable" 
+            className="w-full mt-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center"
+          >
+            View Full Timetable
+          </Link>
         </Card>
+
       </div>
     </div>
   );

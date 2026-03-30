@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node dist/server.js",
     "build": "tsc",
-    "dev": "tsc && node dist/server.js",
-    "dev:watch": "nodemon --watch src --ext ts --exec \"tsc && node dist/server.js\"",
+    "dev": "node --max-old-space-size=4096 node_modules/typescript/bin/tsc && node dist/server.js",
+    "dev:watch": "nodemon --watch src --ext ts --exec \"node --max-old-space-size=4096 node_modules/typescript/bin/tsc && node dist/server.js\"",
     "seed": "tsc && node dist/config/seed.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

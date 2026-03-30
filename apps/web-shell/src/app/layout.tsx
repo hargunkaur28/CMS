@@ -24,7 +24,9 @@ import {
   Menu,
   ShieldCheck,
   GraduationCap,
-  ClipboardCheck
+  ClipboardCheck,
+  Upload,
+  MessageSquare
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
@@ -81,6 +83,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   const isAdminRoute = pathname.startsWith("/admin");
+  const isPortalRoute = isAdminRoute;
 
   return (
     <html lang="en">
@@ -91,8 +94,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         ) : isLoginPage ? (
           children
-        ) : isAdminRoute ? (
-          /* Admin Portal handles its own sidebar and layout */
+        ) : isPortalRoute ? (
+          /* Specialized Portals (Admin/Teacher) handle their own sidebars */
           <div className="w-full h-full">
             {children}
           </div>
@@ -121,8 +124,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <NavItem 
                   icon={<Users size={18} />} 
                   label="Students" 
-                  href={['SUPER_ADMIN', 'COLLEGE_ADMIN'].includes(user?.role) ? "/admin/students" : "/students"} 
-                  active={pathname.startsWith("/students") || pathname.startsWith("/admin/students")} 
+                  href={['SUPER_ADMIN', 'COLLEGE_ADMIN'].includes(user?.role) ? "/admin/students" : user?.role === 'TEACHER' ? "/teacher/students" : "/students"} 
+                  active={pathname.startsWith("/students") || pathname.startsWith("/admin/students") || pathname.includes("/teacher/students")} 
                   roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER']}
                   currentUserRole={user?.role}
                 />
@@ -135,8 +138,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <NavItem 
                   icon={<BookOpen size={18} />} 
                   label="Subjects & Materials" 
-                  href={['SUPER_ADMIN', 'COLLEGE_ADMIN'].includes(user?.role) ? "/admin/academics" : "/academics"} 
-                  active={pathname.startsWith("/academics") || pathname.startsWith("/admin/academics")} 
+                  href={user?.role === 'TEACHER' ? "/teacher/uploads" : ['SUPER_ADMIN', 'COLLEGE_ADMIN'].includes(user?.role) ? "/admin/academics" : "/academics/materials"} 
+                  active={pathname.startsWith("/academics") || pathname.startsWith("/admin/academics") || pathname === "/teacher/uploads"} 
                 />
                 
                 <NavItem 
@@ -166,11 +169,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   label="Exams & Results" 
                   href={
                     user?.role === 'STUDENT' ? '/exams/results' : 
+                    user?.role === 'TEACHER' ? '/teacher/marks' :
                     ['COLLEGE_ADMIN', 'SUPER_ADMIN'].includes(user?.role) ? '/admin/exams' : 
                     '/exams'
                   } 
-                  active={pathname.includes("/exams")} 
+                  active={pathname.includes("/exams") || pathname.includes("/marks")} 
                 />
+                
+                {user?.role === 'TEACHER' && (
+                  <NavItem 
+                    icon={<MessageSquare size={18} />} 
+                    label="Communication" 
+                    href="/teacher/communication" 
+                    active={pathname.includes("/communication")} 
+                  />
+                )}
+                
+                {(user?.role === 'STUDENT' || user?.role === 'PARENT') && (
+                  <NavItem 
+                    icon={<MessageSquare size={18} />} 
+                    label="Communication" 
+                    href="/communication" 
+                    active={pathname.includes("/communication")} 
+                  />
+                )}
                 
                 {/* Operations Section */}
                 <div className="pt-4 pb-2 px-3">
@@ -236,10 +258,31 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-slate-50">
-              <main className="flex-1 overflow-y-auto p-8">
-                {children}
-              </main>
+            <div className="flex-1 flex flex-col h-full overflow-hidden">
+               {/* Unified Topbar */}
+               <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+                  <div className="flex items-center gap-4">
+                     <h2 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">
+                        {pathname === "/" ? "Dashboard" : pathname.split('/').slice(-1)[0].replace('-', ' ')}
+                     </h2>
+                  </div>
+                  <div className="flex items-center gap-6">
+                     <div className="hidden md:flex flex-col items-end">
+                        <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{new Date().toLocaleDateString('en-US', { weekday: 'long' })}</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                     </div>
+                     <div className="h-8 w-px bg-slate-100 mx-2" />
+                     <button className="relative p-2 text-slate-400 hover:text-slate-900 transition-colors">
+                        <Bell size={20} />
+                        <span className="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full border-2 border-white" />
+                     </button>
+                  </div>
+               </header>
+
+               {/* Viewport Content */}
+               <main className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/50">
+                  {children}
+               </main>
             </div>
           </>
         )}

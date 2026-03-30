@@ -1,0 +1,12 @@
+﻿D:\cms_new\apps\web-shell\src\app\admin\academics\page.tsx
+D:\cms_new\apps\web-shell\src\app\admin\admissions\page.tsx
+D:\cms_new\apps\web-shell\src\app\admin\assignments\page.tsx
+D:\cms_new\apps\web-shell\src\app\admin\attendance\page.tsx
+D:\cms_new\apps\web-shell\src\app\admin\communication\page.tsx
+D:\cms_new\apps\web-shell\src\app\admin\exams\page.tsx
+D:\cms_new\apps\web-shell\src\app\admin\faculty\page.tsx
+D:\cms_new\apps\web-shell\src\app\admin\fees\page.tsx
+D:\cms_new\apps\web-shell\src\app\admin\naac\page.tsx
+D:\cms_new\apps\web-shell\src\app\admin\students\page.tsx
+D:\cms_new\apps\web-shell\src\app\admin\timetable\page.tsx
+D:\cms_new\apps\web-shell\src\app\admin\page.tsx

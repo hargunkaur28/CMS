@@ -38,48 +38,64 @@ export const markAttendance = async (req: Request, res: Response) => {
  */
 export const markBulkAttendance = async (req: Request, res: Response) => {
   try {
-    const teacherId = (req as any).user?._id?.toString();
+    const user = (req as any).user;
     const { batchId, subjectId, date, records } = req.body;
 
-    if (!teacherId || (req as any).user?.role !== "TEACHER") {
+    if (!user?._id || user.role !== "TEACHER") {
       return res.status(403).json({ success: false, message: 'Only teachers can mark attendance.' });
     }
+    const teacherId = user._id;
 
     // 1. Authorization: verify teacher is assigned to this batch+subject
-    const faculty = await Faculty.findOne({ userId: teacherId });
+    // Match the query pattern from teacherController.ts
+    const faculty = await Faculty.findOne({ userId: user._id, collegeId: user.collegeId });
     
     if (!faculty || !faculty.assignedSubjects?.length) {
-      console.warn(`[ATTENDANCE][DENY] Faculty profile not found or empty for User: ${teacherId}`);
+      console.warn(`[ATTENDANCE][DENY] Faculty profile not found or empty for User: ${user._id}`);
       return res.status(403).json({ success: false, message: 'No teaching assignments found. Contact admin.' });
     }
 
-    // 2. Tenant Isolation: Ensure same college
-    if (faculty.collegeId?.toString() !== (req as any).user?.collegeId?.toString()) {
-       console.error(`[ATTENDANCE][DENY] Cross-college access attempt by ${teacherId}`);
-       return res.status(403).json({ success: false, message: 'Cross-college access denied.' });
-    }
-
+    // 2. Tenant Isolation: Optimized check
+    const userCollegeId = (req as any).user?.collegeId?.toString();
+    const facultyCollegeId = faculty.collegeId?.toString();
+    
     // 3. Strict Assignment Check (ID Normalization)
-    const normalizedSubjectId = subjectId?.toString();
-    const normalizedBatchId = batchId?.toString();
+    const normalizedSubjectId = subjectId?.toString().trim();
+    const normalizedBatchId = batchId?.toString().trim();
 
-    const isAuthorized = faculty.assignedSubjects.some((a: any) => 
-      a.subjectId?.toString() === normalizedSubjectId && 
-      a.batchId?.toString() === normalizedBatchId
-    );
+    console.log(`[ATTENDANCE][DEBUG] Attempting mark for: Batch ${normalizedBatchId}, Subject ${normalizedSubjectId}`);
+
+    const isAuthorized = faculty.assignedSubjects.some((a: any) => {
+      // Robust extraction of hex string from potential ObjectId or Populated object
+      const sId = (a.subjectId?._id || a.subjectId)?.toString().trim();
+      const bId = (a.batchId?._id || a.batchId)?.toString().trim();
+      
+      return sId === normalizedSubjectId && bId === normalizedBatchId;
+    });
 
     if (!isAuthorized) {
-      console.warn("[ATTENDANCE][DENY] Unauthorized mapping attempt:", {
-        teacherId, subjectId: normalizedSubjectId, batchId: normalizedBatchId,
-        assigned: faculty.assignedSubjects.map((a: any) => ({ s: a.subjectId?.toString(), b: a.batchId?.toString() }))
+      const available = faculty.assignedSubjects.map((a: any) => ({
+          s: (a.subjectId?._id || a.subjectId)?.toString().trim(),
+          b: (a.batchId?._id || a.batchId)?.toString().trim()
+      }));
+
+      console.warn("[ATTENDANCE][DENY] Authorization mismatch:", {
+        teacherId: user._id, 
+        provided: { s: normalizedSubjectId, b: normalizedBatchId },
+        available: available
       });
+
       return res.status(403).json({ 
         success: false, 
-        message: 'Forbidden: You are not assigned to this subject/batch combination.' 
+        message: 'Forbidden: You are not assigned to this subject/batch combination.',
+        debug: { provided: { s: normalizedSubjectId, b: normalizedBatchId }, available }
       });
     }
 
     const sessionDate = new Date(date);
+    if (isNaN(sessionDate.getTime())) {
+      return res.status(400).json({ success: false, message: 'Invalid date provided.' });
+    }
     sessionDate.setHours(0, 0, 0, 0);
 
     const attendance = await Attendance.findOneAndUpdate(

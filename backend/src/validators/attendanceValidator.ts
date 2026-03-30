@@ -11,7 +11,7 @@ export const bulkMark = z.object({
     records: z.array(
       z.object({
         studentId: z.string(),
-        status: z.enum(["present", "absent", "late", "excused"]),
+        status: z.enum(["Present", "Absent", "Leave"]),
         remarks: z.string().optional(),
       })
     ),
