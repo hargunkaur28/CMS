@@ -19,12 +19,23 @@ interface AttendanceRecord {
 
 interface AttendanceMarkerProps {
   students: Student[];
+  initialRecords?: AttendanceRecord[];
   onSubmit: (records: AttendanceRecord[]) => void;
   isSubmitting?: boolean;
 }
 
-export default function AttendanceMarker({ students, onSubmit, isSubmitting }: AttendanceMarkerProps) {
-  const [records, setRecords] = useState<Record<string, { status: 'Present' | 'Absent' | 'Leave'; note: string }>>({});
+export default function AttendanceMarker({ students, initialRecords, onSubmit, isSubmitting }: AttendanceMarkerProps) {
+  const [records, setRecords] = React.useState<Record<string, { status: 'Present' | 'Absent' | 'Leave'; note: string }>>({});
+  
+  React.useEffect(() => {
+    if (initialRecords && initialRecords.length > 0) {
+      const initial: Record<string, { status: 'Present' | 'Absent' | 'Leave'; note: string }> = {};
+      initialRecords.forEach(r => {
+        initial[r.studentId] = { status: r.status, note: r.note || "" };
+      });
+      setRecords(initial);
+    }
+  }, [initialRecords]);
   const [showWarningModal, setShowWarningModal] = useState(false);
 
   const toggleStatus = (studentId: string, status: 'Present' | 'Absent' | 'Leave') => {

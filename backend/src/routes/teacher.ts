@@ -28,6 +28,7 @@ router.get('/timetable/today', timetableController.getTodaySchedule);
 
 // --- Attendance ---
 router.post('/attendance/mark', attendanceController.markBulkAttendance);
+router.get('/attendance', attendanceController.getAttendance);
 router.get('/attendance/report/monthly', attendanceController.getMonthlyReport);
 router.get('/attendance/shortage', attendanceController.getShortageAlerts);
 router.get('/attendance/:classId', attendanceController.getClassAttendance);

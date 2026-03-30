@@ -102,21 +102,39 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
     }
     sessionDate.setHours(0, 0, 0, 0);
 
-    // 24-hour edit window check
+    // 24-hour edit window check & change tracking
     const existingAttendance = await Attendance.findOne({ 
        classId: batchId, subjectId, date: sessionDate, lecture 
     });
+
+    let updateQuery: any = { teacherId, records };
 
     if (existingAttendance) {
        const twentyFourHours = 24 * 60 * 60 * 1000;
        if (Date.now() - new Date(existingAttendance.createdAt).getTime() > twentyFourHours) {
           return res.status(403).json({ success: false, message: 'Editing is disabled. The 24-hour modification window for this lecture has expired.' });
        }
+
+       // TRACK RECTIFICATION
+       // Check if records actually changed
+       const oldRecordsStr = JSON.stringify(existingAttendance.records.map((r: any) => ({ studentId: r.studentId.toString(), status: r.status })));
+       const newRecordsStr = JSON.stringify(records.map((r: any) => ({ studentId: r.studentId.toString(), status: r.status })));
+
+       if (oldRecordsStr !== newRecordsStr) {
+         updateQuery.isRectified = true;
+         updateQuery.$push = {
+           rectificationLogs: {
+             modifiedBy: teacherId,
+             modifiedAt: new Date(),
+             previousRecords: existingAttendance.records
+           }
+         };
+       }
     }
 
     const attendance = await Attendance.findOneAndUpdate(
       { classId: batchId, subjectId, date: sessionDate, lecture },
-      { teacherId, records },
+      updateQuery,
       { upsert: true, new: true }
     );
 

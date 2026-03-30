@@ -15,7 +15,6 @@ function AttendancePageContent() {
   const initialLecture = searchParams.get('lecture');
 
   const [sessionParams, setSessionParams] = useState<any>(null); // { batchId, subjectId, lecture, date, batch, subject }
-  
   const [students, setStudents] = useState<any[]>([]);
   const [shortages, setShortages] = useState<any[]>([]);
   
@@ -23,6 +22,9 @@ function AttendancePageContent() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
+  const [existingAttendance, setExistingAttendance] = useState<any>(null);
+  const [isRectifying, setIsRectifying] = useState(false);
 
   const fetchGlobalShortages = async () => {
     try {
@@ -43,19 +45,27 @@ function AttendancePageContent() {
     setLoading(true);
     setSuccess(false);
     setError("");
+    setExistingAttendance(null);
+    setIsRectifying(false);
 
     try {
       // 1. Fetch Students for this batch
       const stuRes = await api.get(`/teacher/students?batchId=${params.batchId}`);
-      
       const mappedStudents = (stuRes.data?.data || []).map((s: any) => ({
         _id: s._id,
         name: s.personalInfo?.name || `${s.personalInfo?.firstName} ${s.personalInfo?.lastName}`,
         uniqueStudentId: s.uniqueStudentId || s.studentId,
         rollNumber: s.academicInfo?.rollNumber || "N/A"
       }));
-      
       setStudents(mappedStudents);
+
+      // 2. Check if attendance already exists
+      const dateStr = params.date.toISOString().split('T')[0];
+      const attRes = await api.get(`/teacher/attendance?batchId=${params.batchId}&subjectId=${params.subjectId}&date=${dateStr}&lecture=${params.lecture}`);
+      
+      if (attRes.data?.data?.length > 0) {
+        setExistingAttendance(attRes.data.data[0]);
+      }
 
     } catch (err: any) {
       setError("Failed to initialize session data.");
@@ -167,20 +177,60 @@ function AttendancePageContent() {
              <InfoCard label="Section" value={sessionParams.batch.name} />
              <InfoCard label="Subject Module" value={sessionParams.subject.name} sub={sessionParams.subject.code} />
              <InfoCard label="Lecture Node" value={`Lec ${sessionParams.lecture}`} highlight />
-             <InfoCard label="Date" value={new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(sessionParams.date)} icon={<Calendar size={14} />} />
+             <InfoCard 
+               label="Status" 
+               value={existingAttendance ? (existingAttendance.isRectified ? "Rectified" : "Marked") : "Pending"} 
+               highlight={!!existingAttendance}
+               icon={existingAttendance ? <CheckCircle2 size={14} /> : <Calendar size={14} />} 
+             />
           </div>
 
-          {loading ? (
-             <div className="h-64 bg-slate-50 border border-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center">
-                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Student Roster...</p>
-             </div>
+          {existingAttendance && !isRectifying ? (
+            <div className="bg-white border border-slate-200 rounded-[2.5rem] p-8 text-center space-y-4 shadow-sm animate-in fade-in zoom-in duration-500">
+               <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                 <CheckCircle2 size={40} />
+               </div>
+               <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Attendance Already Logged</h2>
+               <p className="text-slate-500 max-w-md mx-auto text-sm font-medium">
+                 Data for this session was captured on {new Date(existingAttendance.createdAt).toLocaleDateString()}.
+                 {existingAttendance.isRectified && " This record has been previously rectified."}
+               </p>
+               <div className="pt-4">
+                 <button 
+                   onClick={() => setIsRectifying(true)}
+                   className="px-8 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
+                 >
+                   Rectify Attendance
+                 </button>
+               </div>
+            </div>
           ) : (
-             <AttendanceMarker 
-               students={students} 
-               onSubmit={handleAttendanceSubmit} 
-               isSubmitting={submitting}
-             />
+            <>
+              {isRectifying && (
+                <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-center gap-3 text-amber-800 animate-in slide-in-from-top-2">
+                  <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
+                    <span className="font-black text-xs">!</span>
+                  </div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest">
+                    Rectification Mode: Changes will be tracked by administration.
+                  </p>
+                </div>
+              )}
+              
+              {loading ? (
+                <div className="h-64 bg-slate-50 border border-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center">
+                    <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Student Roster...</p>
+                </div>
+              ) : (
+                <AttendanceMarker 
+                  students={students} 
+                  initialRecords={existingAttendance?.records}
+                  onSubmit={handleAttendanceSubmit} 
+                  isSubmitting={submitting}
+                />
+              )}
+            </>
           )}
 
         </div>

@@ -24,6 +24,15 @@ const AttendanceSchema: Schema = new Schema({
   records: [{
     studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
     status: { type: String, enum: ['Present', 'Absent', 'Leave'], required: true }
+  }],
+  isRectified: { type: Boolean, default: false },
+  rectificationLogs: [{
+    modifiedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    modifiedAt: { type: Date, default: Date.now },
+    previousRecords: [{
+      studentId: { type: Schema.Types.ObjectId, ref: 'Student' },
+      status: { type: String }
+    }]
   }]
 }, { timestamps: true });
 
