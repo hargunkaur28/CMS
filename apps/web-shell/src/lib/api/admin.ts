@@ -151,26 +151,36 @@ export const createBatch = async (data: any) => {
   return response.data;
 };
 
-// --- Attendance Management ---
+// --- Attendance ---
 
 export const fetchAttendanceOverview = async () => {
   const response = await axios.get(`${API_URL}/attendance/overview`, { headers: getAuthHeader() });
   return response.data;
 };
 
-export const fetchAttendanceReports = async (params: any = {}) => {
+export const fetchShortageList = async (threshold: number = 75) => {
+  const response = await axios.get(`${API_URL}/attendance/shortage?threshold=${threshold}`, { headers: getAuthHeader() });
+  return response.data;
+};
+
+export const fetchAttendanceReports = async (query: any) => {
   const response = await axios.get(`${API_URL}/attendance/reports`, { 
     headers: getAuthHeader(),
-    params
+    params: query 
   });
   return response.data;
 };
 
-export const fetchShortageList = async (threshold?: number) => {
-  const response = await axios.get(`${API_URL}/attendance/shortage`, { 
+export const fetchStudentWiseAttendance = async (query: any) => {
+  const response = await axios.get(`${API_URL}/attendance/student-wise`, { 
     headers: getAuthHeader(),
-    params: { threshold }
+    params: query 
   });
+  return response.data;
+};
+
+export const adminOverrideAttendance = async (data: any) => {
+  const response = await axios.put(`${API_URL}/attendance/override`, data, { headers: getAuthHeader() });
   return response.data;
 };
 

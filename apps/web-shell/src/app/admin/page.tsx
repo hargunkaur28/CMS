@@ -48,28 +48,28 @@ export default function AdminDashboard() {
           icon={<Users className="text-blue-500" />} 
           label="Total Students" 
           value={loading ? "..." : stats?.totalStudents?.toLocaleString() || "0"} 
-          trend="+12% from last sem"
+          trend={stats?.studentTrend || "Counting..."}
           description="Active enrollments across all batches"
         />
         <StatsCard 
           icon={<GraduationCap className="text-emerald-500" />} 
           label="Faculty Count" 
           value={loading ? "..." : stats?.totalFaculty || "0"} 
-          trend="4 Pending Joining"
+          trend={stats?.facultyTrend || "Synchronizing..."}
           description="Subject matter experts on roll"
         />
         <StatsCard 
           icon={<TrendingUp className="text-amber-500" />} 
           label="Revenue" 
           value={loading ? "..." : `₹${(stats?.revenue / 100000).toFixed(1)}L`} 
-          trend="82% Realized"
+          trend={stats?.revenueTrend || "Realizing..."}
           description="Total fee collection this year"
         />
         <StatsCard 
           icon={<AlertCircle size={24} className="text-rose-500" />} 
           label="At-Risk Students" 
           value={loading ? "..." : stats?.atRiskCount || "0"} 
-          trend="Managed by AI"
+          trend="Real-time Analysis"
           description={loading ? "Analyzing..." : `${stats?.atRiskCount} require immediate intervention`}
         />
       </div>

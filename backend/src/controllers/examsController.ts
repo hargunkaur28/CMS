@@ -213,8 +213,12 @@ export const publishResults = async (req: Request, res: Response) => {
     const exam = await Exam.findById(examId).session(session);
     if (!exam) throw new Error("Exam not found");
 
-    // 1. Get all marks for this exam
-    const allMarks = await Marks.find({ examId }).session(session);
+    // 1. Get all marks for this exam and populate subjects
+    const allMarks = await Marks.find({ examId })
+      .populate("subjectId", "name code")
+      .populate("batchId", "name")
+      .populate("courseId", "name")
+      .session(session);
 
     // 2. Aggregate marks by student
     const studentMarksMap = new Map();
@@ -230,7 +234,9 @@ export const publishResults = async (req: Request, res: Response) => {
     const hallTicketOps = [];
 
     for (const [studentId, marks] of studentMarksMap.entries()) {
-      const student = await Student.findById(studentId).session(session);
+      const student = await Student.findById(studentId)
+        .populate("academicInfo.department", "name")
+        .session(session);
       if (!student) continue;
 
       const totalObtained = marks.reduce((sum: number, m: any) => sum + m.totalMarks, 0);
@@ -239,8 +245,8 @@ export const publishResults = async (req: Request, res: Response) => {
       const cgpa = calculateCGPA(marks.map((m: any) => ({ gradePoint: m.gradePoint })));
 
       const subjects = marks.map((m: any) => ({
-        subjectId: m.subjectId,
-        subjectName: "Subject Name", // Should ideally be populated or fetched
+        subjectId: m.subjectId._id,
+        subjectName: m.subjectId.name,
         marks: m.totalMarks,
         maxMarks: exam.totalMarks,
         grade: m.grade,
@@ -256,8 +262,8 @@ export const publishResults = async (req: Request, res: Response) => {
           update: {
             examId,
             studentId,
-            courseId: marks[0].courseId,
-            batchId: marks[0].batchId,
+            courseId: marks[0].courseId?._id || marks[0].courseId,
+            batchId: marks[0].batchId?._id || marks[0].batchId,
             subjects,
             totalMarksObtained: totalObtained,
             totalMaxMarks: totalPossible,
@@ -282,22 +288,22 @@ export const publishResults = async (req: Request, res: Response) => {
             studentId,
             ticketNumber,
             studentInfo: {
-              name: `${student.personalInfo.firstName} ${student.personalInfo.lastName}`,
-              rollNumber: student.uniqueStudentId,
+              name: student.personalInfo.name || `${student.personalInfo.firstName} ${student.personalInfo.lastName}`,
+              rollNumber: student.academicInfo.rollNumber || student.uniqueStudentId,
               enrollmentNumber: student.uniqueStudentId,
               photo: student.personalInfo.photo || "",
-              course: "Course Name", // Should fetch
-              batch: "Batch Name", // Should fetch
-              department: "Department Name" // Should fetch
+              course: marks[0].courseId?.name || "B.Tech",
+              batch: marks[0].batchId?.name || student.academicInfo.batch || "Year 1",
+              department: (student.academicInfo.department as any)?.name || "Engineering"
             },
             examInfo: {
               examCode: exam.code,
               examName: exam.name,
               scheduleDate: exam.scheduleDate,
               duration: exam.duration,
-              venue: "Main Hall",
-              seatNumber: "A-1",
-              invigilator: "Staff"
+              venue: exam.venue || "Examination Wing",
+              seatNumber: "Assigned per hall",
+              invigilator: "Departmental Staff"
             },
             status: 'PUBLISHED',
             generatedAt: new Date()

@@ -3,10 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { Plus, GraduationCap, LayoutGrid, List, Sparkles } from "lucide-react";
 import CourseManager from "@/components/admin/CourseManager";
-import { fetchCourses } from "@/lib/api/admin";
+import BatchManager from "@/components/admin/BatchManager";
+import { fetchCourses, fetchBatches, createBatch } from "@/lib/api/admin";
 
 export default function AcademicsPage() {
   const [courses, setCourses] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -16,12 +18,30 @@ export default function AcademicsPage() {
   const loadAcademics = async () => {
     try {
       setLoading(true);
-      const res = await fetchCourses();
-      if (res.success) setCourses(res.data);
+      const [courseRes, batchRes] = await Promise.all([
+        fetchCourses(),
+        fetchBatches()
+      ]);
+      if (courseRes.success) setCourses(courseRes.data);
+      if (batchRes.success || Array.isArray(batchRes)) {
+        setBatches(Array.isArray(batchRes) ? batchRes : batchRes.data);
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateBatch = async (batchData: any) => {
+    try {
+      const res = await createBatch(batchData);
+      if (res) {
+        await loadAcademics(); // Refresh all
+      }
+    } catch (err) {
+      console.error("Failed to create batch:", err);
+      throw err;
     }
   };
 
@@ -68,19 +88,13 @@ export default function AcademicsPage() {
               onCreateSubject={(id) => console.log("New Subject for", id)}
             />
 
-            {/* Batches Section (Placeholder) */}
-            <div className="space-y-6 pt-12 border-t border-slate-100">
-               <div>
-                  <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">Active Batches</h2>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Cohort Management across Departments</p>
-               </div>
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="bg-slate-50 border border-slate-100 rounded-3xl p-6 flex flex-col items-center justify-center text-center opacity-40">
-                       <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Loading Cohort Data...</p>
-                    </div>
-                  ))}
-               </div>
+            {/* Batches Section */}
+            <div className="pt-12 border-t border-slate-100">
+               <BatchManager 
+                 batches={batches} 
+                 courses={courses} 
+                 onCreateBatch={handleCreateBatch} 
+               />
             </div>
         </div>
       )}

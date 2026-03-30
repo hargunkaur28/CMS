@@ -24,7 +24,7 @@ const TimetableSchema: Schema = new Schema(
     teacherId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
     batchId: { type: Schema.Types.ObjectId, ref: 'Batch', required: true },
-    classId: { type: Schema.Types.ObjectId, ref: 'Class', required: true },
+    classId: { type: Schema.Types.ObjectId, ref: 'Batch', required: true },
     section: { type: String, required: true },
     room: { type: String, required: true },
     dayOfWeek: {

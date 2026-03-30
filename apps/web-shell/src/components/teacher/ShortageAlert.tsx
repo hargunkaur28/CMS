@@ -15,8 +15,8 @@ interface ShortageAlertProps {
   className?: string;
 }
 
-export default function ShortageAlert({ shortages, className }: ShortageAlertProps) {
-  if (shortages.length === 0) return null;
+export default function ShortageAlert({ shortages = [], className }: ShortageAlertProps) {
+  if (!shortages || shortages.length === 0) return null;
 
   return (
     <div className={cn("bg-red-50 border border-red-100 rounded-2xl p-6 space-y-4 shadow-sm", className)}>
@@ -41,11 +41,11 @@ export default function ShortageAlert({ shortages, className }: ShortageAlertPro
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {shortages.slice(0, 8).map((s) => (
-          <div key={s.studentId} className="px-2 py-1 bg-white border border-red-100 rounded-lg flex items-center gap-2">
-             <span className="text-[10px] font-bold text-slate-600">ID: {s.studentId.slice(-6).toUpperCase()}</span>
+        {shortages.slice(0, 8).map((s, idx) => (
+          <div key={s.studentId || idx} className="px-2 py-1 bg-white border border-red-100 rounded-lg flex items-center gap-2">
+             <span className="text-[10px] font-bold text-slate-600">ID: {(s.studentId || '').slice(-6).toUpperCase()}</span>
              <span className="w-1 h-1 bg-red-400 rounded-full"></span>
-             <span className="text-[10px] font-black text-red-600">{s.percentage.toFixed(1)}%</span>
+             <span className="text-[10px] font-black text-red-600">{(s.percentage ?? 0).toFixed(1)}%</span>
           </div>
         ))}
         {shortages.length > 8 && (

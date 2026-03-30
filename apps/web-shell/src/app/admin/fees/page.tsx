@@ -59,7 +59,7 @@ export default function FeesPage() {
             <h2 className="text-3xl font-black text-white tracking-tighter">₹ {summary?.totalRevenue.toLocaleString() || "0"}</h2>
             <div className="mt-6 flex items-center gap-2 text-emerald-400">
                <TrendingUp size={14} />
-               <span className="text-[10px] font-black uppercase tracking-widest">94.2% Collected</span>
+               <span className="text-[10px] font-black uppercase tracking-widest">{summary?.collectionEfficiency || "0%"} Collected</span>
             </div>
          </div>
 
@@ -74,7 +74,7 @@ export default function FeesPage() {
          <div className="bg-white border border-slate-200 p-8 rounded-[3rem] shadow-sm flex flex-col justify-between">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Scholarship Fund</p>
             <div>
-               <h2 className="text-3xl font-black text-indigo-600 tracking-tighter">₹ 14.8M</h2>
+               <h2 className="text-3xl font-black text-indigo-600 tracking-tighter">₹ {(summary?.scholarshipFund / 1000000).toFixed(1)}M</h2>
                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Endowment Surplus</p>
             </div>
          </div>

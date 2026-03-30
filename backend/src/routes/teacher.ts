@@ -27,10 +27,10 @@ router.get('/timetable', timetableController.getTeacherTimetable);
 router.get('/timetable/today', timetableController.getTodaySchedule);
 
 // --- Attendance ---
-router.post('/attendance/mark', attendanceController.markAttendance);
-router.get('/attendance/:classId', attendanceController.getClassAttendance);
+router.post('/attendance/mark', attendanceController.markBulkAttendance);
 router.get('/attendance/report/monthly', attendanceController.getMonthlyReport);
 router.get('/attendance/shortage', attendanceController.getShortageAlerts);
+router.get('/attendance/:classId', attendanceController.getClassAttendance);
 
 // --- Marks ---
 router.get('/marks/exams', marksController.getAssignedExams);

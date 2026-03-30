@@ -54,7 +54,7 @@ export default function PaymentLog({ payments }: PaymentLogProps) {
                   </div>
                 </td>
                 <td className="px-8 py-6">
-                  <p className="text-sm font-black text-slate-900 tracking-tighter">₹{payment.amount.toLocaleString()}</p>
+                  <p className="text-sm font-black text-slate-900 tracking-tighter">₹{(payment.amount || 0).toLocaleString()}</p>
                 </td>
                 <td className="px-8 py-6">
                   <div className="flex items-center gap-2">

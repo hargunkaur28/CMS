@@ -9,9 +9,14 @@ import User from '../models/User.js';
  */
 export const getMyStudents = async (req: Request, res: Response) => {
   try {
+    const query: any = {};
+    if (req.query.batchId) {
+      query.batchId = req.query.batchId;
+    }
+    
     // In a real system, we'd query batches assigned to this teacher
-    // For simplicity, listing all students but filtering fields
-    const students = await Student.find()
+    // Filtering fields for relevant data
+    const students = await Student.find(query)
       .select('personalInfo academicInfo')
       .populate('userId', 'email isActive');
 

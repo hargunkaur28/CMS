@@ -83,10 +83,11 @@ export const createTimetableEntry = async (req: Request, res: Response) => {
 export const getFullTimetable = async (req: Request, res: Response) => {
   try {
     const collegeId = (req as any).user?.collegeId;
-    const { academicYear } = req.query;
+    const { academicYear, teacherId } = req.query;
 
     const query: any = { collegeId, isActive: true };
     if (academicYear) query.academicYear = academicYear;
+    if (teacherId && teacherId !== 'undefined') query.teacherId = teacherId;
 
     const timetable = await Timetable.find(query)
       .populate('teacherId', 'name email')
@@ -95,11 +96,15 @@ export const getFullTimetable = async (req: Request, res: Response) => {
       .populate('classId', 'name')
       .sort({ period: 1 });
 
-    // Group by dayOfWeek
+    // Group by dayOfWeek -> period -> entries[]
     const groupedData = timetable.reduce((acc: any, entry: any) => {
       const day = entry.dayOfWeek;
-      if (!acc[day]) acc[day] = [];
-      acc[day].push(entry);
+      const period = entry.period;
+      
+      if (!acc[day]) acc[day] = {};
+      if (!acc[day][period]) acc[day][period] = [];
+      
+      acc[day][period].push(entry);
       return acc;
     }, {});
 
@@ -171,11 +176,15 @@ export const getTeacherTimetable = async (req: Request, res: Response) => {
       .populate('batchId', 'name')
       .sort({ period: 1 });
 
-    // Group by dayOfWeek
+    // Group by dayOfWeek -> period -> entries[]
     const grouped = timetable.reduce((acc: any, entry: any) => {
       const day = entry.dayOfWeek;
-      if (!acc[day]) acc[day] = [];
-      acc[day].push(entry);
+      const period = entry.period;
+      
+      if (!acc[day]) acc[day] = {};
+      if (!acc[day][period]) acc[day][period] = [];
+      
+      acc[day][period].push(entry);
       return acc;
     }, {});
 
@@ -294,11 +303,15 @@ export const getStudentTimetable = async (req: Request, res: Response) => {
       .populate('teacherId', 'name email')
       .sort({ period: 1 });
 
-    // Group by dayOfWeek
+    // Group by dayOfWeek -> period -> entries[]
     const grouped = results.reduce((acc: any, entry: any) => {
       const day = entry.dayOfWeek;
-      if (!acc[day]) acc[day] = [];
-      acc[day].push(entry);
+      const period = entry.period;
+      
+      if (!acc[day]) acc[day] = {};
+      if (!acc[day][period]) acc[day][period] = [];
+      
+      acc[day][period].push(entry);
       return acc;
     }, {});
 

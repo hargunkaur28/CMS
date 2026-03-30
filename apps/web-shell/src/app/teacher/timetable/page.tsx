@@ -3,19 +3,18 @@
 import React, { useState, useEffect } from "react";
 import { 
   Calendar, 
-  Clock, 
   MapPin, 
   Users, 
-  BookOpen, 
   LayoutDashboard,
-  CheckCircle2,
   Loader2,
   ChevronRight,
   TrendingUp,
-  History
+  History,
+  ClipboardCheck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API_URL, getHeaders } from "@/lib/api/academics";
+import Link from 'next/link';
 
 interface TimetableEntry {
   _id: string;
@@ -23,8 +22,8 @@ interface TimetableEntry {
   period: number;
   startTime: string;
   endTime: string;
-  subjectId: { name: string; code: string };
-  batchId: { name: string };
+  subjectId: { _id?: string; name: string; code: string };
+  batchId: { _id?: string; name: string };
   room: string;
   section: string;
   isUpcoming?: boolean;
@@ -92,155 +91,172 @@ export default function TeacherTimetablePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-8">
-        {/* Weekly Grid */}
-        <div className="col-span-12 lg:col-span-9">
-          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto custom-scrollbar">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200">
-                    <th className="p-6 text-left text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-r border-slate-200 w-36">
-                      Day / Period
-                    </th>
-                    {periods.map(p => (
-                      <th key={p} className="p-6 text-center text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-r border-slate-200 min-w-[180px]">
-                        Period {p}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {days.map(day => (
-                    <tr key={day} className={cn(
-                      "border-b border-slate-100 last:border-0",
-                      day === todayName ? "bg-indigo-50/10" : "bg-white"
-                    )}>
-                      <td className={cn(
-                        "p-6 font-black text-slate-700 border-r border-slate-200",
-                        day === todayName ? "text-indigo-600 bg-indigo-50/30" : "bg-slate-50/40"
-                      )}>
-                        {day}
-                        {day === todayName && <div className="text-[9px] text-indigo-400 mt-1 font-black uppercase tracking-widest">Today</div>}
-                      </td>
-                      {periods.map(p => {
-                        const entry = (timetable[day] || []).find(e => e.period === p);
-                        return (
-                          <td key={p} className={cn(
-                            "p-2 border-r border-slate-100 last:border-r-0 h-40 align-top transition-colors",
-                            day === todayName ? "bg-indigo-50/5" : "hover:bg-slate-50/20"
-                          )}>
-                            {entry ? (
-                              <div className="h-full bg-slate-900 text-white rounded-[1.5rem] p-4 space-y-3 shadow-lg shadow-slate-900/10 relative overflow-hidden group hover:scale-[1.02] transition-all">
-                                 {/* Accent Line */}
-                                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-emerald-500 opacity-50"></div>
-                                 
-                                 <div className="flex flex-col h-full justify-between">
-                                    <div>
-                                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] block truncate">
-                                        {entry.subjectId.code}
-                                      </span>
-                                      <h4 className="text-xs font-black truncate mt-1 leading-tight group-hover:text-indigo-300 transition-colors uppercase">
-                                        {entry.subjectId.name}
-                                      </h4>
-                                    </div>
-                                    
-                                    <div className="space-y-2 pt-2">
-                                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
-                                        <Users size={12} className="text-slate-500" />
-                                        <span>{entry.batchId.name} ({entry.section})</span>
-                                      </div>
-                                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400">
-                                        <MapPin size={12} className="text-slate-500" />
-                                        <span>Room {entry.room}</span>
-                                      </div>
-                                      <div className="flex items-center gap-2 text-[10px] font-black text-indigo-400 bg-indigo-500/10 rounded-lg px-2 py-1 w-fit">
-                                        <Clock size={12} />
-                                        <span>{entry.startTime} - {entry.endTime}</span>
-                                      </div>
-                                    </div>
-                                 </div>
-                              </div>
-                            ) : (
-                              <div className="h-full border border-dashed border-slate-200 rounded-[1.5rem] flex items-center justify-center text-slate-300 group/empty hover:border-slate-300 transition-all">
-                                 <span className="text-[10px] uppercase font-black tracking-[0.2em] italic opacity-30 group-hover/empty:opacity-60">No Session</span>
-                              </div>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+      <div className="flex flex-col xl:flex-row gap-8">
+        {/* Weekly Grid - NO SCROLL, Fit exactly */}
+        <div className="flex-1 min-w-0">
+          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-6 lg:p-8">
+            <div className="w-full h-full">
+              {/* Grid Layout definition */}
+              <div className="grid grid-cols-[100px_repeat(8,minmax(0,1fr))] gap-2 mb-2">
+                <div></div> {/* Corner empty cell */}
+                {periods.map(p => (
+                  <div key={p} className="text-center font-black pb-2 border-b border-slate-100 flex flex-col justify-end">
+                    <span className="text-[9px] text-slate-400 uppercase tracking-widest leading-none">P {p}</span>
+                  </div>
+                ))}
+              </div>
+
+              {days.map(day => (
+                <div key={day} className="grid grid-cols-[100px_repeat(8,minmax(0,1fr))] gap-2 mb-2 group">
+                  <div className={cn(
+                    "flex flex-col justify-center rounded-2xl p-2",
+                    day === todayName ? "bg-indigo-50" : ""
+                  )}>
+                    <span className={cn(
+                      "text-xs font-black uppercase tracking-widest",
+                      day === todayName ? "text-indigo-600" : "text-slate-600"
+                    )}>{day.slice(0,3)}</span>
+                    {day === todayName && <span className="text-[9px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Today</span>}
+                  </div>
+                  
+                  {periods.map(p => {
+                    const entry = (timetable[day] || {} as any)[p]?.[0];
+                    
+                    if (entry) {
+                      // Validate if we have batch and subject IDs for routing
+                      const bId = entry.batchId._id || (entry as any).batchId; // Fallbacks depending on populate structure
+                      const sId = entry.subjectId._id || (entry as any).subjectId; 
+                      
+                      return (
+                        <div key={p} className={cn(
+                          "relative rounded-[1.2rem] h-28 xl:h-32 p-3 space-y-1 overflow-hidden transition-all group/card",
+                          day === todayName 
+                            ? "bg-slate-900 text-white shadow-xl shadow-slate-900/10 hover:shadow-2xl hover:-translate-y-1" 
+                            : "bg-slate-50 border border-slate-100 hover:border-slate-300 hover:shadow-md hover:-translate-y-1"
+                        )}>
+                          {day === todayName && (
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-emerald-500 opacity-50"></div>
+                          )}
+                          
+                          <div className="flex flex-col h-full justify-between">
+                            <div>
+                              <p className={cn("text-[9px] font-black uppercase tracking-widest truncate", day === todayName ? "text-slate-400" : "text-slate-500")}>
+                                {entry.subjectId.code}
+                              </p>
+                              <p className="text-[10px] xl:text-xs font-black leading-tight truncate mt-0.5">
+                                {entry.subjectId.name}
+                              </p>
+                            </div>
+                            
+                            <div className="space-y-1">
+                              <p className={cn("text-[9px] font-bold truncate flex items-center gap-1", day === todayName ? "text-slate-300" : "text-slate-500")}>
+                                <Users size={10} /> {entry.batchId.name}
+                              </p>
+                              <p className={cn("text-[9px] font-bold flex items-center gap-1", day === todayName ? "text-slate-300" : "text-slate-500")}>
+                                <MapPin size={10} /> {entry.room}
+                              </p>
+                            </div>
+                            
+                            {/* Hover Overlay Button */}
+                            <div className="absolute inset-0 bg-indigo-600/90 backdrop-blur-sm opacity-0 group-hover/card:opacity-100 transition-opacity flex flex-col items-center justify-center p-2 rounded-[1.2rem]">
+                              <p className="text-[10px] font-black text-white mb-2 tracking-widest uppercase">P {entry.period}</p>
+                              <Link 
+                                href={`/teacher/attendance?batchId=${bId}&subjectId=${sId}&lecture=${entry.period}`}
+                                className="w-full bg-white text-indigo-600 text-[9px] font-black uppercase tracking-widest py-2 rounded-xl flex items-center justify-center gap-1 hover:bg-slate-50 transition-colors shadow-lg shadow-black/20"
+                              >
+                                Mark <ChevronRight size={10} />
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <div key={p} className={cn(
+                          "rounded-[1.2rem] h-28 xl:h-32 border border-dashed flex items-center justify-center",
+                          day === todayName ? "border-slate-200 bg-slate-50/50" : "border-slate-100 opacity-50"
+                        )}>
+                          <span className="text-[8px] xl:text-[9px] font-bold text-slate-300 uppercase tracking-widest">Free</span>
+                        </div>
+                      );
+                    }
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
         {/* Today's Schedule Sidebar */}
-        <div className="col-span-12 lg:col-span-3 space-y-6">
-          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-6 space-y-6 sticky top-8">
+        <div className="w-full xl:w-80 space-y-6 shrink-0">
+          <div className="bg-slate-900 rounded-[2.5rem] shadow-xl shadow-slate-900/10 p-6 xl:p-8 space-y-6 sticky top-8 text-white">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-black text-slate-900 flex items-center gap-2 uppercase tracking-tight">
+              <h3 className="text-xl font-black flex items-center gap-2 uppercase tracking-tighter">
                 <LayoutDashboard size={20} className="text-slate-400" />
                 Next Up
               </h3>
-              <TrendingUp size={16} className="text-indigo-500" />
+              <TrendingUp size={16} className="text-emerald-400" />
             </div>
 
-            <div className="space-y-4">
-              {todaySchedule.length > 0 ? todaySchedule.map((session, idx) => (
-                <div key={idx} className={cn(
-                  "p-5 rounded-3xl border transition-all hover:shadow-md group",
-                  session.isUpcoming 
-                    ? "bg-white border-slate-100 ring-1 ring-slate-50 shadow-sm" 
-                    : "bg-slate-50/50 border-transparent opacity-60"
-                )}>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className={cn(
-                          "w-2 h-2 rounded-full",
-                          session.isUpcoming ? "bg-emerald-500 animate-pulse" : "bg-slate-300"
-                        )}></span>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">
-                          {session.startTime}
-                        </span>
+            <div className="space-y-3">
+              {todaySchedule.length > 0 ? todaySchedule.map((session, idx) => {
+                const bId = session.batchId._id || (session as any).batchId;
+                const sId = session.subjectId._id || (session as any).subjectId;
+
+                return (
+                  <div key={idx} className={cn(
+                    "p-5 rounded-3xl border transition-all",
+                    session.isUpcoming 
+                      ? "bg-white/10 border-white/20 hover:bg-white/15 cursor-default group" 
+                      : "bg-black/20 border-transparent opacity-60"
+                  )}>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex justify-between items-start">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <span className={cn(
+                              "w-1.5 h-1.5 rounded-full inline-block",
+                              session.isUpcoming ? "bg-emerald-400 animate-pulse" : "bg-slate-500"
+                            )}></span>
+                            {session.startTime} - {session.endTime}
+                          </div>
+                          <h4 className="text-sm font-black text-white leading-tight pr-4">
+                            {session.subjectId.name}
+                          </h4>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                            {session.batchId.name} • RM {session.room}
+                          </p>
+                        </div>
+                        
+                        <div className="shrink-0 mt-1">
+                          {session.isUpcoming ? (
+                            <span className="bg-indigo-500 text-white text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest shadow-lg shadow-indigo-500/20">Up</span>
+                          ) : (
+                            <span className="bg-white/10 text-white/50 text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">Done</span>
+                          )}
+                        </div>
                       </div>
-                      <h4 className="text-sm font-black text-slate-800 leading-tight group-hover:text-indigo-600 transition-colors">
-                        {session.subjectId.name}
-                      </h4>
-                      <p className="text-[11px] font-bold text-slate-500">
-                        {session.batchId.name} • RM {session.room}
-                      </p>
+                      
+                      {/* Quick Action */}
+                      <Link 
+                        href={`/teacher/attendance?batchId=${bId}&subjectId=${sId}&lecture=${session.period}`} 
+                        className={cn(
+                          "w-full py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-2 transition-all group-hover:bg-white group-hover:text-slate-900 border border-white/10",
+                          session.isUpcoming ? "bg-white/5 text-white" : "hidden"
+                        )}
+                      >
+                        <ClipboardCheck size={14} /> Open Matrix
+                      </Link>
                     </div>
-                    {session.isUpcoming ? (
-                      <span className="bg-indigo-50 text-indigo-600 text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest border border-indigo-100 flex items-center gap-1">
-                        Up
-                        <ChevronRight size={10} />
-                      </span>
-                    ) : (
-                      <span className="bg-slate-100 text-slate-500 text-[9px] font-black px-2 py-1 rounded-lg uppercase tracking-widest border border-slate-200 flex items-center gap-1">
-                        Done
-                        <History size={10} />
-                      </span>
-                    )}
                   </div>
-                </div>
-              )) : (
-                <div className="p-8 text-center space-y-4 border-2 border-dashed border-slate-100 rounded-[2.5rem]">
-                  <div className="bg-slate-50 w-12 h-12 rounded-2xl flex items-center justify-center mx-auto">
-                    <Calendar size={20} className="text-slate-300" />
-                  </div>
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">No classes today</p>
+                );
+              }) : (
+                <div className="py-12 text-center text-slate-500">
+                  <Calendar size={28} className="mx-auto mb-3 opacity-20" />
+                  <p className="text-xs font-black uppercase tracking-widest">No classes today</p>
                 </div>
               )}
             </div>
-
-            <button className="w-full py-4 bg-slate-50 hover:bg-slate-100 text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest transition-all border border-slate-100 flex items-center justify-center gap-2">
-              View Analytics
-              <ChevronRight size={14} />
-            </button>
           </div>
         </div>
       </div>

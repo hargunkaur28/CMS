@@ -20,6 +20,7 @@ export interface IExam extends Document {
   passingMarks: number;
   gradingScheme: IGradingScheme[];
   status: 'DRAFT' | 'SCHEDULED' | 'PUBLISHED' | 'ARCHIVED';
+  venue?: string;
   publishedDate?: Date;
   publishedBy?: mongoose.Types.ObjectId;
   createdBy: mongoose.Types.ObjectId;
@@ -45,6 +46,7 @@ const ExamSchema: Schema = new Schema({
     gradePoint: { type: Number, required: true }
   }],
   status: { type: String, enum: ['DRAFT', 'SCHEDULED', 'PUBLISHED', 'ARCHIVED'], default: 'DRAFT' },
+  venue: { type: String, default: "Examination Wing" },
   publishedDate: { type: Date },
   publishedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },

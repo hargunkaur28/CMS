@@ -84,7 +84,7 @@ function RegisterTeacherModal({ isOpen, onClose, onRefresh }: any) {
         personalInfo: { name: formData.name, email: formData.email },
         department: formData.department,
         qualification: 'Dr./Prof.',
-        experience: 'SME'
+        experience: 0
       });
       onRefresh(); onClose(); 
       setFormData({ name: '', email: '', department: '' });

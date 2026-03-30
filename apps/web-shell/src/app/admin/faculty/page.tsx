@@ -136,6 +136,22 @@ export default function FacultyPage() {
            <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin" />
            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Syncing Personnel Data...</p>
         </div>
+      ) : faculties.length === 0 ? (
+        <div className="h-96 flex flex-col items-center justify-center gap-6 border-2 border-dashed border-slate-200 rounded-[2.5rem] bg-slate-50/50">
+          <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center">
+            <UserCheck size={28} className="text-slate-300" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm font-black text-slate-400 uppercase tracking-widest">No Faculty Members Yet</p>
+            <p className="text-[10px] text-slate-300 font-bold uppercase tracking-widest mt-1">Start by onboarding your first faculty member</p>
+          </div>
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-8 py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 shadow-lg transition-all flex items-center gap-2 active:scale-95"
+          >
+            <Plus size={14} /> Add First Faculty Member
+          </button>
+        </div>
       ) : (
         <FacultyTable 
           faculties={faculties} 
@@ -483,7 +499,7 @@ function RegisterFacultyModal({ onClose, onSuccess }: any) {
                 <input 
                   type="number" placeholder="YEARS OF EXPERIENCE"
                   className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-xs font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-slate-200 font-mono"
-                  onChange={(e) => setFormData({...formData, experience: parseInt(e.target.value)})}
+                  onChange={(e) => setFormData({...formData, experience: parseInt(e.target.value) || 0})}
                 />
               </div>
             </div>

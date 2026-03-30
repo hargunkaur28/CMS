@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import AttendanceMarker from '@/components/attendance/AttendanceMarker';
 import ShortageAlertsPanel from '@/components/attendance/ShortageAlertsPanel';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ClipboardCheck, Brain, BarChart2, Activity, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { ClipboardCheck, Brain, BarChart2, Activity, ShieldAlert, CheckCircle2, Calendar } from 'lucide-react';
 import { getHubStats } from '@/lib/api/attendance';
 import { fetchMyAttendance } from '@/lib/api/student';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,7 @@ const studentTabs = [
 ];
 
 export default function AttendancePage() {
+  const router = useRouter();
   const [role, setRole] = useState<string>('STUDENT');
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState({ avgAttendance: 0, pendingLeaves: 0, shortageCount: 0 });
@@ -32,6 +34,17 @@ export default function AttendancePage() {
       try {
         const user = JSON.parse(localStorage.getItem("user") || "{}");
         const userRole = user.role;
+
+        // Redirect portal users to their correct attendance page
+        if (['COLLEGE_ADMIN', 'SUPER_ADMIN'].includes(userRole)) {
+          router.replace('/admin/attendance');
+          return;
+        }
+        if (userRole === 'TEACHER') {
+          router.replace('/teacher/attendance');
+          return;
+        }
+
         setRole(userRole);
 
         if (['STUDENT', 'PARENT'].includes(userRole)) {
@@ -50,7 +63,7 @@ export default function AttendancePage() {
       }
     }
     loadResources();
-  }, []);
+  }, [router]);
 
   const currentTabs = ['STUDENT', 'PARENT'].includes(role) ? studentTabs : staffTabs;
 

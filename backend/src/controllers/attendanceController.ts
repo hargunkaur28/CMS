@@ -39,7 +39,11 @@ export const markAttendance = async (req: Request, res: Response) => {
 export const markBulkAttendance = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { batchId, subjectId, date, records } = req.body;
+    const { batchId, subjectId, date, lecture, records } = req.body;
+
+    if (!lecture) {
+      return res.status(400).json({ success: false, message: 'Lecture number is required.' });
+    }
 
     if (!user?._id || user.role !== "TEACHER") {
       return res.status(403).json({ success: false, message: 'Only teachers can mark attendance.' });
@@ -98,8 +102,20 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
     }
     sessionDate.setHours(0, 0, 0, 0);
 
+    // 24-hour edit window check
+    const existingAttendance = await Attendance.findOne({ 
+       classId: batchId, subjectId, date: sessionDate, lecture 
+    });
+
+    if (existingAttendance) {
+       const twentyFourHours = 24 * 60 * 60 * 1000;
+       if (Date.now() - new Date(existingAttendance.createdAt).getTime() > twentyFourHours) {
+          return res.status(403).json({ success: false, message: 'Editing is disabled. The 24-hour modification window for this lecture has expired.' });
+       }
+    }
+
     const attendance = await Attendance.findOneAndUpdate(
-      { classId: batchId, subjectId, date: sessionDate },
+      { classId: batchId, subjectId, date: sessionDate, lecture },
       { teacherId, records },
       { upsert: true, new: true }
     );
@@ -120,7 +136,8 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
       const existing = await Attendance.findOne({ 
         classId: req.body.batchId, 
         subjectId: req.body.subjectId, 
-        date: sessionDate 
+        date: sessionDate,
+        lecture: req.body.lecture
       });
       return res.status(200).json({ success: true, data: existing, message: "Handled duplicate entry" });
     }
@@ -133,10 +150,11 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
  */
 export const getAttendance = async (req: Request, res: Response) => {
   try {
-    const { batchId, subjectId, date } = req.query;
+    const { batchId, subjectId, date, lecture } = req.query;
     const query: any = {};
     if (batchId) query.classId = batchId;
     if (subjectId) query.subjectId = subjectId;
+    if (lecture) query.lecture = Number(lecture);
     if (date) {
       const d = new Date(date as string);
       d.setHours(0, 0, 0, 0);
@@ -212,7 +230,51 @@ export const getMonthlyReport = async (req: Request, res: Response) => {
 };
 
 export const getShortageAlerts = async (req: Request, res: Response) => {
-  res.status(200).json({ success: true, data: [] });
+  try {
+    const teacherId = (req as any).user?._id;
+    if (!teacherId) return res.status(401).json({ success: false, message: "Unauthorized" });
+
+    // Aggregate attendance marked by this teacher or for this teacher's classes.
+    // For simplicity and since teachers usually care about their own classes:
+    const stats = await Attendance.aggregate([
+      { $match: { teacherId: new mongoose.Types.ObjectId(teacherId as string) } },
+      { $unwind: "$records" },
+      {
+        $group: {
+          _id: "$records.studentId",
+          totalClasses: { $sum: 1 },
+          presentClasses: {
+            $sum: { $cond: [{ $eq: ["$records.status", "Present"] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $project: {
+          percentage: { $multiply: [{ $divide: ["$presentClasses", "$totalClasses"] }, 100] }
+        }
+      },
+      { $match: { percentage: { $lt: 75 } } },
+      { $sort: { percentage: 1 } }
+    ]);
+
+    const populatedStats = await Student.populate(stats, { 
+      path: "_id", 
+      select: "studentId uniqueStudentId personalInfo.name" 
+    });
+
+    const result = populatedStats.map((s: any) => {
+      const studentDoc: any = s._id;
+      return {
+        studentId: studentDoc?.studentId || studentDoc?.uniqueStudentId || "Unknown",
+        name: studentDoc?.personalInfo?.name || "Unknown",
+        percentage: s.percentage
+      };
+    });
+
+    res.status(200).json({ success: true, data: result });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 /**

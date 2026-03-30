@@ -40,7 +40,9 @@ import {
 import {
   getAttendanceOverview,
   getAttendanceReports,
-  getShortageList
+  getShortageList,
+  getStudentWiseAttendance,
+  adminOverrideAttendance
 } from "../controllers/adminAttendanceController.js";
 import {
   createExam,
@@ -147,6 +149,8 @@ router.put("/batches/:id", updateBatch);
 router.get("/attendance/overview", getAttendanceOverview);
 router.get("/attendance/reports", getAttendanceReports);
 router.get("/attendance/shortage", getShortageList);
+router.get("/attendance/student-wise", getStudentWiseAttendance);
+router.put("/attendance/override", adminOverrideAttendance);
 
 // Module 6: Exams & Results
 router.get("/exams", getExams);

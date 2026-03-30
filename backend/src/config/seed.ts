@@ -70,7 +70,8 @@ const seedData = async () => {
       name: 'Batch 2022-26',
       courseId: course._id,
       collegeId: college._id,
-      year: 2022,
+      startYear: 2022,
+      endYear: 2026,
       sections: ['A', 'B']
     });
 

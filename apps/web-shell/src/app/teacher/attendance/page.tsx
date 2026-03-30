@@ -1,40 +1,68 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import ClassSelectorFlow from "@/components/teacher/ClassSelectorFlow";
 import AttendanceMarker from "@/components/teacher/AttendanceMarker";
 import ShortageAlert from "@/components/teacher/ShortageAlert";
 import api from "@/lib/api";
-import { Search, Filter, RotateCcw, CheckCircle2 } from "lucide-react";
+import { CheckCircle2, ChevronLeft, Calendar } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
-export default function AttendancePage() {
-  const [students, setStudents] = useState([]);
-  const [shortages, setShortages] = useState([]);
+function AttendancePageContent() {
+  const searchParams = useSearchParams();
+  const initialBatch = searchParams.get('batchId');
+  const initialSubject = searchParams.get('subjectId');
+  const initialLecture = searchParams.get('lecture');
+
+  const [sessionParams, setSessionParams] = useState<any>(null); // { batchId, subjectId, lecture, date, batch, subject }
+  
+  const [students, setStudents] = useState<any[]>([]);
+  const [shortages, setShortages] = useState<any[]>([]);
+  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchGlobalShortages = async () => {
     try {
-      // In a real flow, the teacher would first select a class/subject
-      // For this implementation, we fetch students from the general listing
-      const [stuRes, shortRes] = await Promise.all([
-        api.get('/teacher/students'),
-        api.get('/teacher/attendance/shortage')
-      ]);
-      setStudents(stuRes.data.data);
-      setShortages(shortRes.data.data);
+      const shortRes = await api.get('/teacher/attendance/shortage');
+      setShortages(shortRes.data?.data || []);
     } catch (err: any) {
-      setError("Failed to load attendance data");
-    } finally {
-      setLoading(false);
+      console.error("Failed to load global shortages", err);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    fetchGlobalShortages();
+    setLoading(false); // Initial load done
   }, []);
+
+  const handleSelectionComplete = async (params: any) => {
+    setSessionParams(params);
+    setLoading(true);
+    setSuccess(false);
+    setError("");
+
+    try {
+      // 1. Fetch Students for this batch
+      const stuRes = await api.get(`/teacher/students?batchId=${params.batchId}`);
+      
+      const mappedStudents = (stuRes.data?.data || []).map((s: any) => ({
+        _id: s._id,
+        name: s.personalInfo?.name || `${s.personalInfo?.firstName} ${s.personalInfo?.lastName}`,
+        uniqueStudentId: s.uniqueStudentId || s.studentId,
+        rollNumber: s.academicInfo?.rollNumber || "N/A"
+      }));
+      
+      setStudents(mappedStudents);
+
+    } catch (err: any) {
+      setError("Failed to initialize session data.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAttendanceSubmit = async (records: any[]) => {
     setSubmitting(true);
@@ -42,73 +70,150 @@ export default function AttendancePage() {
     setError("");
 
     try {
-      // Mock classId and subjectId for demonstration if none selected
       await api.post('/teacher/attendance/mark', {
-        classId: "65e1234567890abcdef12345", // Placeholder
-        subjectId: "65e1234567890abcdef54321", // Placeholder
-        date: new Date(),
+        batchId: sessionParams.batchId,
+        subjectId: sessionParams.subjectId,
+        lecture: sessionParams.lecture,
+        date: sessionParams.date,
         records
       });
       setSuccess(true);
-      fetchData(); // Refresh shortage alerts
+      fetchGlobalShortages(); // Refresh shortage alerts on successful submit
+      
+      // Optional: Delay and return to selector
+      setTimeout(() => {
+        setSessionParams(null);
+        setSuccess(false);
+      }, 3000);
+      
     } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to submit attendance");
+      setError(err.response?.data?.message || "Failed to submit attendance matrix.");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return <div className="animate-pulse space-y-6">
-    <div className="h-10 w-64 bg-slate-200 rounded-lg"></div>
-    <div className="h-24 bg-red-50 rounded-2xl"></div>
-    <div className="h-96 bg-slate-100 rounded-2xl"></div>
-  </div>;
+  if (loading && !sessionParams) {
+    return (
+      <div className="animate-pulse space-y-6">
+        <div className="h-10 w-64 bg-slate-200 rounded-lg"></div>
+        <div className="h-64 bg-slate-100 rounded-[2.5rem]"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Dynamic Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-100 pb-6">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Daily Attendance</h1>
-          <p className="text-slate-500 mt-1">Mark student presence for your assigned batches.</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">Attendance Marker</h1>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+            {sessionParams ? "Matrix Sync Interface" : "Step 1: Session Parameters"}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-            <button 
-                onClick={fetchData}
-                className="p-2.5 text-slate-500 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 shadow-sm"
-            >
-                <RotateCcw size={20} />
-            </button>
-            <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
-                <Filter size={18} className="text-slate-400" />
-                <span className="text-sm font-bold text-slate-700">Spring 2024 • Batch A</span>
-            </div>
-        </div>
+
+        {sessionParams && (
+           <button 
+             onClick={() => setSessionParams(null)}
+             className="flex items-center gap-2 px-5 py-2.5 bg-slate-50 text-slate-500 rounded-xl hover:bg-slate-100 hover:text-slate-900 transition-colors text-[10px] font-bold uppercase tracking-widest"
+           >
+             <ChevronLeft size={14} /> Change Session
+           </button>
+        )}
       </div>
 
-      {/* Shortage Alerts */}
-      <ShortageAlert shortages={shortages} />
+      {!sessionParams && <ShortageAlert shortages={shortages} />}
 
-      {/* Feedback Messages */}
       {success && (
-        <div className="p-4 bg-green-50 border border-green-100 text-green-700 rounded-2xl flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
-           <div className="p-1 px-2 bg-green-600 text-white rounded-lg"><CheckCircle2 size={16} /></div>
-           <p className="text-sm font-bold">Attendance has been marked successfully for today!</p>
+        <div className="p-5 bg-emerald-500 text-white rounded-[2rem] flex items-center gap-4 shadow-xl shadow-emerald-500/20 animate-in slide-in-from-top-4">
+           <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+             <CheckCircle2 size={24} />
+           </div>
+           <div>
+             <h3 className="text-sm font-black uppercase tracking-widest">Transmission Successful</h3>
+             <p className="text-emerald-50 text-xs font-medium">The attendance matrix has been permanently logged to the system core.</p>
+           </div>
         </div>
       )}
       
       {error && (
-        <div className="p-4 bg-red-50 border border-red-100 text-red-700 rounded-2xl flex items-center gap-3 shadow-sm">
-           <p className="text-sm font-bold">{error}</p>
+        <div className="p-5 bg-rose-50 border border-rose-100 text-rose-700 rounded-[2rem] flex items-center gap-4 shadow-sm animate-in slide-in-from-top-4">
+           <div className="w-12 h-12 bg-rose-100 rounded-2xl flex items-center justify-center shrink-0 text-rose-600">
+             <span className="font-black text-lg">!</span>
+           </div>
+           <div>
+             <h3 className="text-sm font-black uppercase tracking-widest text-rose-900">System Error</h3>
+             <p className="text-xs font-medium">{error}</p>
+           </div>
         </div>
       )}
 
-      {/* Main Table */}
-      <AttendanceMarker 
-        students={students} 
-        onSubmit={handleAttendanceSubmit} 
-        isSubmitting={submitting}
-      />
+      {/* Main Flow Logic */}
+      {!sessionParams ? (
+        <ClassSelectorFlow 
+          onSelectionComplete={handleSelectionComplete} 
+          initialSelection={
+            initialBatch && initialSubject && initialLecture
+            ? { batchId: initialBatch, subjectId: initialSubject, lecture: parseInt(initialLecture) }
+            : undefined
+          }
+        />
+      ) : (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-500">
+          
+          {/* Active Session Info Bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+             <InfoCard label="Section" value={sessionParams.batch.name} />
+             <InfoCard label="Subject Module" value={sessionParams.subject.name} sub={sessionParams.subject.code} />
+             <InfoCard label="Lecture Node" value={`Lec ${sessionParams.lecture}`} highlight />
+             <InfoCard label="Date" value={new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium' }).format(sessionParams.date)} icon={<Calendar size={14} />} />
+          </div>
+
+          {loading ? (
+             <div className="h-64 bg-slate-50 border border-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center">
+                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Loading Student Roster...</p>
+             </div>
+          ) : (
+             <AttendanceMarker 
+               students={students} 
+               onSubmit={handleAttendanceSubmit} 
+               isSubmitting={submitting}
+             />
+          )}
+
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AttendancePage() {
+  return (
+    <Suspense fallback={
+      <div className="animate-pulse space-y-6">
+        <div className="h-10 w-64 bg-slate-200 rounded-lg"></div>
+        <div className="h-64 bg-slate-100 rounded-[2.5rem]"></div>
+      </div>
+    }>
+      <AttendancePageContent />
+    </Suspense>
+  );
+}
+
+function InfoCard({ label, value, sub, highlight, icon }: any) {
+  return (
+    <div className={`p-5 rounded-[2rem] border relative overflow-hidden ${highlight ? 'bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-600/20' : 'bg-slate-50 border-slate-100'}`}>
+      {highlight && <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none" />}
+      <div className="relative z-10 flex items-start justify-between">
+        <div>
+          <span className={`block text-[9px] font-black uppercase tracking-widest mb-1 opacity-60`}>{label}</span>
+          <span className={`block text-lg font-black leading-tight ${highlight ? 'text-white' : 'text-slate-900'}`}>{value}</span>
+          {sub && <span className={`block text-[10px] font-bold uppercase tracking-widest mt-1 opacity-50`}>{sub}</span>}
+        </div>
+        {icon && <div className="opacity-50 mt-1">{icon}</div>}
+      </div>
     </div>
   );
 }

@@ -59,6 +59,7 @@ export default function TimetableBuilderPage() {
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string>("all");
   const [timetable, setTimetable] = useState<Record<string, Record<number, TimetableEntry[]>>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -69,7 +70,7 @@ export default function TimetableBuilderPage() {
     teacherId: "",
     subjectId: "",
     batchId: "",
-    classId: "", // Logic: select batch first, then class if needed, or mapping
+    classId: "",
     section: "A",
     room: "",
     dayOfWeek: "Monday",
@@ -79,6 +80,13 @@ export default function TimetableBuilderPage() {
     academicYear: "2025-26"
   });
 
+  // Sync form with filter
+  useEffect(() => {
+    if (selectedTeacherId !== "all") {
+      setFormData(prev => ({ ...prev, teacherId: selectedTeacherId }));
+    }
+  }, [selectedTeacherId]);
+
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -86,11 +94,14 @@ export default function TimetableBuilderPage() {
   const fetchInitialData = async () => {
     try {
       setLoading(true);
+      const url = new URL(`${API_URL}/admin/timetable`);
+      if (selectedTeacherId !== "all") url.searchParams.append("teacherId", selectedTeacherId);
+
       const [facRes, subRes, batRes, timeRes] = await Promise.all([
         fetch(`${API_URL}/admin/faculty`, { headers: getHeaders() }),
         fetch(`${API_URL}/admin/subjects`, { headers: getHeaders() }),
         fetch(`${API_URL}/admin/batches`, { headers: getHeaders() }),
-        fetch(`${API_URL}/admin/timetable`, { headers: getHeaders() })
+        fetch(url.toString(), { headers: getHeaders() })
       ]);
 
       const [facData, subData, batData, timeData] = await Promise.all([
@@ -103,16 +114,17 @@ export default function TimetableBuilderPage() {
       if (facData.success) setFaculties(facData.data);
       if (subData.success) setSubjects(subData.data);
       if (batData.success) setBatches(batData.data);
-      if (timeData.success) {
-        // Data is already grouped by dayOfWeek from backend
-        setTimetable(timeData.data);
-      }
+      if (timeData.success) setTimetable(timeData.data);
     } catch (error) {
       console.error("Fetch error:", error);
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchInitialData();
+  }, [selectedTeacherId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,6 +176,19 @@ export default function TimetableBuilderPage() {
           <p className="text-slate-500 mt-1 font-medium">Design and manage institutional weekly schedules</p>
         </div>
         <div className="flex items-center gap-3">
+           <div className="bg-white border border-slate-200 rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm">
+             <UserIcon size={16} className="text-slate-400" />
+             <select 
+               className="text-sm font-bold text-slate-700 bg-transparent outline-none cursor-pointer"
+               value={selectedTeacherId}
+               onChange={(e) => setSelectedTeacherId(e.target.value)}
+             >
+               <option value="all">Global View</option>
+               {faculties.map(f => (
+                 <option key={f._id} value={f.userId?._id}>{f.userId?.name || f.personalInfo?.name}</option>
+               ))}
+             </select>
+           </div>
            <div className="bg-white border border-slate-200 rounded-xl px-4 py-2 flex items-center gap-2 shadow-sm">
              <Calendar size={16} className="text-slate-400" />
              <span className="text-sm font-bold text-slate-700">{formData.academicYear}</span>
@@ -278,7 +303,10 @@ export default function TimetableBuilderPage() {
                         max="10"
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-slate-900/5 transition-all outline-none"
                         value={formData.period}
-                        onChange={e => setFormData({ ...formData, period: parseInt(e.target.value) })}
+                        onChange={e => {
+                          const val = parseInt(e.target.value);
+                          setFormData({ ...formData, period: isNaN(val) ? "" : val } as any);
+                        }}
                       />
                     </div>
                   </div>
