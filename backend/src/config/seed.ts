@@ -90,6 +90,18 @@ const seedData = async () => {
     console.log('Batch & Subjects Created');
 
     // 4. Create Users (Roles)
+    const extraStudents = [
+      { name: 'Ananya Iyer', email: 'ananya@gmail.com', password: 'password123', regId: 'STU2024003' },
+      { name: 'Rohan Mehta', email: 'rohan@gmail.com', password: 'password123', regId: 'STU2024004' },
+      { name: 'Sanya Gupta', email: 'sanya@gmail.com', password: 'password123', regId: 'STU2024005' },
+      { name: 'Ishaan Verma', email: 'ishaan@gmail.com', password: 'password123', regId: 'STU2024006' },
+      { name: 'Kavya Nair', email: 'kavya@gmail.com', password: 'password123', regId: 'STU2024007' },
+      { name: 'Aditya Singh', email: 'aditya@gmail.com', password: 'password123', regId: 'STU2024008' },
+      { name: 'Riya Kapoor', email: 'riya@gmail.com', password: 'password123', regId: 'STU2024009' },
+      { name: 'Zoya Khan', email: 'zoya@gmail.com', password: 'password123', regId: 'STU2024010' },
+      { name: 'Kabir Das', email: 'kabir@gmail.com', password: 'password123', regId: 'STU2024011' }
+    ];
+
     const usersData = [
       { name: 'Global Super Admin', email: 'superadmin@ngcms.edu', password: 'password123', role: 'SUPER_ADMIN' },
       { name: 'Dr. Rajesh Khanna', email: 'admin@git.edu', password: 'password123', role: 'COLLEGE_ADMIN', collegeId: college._id },
@@ -97,68 +109,88 @@ const seedData = async () => {
       { name: 'Prof. Grace Hopper', email: 'hopper@git.edu', password: 'password123', role: 'TEACHER', collegeId: college._id },
       { name: 'Dr. Richard Feynman', email: 'feynman@git.edu', password: 'password123', role: 'TEACHER', collegeId: college._id },
       { name: 'Prof. Nikola Tesla', email: 'tesla@git.edu', password: 'password123', role: 'TEACHER', collegeId: college._id },
+      { name: 'Prof. Varun Sharma', email: 'varun@gmail.com', password: 'password123', role: 'TEACHER', collegeId: college._id },
       { name: 'Harsh Kumar', email: 'student@git.edu', password: 'password123', role: 'STUDENT', collegeId: college._id, registrationId: 'STU2024001' },
-      { name: 'Mr. Sharma', email: 'parent@git.edu', password: 'password123', role: 'PARENT', collegeId: college._id, registrationId: 'PAR2024001' }
+      { name: 'Mr. Sharma', email: 'parent@git.edu', password: 'password123', role: 'PARENT', collegeId: college._id, registrationId: 'PAR2024001' },
+      ...extraStudents.map(s => ({ 
+        name: s.name, email: s.email, password: s.password, role: 'STUDENT', collegeId: college._id, registrationId: s.regId 
+      })),
+      ...extraStudents.map(s => ({
+        name: `Parent of ${s.name.split(' ')[0]}`, email: `p.${s.email}`, password: 'password123', role: 'PARENT', collegeId: college._id, registrationId: `PAR-${s.regId}`
+      }))
     ];
 
     const users: any = {};
     for (const u of usersData) {
       users[u.email] = await User.create(u);
     }
-    console.log('Users Created');
+    console.log('Users Created (Total: ' + usersData.length + ')');
 
-    // 5. Create Student Profile
-    const student = await Student.create({
-      uniqueStudentId: 'STU2024001',
-      userId: users['student@git.edu']._id,
-      collegeId: college._id,
-      batchId: batch._id,  // Top-level batchId for efficient querying
-      personalInfo: {
-        firstName: 'Harsh',
-        lastName: 'Kumar',
-        dob: new Date('2004-05-15'),
-        gender: 'male',
-        phone: '9876543210',
-        email: 'student@git.edu',
-        address: '123 Student Housing, Tech City'
-      },
-      academicInfo: {
-        course: 'B.Tech Computer Science',
-        batch: 'Batch 2022-26',
-        department: dept._id,
-        status: 'active',
-        semester: 6,
-        rollNumber: 'CS22001'
-      },
-      parentInfo: {
-        name: 'Mr. Sharma',
-        phone: '9123456780',
-        email: 'parent@git.edu',
-        relation: 'Father'
-      }
-    });
+    // 5. Create Student Profiles
+    const studentEmails = ['student@git.edu', ...extraStudents.map(s => s.email)];
+    const studentsArr = [];
 
-    // Add student to batch
-    batch.students.push(student._id);
+    for (const email of studentEmails) {
+      const u = users[email];
+      const parentName = email === 'student@git.edu' ? 'Mr. Sharma' : `Parent of ${u.name.split(' ')[0]}`;
+      const parentEmail = email === 'student@git.edu' ? 'parent@git.edu' : `p.${email}`;
+
+      const s = await Student.create({
+        uniqueStudentId: u.registrationId,
+        userId: u._id,
+        collegeId: college._id,
+        batchId: batch._id,
+        personalInfo: {
+          firstName: u.name.split(' ')[0],
+          lastName: u.name.split(' ')[1] || 'Kumar',
+          dob: new Date('2004-05-15'),
+          gender: 'male',
+          phone: '9876543210',
+          email: u.email,
+          address: '123 Student Housing, Tech City'
+        },
+        academicInfo: {
+          course: 'B.Tech Computer Science',
+          batch: 'Batch 2022-26',
+          department: dept._id,
+          status: 'active',
+          semester: 6,
+          rollNumber: `CS220${studentEmails.indexOf(email) + 1}`.padEnd(7, '0')
+        },
+        parentInfo: {
+          name: parentName,
+          phone: "9123456780",
+          email: parentEmail,
+          relation: "Father"
+        }
+      });
+      studentsArr.push(s);
+      batch.students.push(s._id);
+    }
     await batch.save();
-    console.log('Student Profile Created & Linked to Batch');
+    console.log('11 Student Profiles Created & Linked to Batch');
 
-    // 6. Create Parent Profile & Link
-    await Parent.create({
-      userId: users['parent@git.edu']._id,
-      students: [student._id],
-      relation: 'Father',
-      phone: '9123456780',
-      address: '456 Parent Estates, Greenway'
-    });
-    console.log('Parent Profile Created & Linked to Student');
+    // 6. Create Parent Profiles & Link
+    for (const s of studentsArr) {
+      const u = users[s.personalInfo.email];
+      const parentEmail = s.personalInfo.email === 'student@git.edu' ? 'parent@git.edu' : `p.${s.personalInfo.email}`;
+      await Parent.create({
+        userId: users[parentEmail]._id,
+        students: [s._id],
+        relation: 'Father',
+        phone: '9123456780',
+        address: '123 Parental Circle, Tech City'
+      });
+    }
+    console.log('11 Parent Profiles Created & Linked to Students');
 
     // 7. Create Faculty Profiles & Wire Assignments
     const facultyConfigs = [
-      { email: 'teacher@git.edu', subjects: subjects.slice(0, 3) }, // 3 out of 10
+      { email: 'teacher@git.edu', subjects: subjects.slice(0, 3) },
       { email: 'hopper@git.edu', subjects: [subjects[4], subjects[5]] },
       { email: 'feynman@git.edu', subjects: [subjects[8], subjects[9]] },
-      { email: 'tesla@git.edu', subjects: [subjects[6], subjects[7]] }
+      { email: 'tesla@git.edu', subjects: [subjects[6], subjects[7]] },
+      { email: 'varun@gmail.com', subjects: [subjects[3], subjects[4]] }
     ];
 
     for (const f of facultyConfigs) {
@@ -173,9 +205,9 @@ const seedData = async () => {
         assignedSubjects: f.subjects.map(s => ({ subjectId: s._id, batchId: batch._id }))
       });
     }
-    console.log('Multiple Faculty Profiles Created & Assignments Wired');
+    console.log('Faculty Profiles Created & Assignments Wired');
 
-    // 7. Generate Mock Attendance (30 days)
+    // 8. Generate Mock Attendance (30 days)
     const attendanceRecords = [];
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30);
@@ -183,8 +215,6 @@ const seedData = async () => {
     for (let i = 0; i < 30; i++) {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
-      
-      // Skip Sundays
       if (date.getDay() === 0) continue;
 
       for (const sub of subjects) {
@@ -194,18 +224,17 @@ const seedData = async () => {
           teacherId: users['teacher@git.edu']._id,
           collegeId: college._id,
           date: date,
-          records: [{
-            studentId: student._id,
-            status: Math.random() > 0.1 ? 'Present' : 'Absent'
-          }]
+          records: studentsArr.map(s => ({
+            studentId: s._id,
+            status: Math.random() > 0.15 ? 'Present' : 'Absent'
+          }))
         });
       }
-
     }
     await Attendance.insertMany(attendanceRecords);
-    console.log('Mock Attendance Generated (30 Days)');
+    console.log('Mock Attendance Generated for 11 Students (30 Days)');
     
-    // 8. Create Mock Exam & Result
+    // 9. Create Mock Exam & Result
     const exam = await Exam.create({
       collegeId: college._id,
       code: 'SEM-FIN-2024',
@@ -231,28 +260,31 @@ const seedData = async () => {
       createdBy: users['admin@git.edu']._id
     });
 
-    await Result.create({
-      examId: exam._id,
-      studentId: student._id,
-      courseId: course._id,
-      batchId: batch._id,
-      subjects: subjects.map(s => ({
-        subjectId: s._id,
-        subjectName: s.name,
-        marks: 75 + Math.floor(Math.random() * 20),
-        maxMarks: 100,
-        grade: 'A',
-        gradePoint: 9,
-        status: 'PASS'
-      })),
-      totalMarksObtained: 255,
-      totalMaxMarks: 300,
-      percentage: 85,
-      cgpa: 9.0,
-      status: 'PASS',
-      publishedDate: new Date(),
-      publishedBy: users['admin@git.edu']._id
-    });
+    for (const s of studentsArr) {
+      await Result.create({
+        examId: exam._id,
+        studentId: s._id,
+        courseId: course._id,
+        batchId: batch._id,
+        subjects: subjects.map(sub => ({
+          subjectId: sub._id,
+          subjectName: sub.name,
+          marks: 60 + Math.floor(Math.random() * 35),
+          maxMarks: 100,
+          grade: 'B',
+          gradePoint: 8,
+          status: 'PASS'
+        })),
+        totalMarksObtained: 240 + Math.floor(Math.random() * 50),
+        totalMaxMarks: 300,
+        percentage: 80 + Math.floor(Math.random() * 15),
+        cgpa: 8.0 + (Math.random() * 1.5),
+        status: 'PASS',
+        publishedDate: new Date(),
+        publishedBy: users['admin@git.edu']._id
+      });
+    }
+    console.log('Mock Exam & Results Created for 11 Students');
     console.log('Mock Exam & Result Created');
 
     console.log('--- SEEDING COMPLETE ---');

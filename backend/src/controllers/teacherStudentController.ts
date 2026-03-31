@@ -17,7 +17,7 @@ export const getMyStudents = async (req: Request, res: Response) => {
     // In a real system, we'd query batches assigned to this teacher
     // Filtering fields for relevant data
     const students = await Student.find(query)
-      .select('personalInfo academicInfo')
+      .select('personalInfo academicInfo parentInfo')
       .populate('userId', 'email isActive');
 
     res.status(200).json({ success: true, data: students });
@@ -37,7 +37,7 @@ export const getStudentProfile = async (req: Request, res: Response) => {
 
     // Strict field selection to strip sensitive info
     const student = await Student.findById(studentId)
-      .select('personalInfo academicInfo academicHistory')
+      .select('personalInfo academicInfo academicHistory parentInfo')
       .populate('userId', 'email name');
 
     if (!student) {

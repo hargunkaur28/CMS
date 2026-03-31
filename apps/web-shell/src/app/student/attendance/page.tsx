@@ -13,17 +13,18 @@ import {
 } from 'lucide-react';
 import { fetchMyAttendance } from '@/lib/api/student';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 export default function StudentAttendancePage() {
   const [attendance, setAttendance] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterSubject, setFilterSubject] = useState<string>("All Subjects");
 
   useEffect(() => {
     async function loadData() {
       try {
         const res = await fetchMyAttendance();
         if (res.success) {
-          // Check for records inside data property due to refactor
           const records = res.data.records || (Array.isArray(res.data) ? res.data : []);
           setAttendance(records);
         }
@@ -35,6 +36,12 @@ export default function StudentAttendancePage() {
     }
     loadData();
   }, []);
+
+  const subjects = Array.from(new Set(attendance.map(r => r.subject?.name).filter(Boolean)));
+
+  const filteredAttendance = filterSubject === "All Subjects" 
+    ? attendance 
+    : attendance.filter(r => r.subject?.name === filterSubject);
 
   const calculateStats = () => {
     if (attendance.length === 0) return { pct: 0, present: 0, absent: 0, total: 0 };
@@ -112,7 +119,7 @@ export default function StudentAttendancePage() {
         />
       </div>
 
-      {/* Subject Wise breakdown placeholder */}
+      {/* Subject Wise breakdown */}
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
         <h3 className="text-xl font-bold text-slate-900 mb-6 font-display">Subject Breakdown</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -123,17 +130,25 @@ export default function StudentAttendancePage() {
             if (r.status === 'Present' || r.status === 'Leave') acc[sub].p++;
             return acc;
           }, {})).map(([sub, data]: [string, any]) => (
-            <div key={sub} className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+            <div key={sub} className={cn(
+              "p-4 rounded-2xl border transition-all cursor-pointer",
+              filterSubject === sub ? "bg-indigo-600 border-indigo-500 text-white shadow-xl shadow-indigo-600/20" : "bg-slate-50 border-slate-100"
+            )}
+            onClick={() => setFilterSubject(filterSubject === sub ? "All Subjects" : sub)}
+            >
                <div className="flex justify-between items-center mb-2">
-                 <p className="text-sm font-bold text-slate-900">{sub}</p>
-                 <span className="text-xs font-black text-indigo-600 bg-white px-2 py-1 rounded-lg border border-slate-200">
+                 <p className={cn("text-sm font-bold", filterSubject === sub ? "text-white" : "text-slate-900")}>{sub}</p>
+                 <span className={cn(
+                   "text-xs font-black px-2 py-1 rounded-lg border",
+                   filterSubject === sub ? "bg-white/20 border-white/20 text-white" : "text-indigo-600 bg-white border-slate-200"
+                 )}>
                    {Math.round((data.p / data.t) * 100)}%
                  </span>
                </div>
-               <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                 <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(data.p / data.t) * 100}%` }} />
+               <div className={cn("h-2 rounded-full overflow-hidden", filterSubject === sub ? "bg-white/20" : "bg-slate-200")}>
+                 <div className={cn("h-full rounded-full", filterSubject === sub ? "bg-white" : "bg-indigo-500")} style={{ width: `${(data.p / data.t) * 100}%` }} />
                </div>
-               <p className="text-[10px] text-slate-400 font-bold uppercase mt-2">{data.p} of {data.t} Sessions</p>
+               <p className={cn("text-[10px] font-bold uppercase mt-2", filterSubject === sub ? "text-indigo-100" : "text-slate-400")}>{data.p} of {data.t} Sessions</p>
             </div>
           ))}
         </div>
@@ -142,27 +157,34 @@ export default function StudentAttendancePage() {
       {/* History Table */}
       <Card className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <h3 className="text-lg font-bold text-slate-900">Attendance Log</h3>
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all">
-            <Filter size={14} /> Filter Subject
-          </button>
+          <h3 className="text-lg font-bold text-slate-900">Attendance Log — {filterSubject}</h3>
+          <select 
+            value={filterSubject}
+            onChange={(e) => setFilterSubject(e.target.value)}
+            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500/20"
+          >
+            <option value="All Subjects">All Subjects</option>
+            {subjects.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
         
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/50">
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Date</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Date & Time</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Subject</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 text-right">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm font-utility">
-              {attendance.map((record, idx) => (
+              {filteredAttendance.map((record, idx) => (
                 <tr key={idx} className="hover:bg-slate-50/50 transition-all group">
                   <td className="px-6 py-4">
                     <p className="font-bold text-slate-900">{new Date(record.date).toLocaleDateString()}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">{new Date(record.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">
+                      {record.createdAt ? new Date(record.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '09:00 AM'}
+                    </p>
                   </td>
                   <td className="px-6 py-4 font-bold text-slate-700">
                     {record.subject?.name || 'Unknown Subject'}
@@ -180,9 +202,9 @@ export default function StudentAttendancePage() {
               ))}
             </tbody>
           </table>
-          {attendance.length === 0 && (
+          {filteredAttendance.length === 0 && (
             <div className="p-12 text-center text-slate-400 font-bold italic">
-              No attendance records found for this academic session.
+              No matching attendance records found.
             </div>
           )}
         </div>

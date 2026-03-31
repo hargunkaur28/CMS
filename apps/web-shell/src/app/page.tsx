@@ -22,9 +22,12 @@ import {
   Calendar,
   Download,
   Award,
-  ClipboardCheck
+  ClipboardCheck,
+  Bell,
+  Megaphone
 } from "lucide-react";
 import { fetchMyProfile, fetchMyAttendance, fetchMyResults, fetchMyTodaySchedule } from "@/lib/api/student";
+import { fetchMyAnnouncements, fetchUnreadCount } from "@/lib/api/communication";
 import { fetchMyStudentProfile, fetchMyStudentAttendance, fetchMyStudentResults, fetchMyStudentTimetable, fetchMyStudentFees } from "@/lib/api/parent";
 import { useSocket } from "@/components/providers/SocketProvider";
 import { fetchTodayTimetable as fetchTeacherTimetable, fetchTeacherDashboardStats } from "@/lib/api/teacher";
@@ -548,43 +551,51 @@ function StudentDashboard() {
   const [attendanceData, setAttendanceData] = React.useState<any>(null);
   const [resultsData, setResultsData] = React.useState<any>(null);
   const [schedule, setSchedule] = React.useState<any[]>([]);
+  const [announcements, setAnnouncements] = React.useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = React.useState(0);
   const [loading, setLoading] = React.useState(true);
 
-  React.useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [profileRes, attendanceRes, resultsRes, scheduleRes] = await Promise.all([
-          fetchMyProfile(),
-          fetchMyAttendance(),
-          fetchMyResults(),
-          fetchMyTodaySchedule()
-        ]);
-        if (profileRes.success) {
-          setProfile(profileRes.data);
-          // Store profile for Socket joining
-          localStorage.setItem("student_profile", JSON.stringify({
-            _id: profileRes.data._id,
-            batchId: profileRes.data.academicInfo?.batchId || profileRes.data.batchId
-          }));
-        }
-        if (attendanceRes.success) setAttendanceData(attendanceRes.data);
-        if (resultsRes.success) setResultsData(resultsRes.data);
-        if (scheduleRes.success) setSchedule(scheduleRes.data);
-
-      } catch (err) {
-        console.error("Failed to load student dashboard data", err);
-      } finally {
-        setLoading(false);
+  const loadData = async () => {
+    try {
+      const [profileRes, attendanceRes, resultsRes, scheduleRes, annRes, unreadRes] = await Promise.all([
+        fetchMyProfile(),
+        fetchMyAttendance(),
+        fetchMyResults(),
+        fetchMyTodaySchedule(),
+        fetchMyAnnouncements(),
+        fetchUnreadCount()
+      ]);
+      if (profileRes.success) {
+        setProfile(profileRes.data);
+        localStorage.setItem("student_profile", JSON.stringify({
+          _id: profileRes.data._id,
+          batchId: profileRes.data.academicInfo?.batchId || profileRes.data.batchId
+        }));
       }
-    };
+      if (attendanceRes.success) setAttendanceData(attendanceRes.data);
+      if (resultsRes.success) setResultsData(resultsRes.data);
+      if (scheduleRes.success) setSchedule(scheduleRes.data);
+      if (annRes.success) setAnnouncements(annRes.data);
+      if (unreadRes.success) setUnreadCount(unreadRes.data.count);
+
+    } catch (err) {
+      console.error("Failed to load student dashboard data", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
     loadData();
 
     if (socket) {
       socket.on("attendanceUpdated", loadData);
       socket.on("resultsPublished", loadData);
+      socket.on("newMessage", loadData);
       return () => {
         socket.off("attendanceUpdated", loadData);
         socket.off("resultsPublished", loadData);
+        socket.off("newMessage", loadData);
       };
     }
   }, [socket]);
@@ -597,14 +608,13 @@ function StudentDashboard() {
     );
   }
 
-  // Enhanced robust parsing for refactored API
   const attendancePct = attendanceData?.percentage || attendanceData?.data?.percentage || 0;
   const subjectWise = attendanceData?.subjectWise || attendanceData?.data?.subjectWise || [];
   const cgpa = resultsData?.overallCgpa || resultsData?.data?.overallCgpa || 0;
   const lastPercent = resultsData?.latestPercentage || resultsData?.data?.latestPercentage || 0;
 
   return (
-    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 uppercase-info">
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -614,13 +624,26 @@ function StudentDashboard() {
             {profile?.academicInfo?.course} | Batch {profile?.academicInfo?.batch}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Roll Number</p>
-            <p className="text-sm font-bold text-slate-900">{profile?.academicInfo?.rollNumber || 'N/A'}</p>
-          </div>
-          <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg border border-slate-800">
-            {profile?.personalInfo?.firstName?.[0]}
+        <div className="flex items-center gap-4">
+          <Link 
+            href="/communication" 
+            className="relative p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-slate-900 transition-all shadow-sm group"
+          >
+            <Bell size={20} className="group-hover:rotate-12 transition-transform" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-600 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse border-2 border-white">
+                {unreadCount}
+              </span>
+            )}
+          </Link>
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Roll Number</p>
+              <p className="text-sm font-bold text-slate-900">{profile?.academicInfo?.rollNumber || 'N/A'}</p>
+            </div>
+            <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg border border-slate-800">
+              {profile?.personalInfo?.firstName?.[0]}
+            </div>
           </div>
         </div>
       </div>
@@ -655,99 +678,126 @@ function StudentDashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2 p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-bold text-slate-900">Registered Subjects</h2>
-            <button className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
-              View All <ArrowUpRight size={14} />
-            </button>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {subjectWise.length > 0 ? subjectWise.map((sub: any, i: number) => {
-              const isToday = sub.lastMarkedAt && 
-                new Date(sub.lastMarkedAt).toDateString() === new Date().toDateString();
-              return (
-                <div key={i} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 group hover:bg-white hover:shadow-ambient transition-all duration-300">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">
-                        <Book size={18} className="text-indigo-600" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-slate-900 leading-tight">{sub.name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
-                          {isToday ? (
-                            <span className="text-emerald-600 font-black">✓ Updated Today</span>
-                          ) : (
-                            `Last: ${sub.lastMarkedAt ? new Date(sub.lastMarkedAt).toLocaleDateString() : 'N/A'}`
-                          )}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={cn(
-                      "text-xs font-black px-2 py-1 rounded-lg border",
-                      sub.percentage >= 75 ? "text-emerald-600 bg-emerald-50 border-emerald-100" : "text-rose-600 bg-rose-50 border-rose-100"
-                    )}>
-                      {sub.percentage}%
-                    </span>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="lg:col-span-8 space-y-8">
+          {/* Announcements Banner */}
+          {announcements.length > 0 && (
+            <Card className="p-6 bg-indigo-600 text-white rounded-3xl shadow-xl shadow-indigo-600/20 border-none overflow-hidden relative group">
+              <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000" />
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                    <Megaphone size={24} />
                   </div>
-                  <div className="space-y-2">
-                    <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
-                      <div 
-                        className={cn("h-full rounded-full transition-all duration-1000", sub.percentage >= 75 ? "bg-emerald-500" : "bg-rose-500")}
-                        style={{ width: `${sub.percentage}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                      <span>{sub.present} Presence</span>
-                      <span>{sub.total} Classes</span>
-                    </div>
+                  <div>
+                    <h3 className="text-lg font-black uppercase tracking-tight">Active Announcements</h3>
+                    <p className="text-xs text-indigo-100 font-medium">You have {announcements.length} new messages from your teachers.</p>
                   </div>
                 </div>
-              );
-            }) : (
-              <>
-                <SubjectMiniCard name="Advanced Algorithms" code="CS601" icon={<Book size={18} />} color="text-indigo-600" />
-                <SubjectMiniCard name="Database Systems" code="CS602" icon={<Book size={18} />} color="text-emerald-600" />
-              </>
-            )}
-          </div>
-        </Card>
-
-        <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold text-slate-900 font-display">Today's Schedule</h2>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-              <Calendar size={16} />
-            </div>
-          </div>
-          <div className="space-y-6">
-            {schedule.length > 0 ? schedule.map((slot, i) => (
-              <EventRow 
-                key={i} 
-                month="TOD" 
-                day={slot.startTime} 
-                title={slot.subjectId?.name || "Class"} 
-                sub={`${slot.room || 'TBD'} | Period ${slot.period}`} 
-                color={slot.isUpcoming ? "bg-indigo-50 text-indigo-600" : "bg-emerald-50 text-emerald-600"} 
-              />
-            )) : (
-              <div className="py-12 text-center opacity-40">
-                <Clock size={32} className="mx-auto mb-4 text-slate-300" />
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No Sessions Logged Today</p>
+                <Link 
+                  href="/communication" 
+                  className="px-6 py-3 bg-white text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-lg active:scale-95"
+                >
+                  Enter Hub
+                </Link>
               </div>
-            )}
-          </div>
-          <Link 
-            href="/timetable" 
-            className="w-full mt-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center"
-          >
-            View Full Timetable
-          </Link>
-        </Card>
+            </Card>
+          )}
 
+          <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-xl font-bold text-slate-900">Registered Subjects</h2>
+              <Link href="/attendance" className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                View All <ArrowUpRight size={14} />
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {subjectWise.length > 0 ? subjectWise.map((sub: any, i: number) => {
+                const isToday = sub.lastMarkedAt && 
+                  new Date(sub.lastMarkedAt).toDateString() === new Date().toDateString();
+                return (
+                  <div key={i} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 group hover:bg-white hover:shadow-ambient transition-all duration-300">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">
+                          <Book size={18} className="text-indigo-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 leading-tight">{sub.name}</p>
+                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                            {isToday ? (
+                              <span className="text-emerald-600 font-black">✓ Updated Today</span>
+                            ) : (
+                              `Last: ${sub.lastMarkedAt ? new Date(sub.lastMarkedAt).toLocaleDateString() : 'N/A'}`
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={cn(
+                        "text-xs font-black px-2 py-1 rounded-lg border",
+                        sub.percentage >= 75 ? "text-emerald-600 bg-emerald-50 border-emerald-100" : "text-rose-600 bg-rose-50 border-rose-100"
+                      )}>
+                        {sub.percentage}%
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                        <div 
+                          className={cn("h-full rounded-full transition-all duration-1000", sub.percentage >= 75 ? "bg-emerald-500" : "bg-rose-500")}
+                          style={{ width: `${sub.percentage}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                        <span>{sub.present} Presence</span>
+                        <span>{sub.total} Classes</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }) : (
+                <>
+                  <SubjectMiniCard name="Advanced Algorithms" code="CS601" icon={<Book size={18} />} color="text-indigo-600" />
+                  <SubjectMiniCard name="Database Systems" code="CS602" icon={<Book size={18} />} color="text-emerald-600" />
+                </>
+              )}
+            </div>
+          </Card>
+        </div>
+
+        <div className="lg:col-span-4">
+          <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl h-full">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-900 font-display">Today's Schedule</h2>
+              <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Calendar size={16} />
+              </div>
+            </div>
+            <div className="space-y-6">
+              {schedule.length > 0 ? schedule.map((slot, i) => (
+                <EventRow 
+                  key={i} 
+                  month="TOD" 
+                  day={slot.startTime} 
+                  title={slot.subjectId?.name || "Class"} 
+                  sub={`${slot.room || 'TBD'} | Period ${slot.period}`} 
+                  color={slot.isUpcoming ? "bg-indigo-50 text-indigo-600" : "bg-emerald-50 text-emerald-600"} 
+                />
+              )) : (
+                <div className="py-12 text-center opacity-40">
+                  <Clock size={32} className="mx-auto mb-4 text-slate-300" />
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No Sessions Logged Today</p>
+                </div>
+              )}
+            </div>
+            <Link 
+              href="/timetable" 
+              className="w-full mt-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center"
+            >
+              View Full Timetable
+            </Link>
+          </Card>
+        </div>
       </div>
     </div>
   );
@@ -781,7 +831,6 @@ function EventRow({ month, day, title, sub, color }: any) {
     </div>
   );
 }
-
 
 function SuperAdminDashboard() {
   return (

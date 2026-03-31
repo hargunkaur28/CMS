@@ -620,9 +620,9 @@ function MessagingView({
                     </div>
 
                     {messages.map((msg: any, idx: number) => {
-                      const isMine =
-                        msg.senderId?._id === user?._id ||
-                        msg.senderId === user?._id;
+                      const currentUserId = user?._id || user?.id;
+                      const senderId = msg.senderId?._id || msg.senderId;
+                      const isMine = senderId === currentUserId;
                       const showTime =
                         idx === 0 ||
                         new Date(msg.createdAt).getTime() -

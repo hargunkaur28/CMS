@@ -15,9 +15,13 @@ export default function CommunicationPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'announcements' | 'messages'>('announcements');
 
+  const [user, setUser] = useState<any>(null);
+
   const fetchData = async () => {
     setLoading(true);
     try {
+      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      setUser(savedUser);
       const [annRes, stuRes] = await Promise.all([
         api.get('/teacher/announcements'),
         api.get('/teacher/students')
@@ -31,9 +35,9 @@ export default function CommunicationPage() {
     }
   };
 
-  const fetchMessages = async (studentId: string) => {
+  const fetchMessages = async (studentUserId: string) => {
     try {
-      const res = await api.get(`/teacher/messages/${studentId}`);
+      const res = await api.get(`/teacher/messages/${studentUserId}`);
       setMessages(res.data.data);
     } catch (err) {
       console.error("Failed to fetch messages");
@@ -46,8 +50,9 @@ export default function CommunicationPage() {
 
   useEffect(() => {
     if (selectedStudent) {
-      fetchMessages(selectedStudent.userId._id);
-      const interval = setInterval(() => fetchMessages(selectedStudent.userId._id), 5000);
+      const studentUserId = selectedStudent.userId?._id || selectedStudent.userId;
+      fetchMessages(studentUserId);
+      const interval = setInterval(() => fetchMessages(studentUserId), 5000);
       return () => clearInterval(interval);
     }
   }, [selectedStudent]);
@@ -61,13 +66,15 @@ export default function CommunicationPage() {
     e.preventDefault();
     if (!newMessage || !selectedStudent) return;
 
+    const studentUserId = selectedStudent.userId?._id || selectedStudent.userId;
+
     try {
       await api.post('/teacher/messages', {
-        receiverId: selectedStudent.userId._id,
+        receiverId: studentUserId,
         content: newMessage
       });
       setNewMessage("");
-      fetchMessages(selectedStudent.userId._id);
+      fetchMessages(studentUserId);
     } catch (err) {
       alert("Failed to send message");
     }
@@ -194,17 +201,23 @@ export default function CommunicationPage() {
                           </div>
                           
                           <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-slate-50/20">
-                             {messages.map((msg: any) => (
-                               <div key={msg._id} className={cn("flex flex-col max-w-[80%]", (msg.senderId?._id || msg.senderId) === selectedStudent.userId._id ? "items-start" : "items-end ml-auto")}>
-                                  <div className={cn(
-                                     "p-4 rounded-3xl text-sm shadow-sm",
-                                     (msg.senderId?._id || msg.senderId) === selectedStudent.userId._id ? "bg-white text-slate-900 rounded-tl-none border border-slate-100" : "bg-slate-900 text-white rounded-tr-none"
-                                  )}>
-                                     {msg.content}
+                             {messages.map((msg: any) => {
+                                const currentUserId = user?._id || user?.id;
+                                const senderId = msg.senderId?._id || msg.senderId;
+                                const isMine = senderId === currentUserId;
+                                
+                                return (
+                                  <div key={msg._id} className={cn("flex flex-col max-w-[80%]", isMine ? "items-end ml-auto" : "items-start")}>
+                                     <div className={cn(
+                                        "p-4 rounded-3xl text-sm shadow-sm",
+                                        isMine ? "bg-slate-900 text-white rounded-tr-none" : "bg-white text-slate-900 rounded-tl-none border border-slate-100"
+                                     )}>
+                                        {msg.content}
+                                     </div>
+                                     <span className="text-[10px] text-slate-400 mt-1 px-1">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                   </div>
-                                  <span className="text-[10px] text-slate-400 mt-1 px-1">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                               </div>
-                             ))}
+                                );
+                             })}
                              {messages.length === 0 && (
                                 <div className="h-full flex flex-col items-center justify-center text-slate-300 space-y-4">
                                    <MessageSquare size={48} />
