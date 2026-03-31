@@ -278,7 +278,7 @@ export const uploadStudentPhoto = async (req: Request, res: Response) => {
       // If no file and no cloudinary, or just no cloudinary, we can return a dummy
       const student = await Student.findOneAndUpdate(
         { uniqueStudentId: id },
-        { "personalInfo.photo": `http://${req.get('host') || 'localhost:5000'}/uploads/temp/demo-avatar.png` },
+        { "personalInfo.photo": `http://${req.get('host')}/uploads/temp/demo-avatar.png` },
         { new: true }
       );
       if (!student) return res.status(404).json({ success: false, message: "Student not found" });
@@ -339,7 +339,7 @@ export const uploadDocs = async (req: Request, res: Response) => {
       console.warn("CLOUDINARY NOT CONFIGURED: Using dummy URLs for testing.");
       const docs = files.map(f => ({
         name: f.originalname,
-        cloudinaryUrl: `http://${req.get('host') || 'localhost:5000'}/uploads/temp/${f.filename}`,
+        cloudinaryUrl: `http://${req.get('host')}/uploads/temp/${f.filename}`,
         uploadedAt: new Date()
       }));
       return res.status(200).json({ success: true, data: docs, message: "Demo mode: Files accepted (not stored)" });
@@ -437,6 +437,42 @@ export const getMyFees = async (req: Request, res: Response) => {
 
   } catch (error: any) {
     console.error(`[GET_MY_FEES_ERROR] userId=${(req as any).user?._id}:`, error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Handle a simulated payment for demo purposes
+ */
+export const processMockPayment = async (req: Request, res: Response) => {
+  try {
+    const { feeStructureId, amount, mode } = req.body;
+    const userId = (req as any).user._id;
+    const collegeId = (req as any).user.collegeId;
+
+    const student = await Student.findOne({ userId, collegeId });
+    if (!student) return res.status(404).json({ success: false, message: "Student profile not found" });
+
+    // Validate fee structure exists
+    const fee = await FeeStructure.findById(feeStructureId);
+    if (!fee) return res.status(404).json({ success: false, message: "Fee structure not found" });
+
+    const payment = await Payment.create({
+      studentId: student._id,
+      feeStructureId,
+      amountPaid: amount,
+      mode: mode || "online",
+      status: "Paid",
+      receiptNumber: `MOCK-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+    });
+
+    res.status(201).json({ 
+      success: true, 
+      data: payment, 
+      message: "Payment processed successfully (Mock Transformation Complete)" 
+    });
+  } catch (error: any) {
+    console.error("[MOCK_PAYMENT_ERROR]:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

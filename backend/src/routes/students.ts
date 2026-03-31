@@ -11,6 +11,7 @@ import {
   uploadDocs,
   getMyStudent,
   getMyFees,
+  processMockPayment,
 } from "../controllers/studentsController.js";
 import { getStudentMaterials } from "../controllers/uploadController.js";
 import * as timetableController from "../controllers/timetableController.js";
@@ -33,7 +34,9 @@ router.get("/", getStudents);
 router.get("/stats", getStudentStats);
 router.get("/timetable", protect, timetableController.getStudentTimetable);
 router.get("/timetable/today", protect, timetableController.getStudentTodaySchedule);
+router.get("/me/fees", protect, getMyFees);
 router.get("/fees", protect, getMyFees);
+router.post("/pay", protect, processMockPayment);
 router.get("/materials", protect, getStudentMaterials);
 
 // --- Communication ---

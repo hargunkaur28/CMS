@@ -11,7 +11,7 @@ import {
   Receipt,
   GraduationCap
 } from 'lucide-react';
-import { fetchMyFees as fetchStudentFees } from '@/lib/api/student';
+import { fetchMyFees as fetchStudentFees, submitPayment } from '@/lib/api/student';
 import { fetchMyStudentFees as fetchParentFees } from '@/lib/api/parent';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
@@ -22,37 +22,59 @@ export default function FinancePortal() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const user = JSON.parse(localStorage.getItem("user") || "{}");
-        let res;
-        
-        if (user.role === 'STUDENT') {
-          res = await fetchStudentFees();
-        } else {
-          res = await fetchParentFees();
-        }
-
-        if (res.success) {
-          setData(res.data);
-        }
-      } catch (err) {
-        console.error("Failed to load financial data", err);
-      } finally {
-        setLoading(false);
+  const loadData = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
+      let res;
+      
+      if (user.role === 'STUDENT') {
+        res = await fetchStudentFees();
+      } else {
+        res = await fetchParentFees();
       }
+
+      if (res.success) {
+        setData(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load financial data", err);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
     loadData();
   }, []);
 
 
   const handlePaySim = async () => {
+    if (!data?.structures?.length) return;
+    
     setPaying(true);
-    // Simulated payment delay
-    await new Promise(r => setTimeout(r, 2000));
-    alert("This is a simulation. In a production environment, this would redirect to a Razorpay/Stripe gateway.");
-    setPaying(false);
+    try {
+      const structure = data.structures[0];
+      const amount = data.summary.balance;
+      
+      if (amount <= 0) {
+        alert("No pending dues found.");
+        return;
+      }
+
+      await submitPayment({
+        feeStructureId: structure._id,
+        amount: amount,
+        mode: "online"
+      });
+      
+      alert("Payment Successful! Your balance has been updated.");
+      loadData(); // Refresh data
+    } catch (err) {
+      console.error("Payment failed", err);
+      alert("Payment failed. Please try again.");
+    } finally {
+      setPaying(false);
+    }
   };
 
   if (loading) {

@@ -1,17 +1,12 @@
-import axios from "axios";
+import api from "@/lib/api";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5005/api";
-
-const getAuthHeader = () => {
-  const token = localStorage.getItem("token");
-  return { Authorization: `Bearer ${token}` };
-};
+const BASE = "/students";
 
 /**
  * Fetch the logged-in student's profile
  */
 export const fetchMyProfile = async () => {
-  const response = await axios.get(`${API_URL}/students/me`, { headers: getAuthHeader() });
+  const response = await api.get(`${BASE}/me`);
   return response.data;
 };
 
@@ -19,7 +14,7 @@ export const fetchMyProfile = async () => {
  * Fetch the logged-in student's attendance records
  */
 export const fetchMyAttendance = async () => {
-  const response = await axios.get(`${API_URL}/attendance/me`, { headers: getAuthHeader() });
+  const response = await api.get(`/attendance/me`);
   return response.data;
 };
 
@@ -27,7 +22,7 @@ export const fetchMyAttendance = async () => {
  * Fetch the logged-in student's results
  */
 export const fetchMyResults = async () => {
-  const response = await axios.get(`${API_URL}/exams/results`, { headers: getAuthHeader() });
+  const response = await api.get(`/exams/results`);
   return response.data;
 };
 
@@ -35,7 +30,7 @@ export const fetchMyResults = async () => {
  * Fetch the logged-in student's full weekly timetable
  */
 export const fetchMyTimetable = async () => {
-  const response = await axios.get(`${API_URL}/students/timetable`, { headers: getAuthHeader() });
+  const response = await api.get(`${BASE}/timetable`);
   return response.data;
 };
 
@@ -43,7 +38,7 @@ export const fetchMyTimetable = async () => {
  * Fetch the logged-in student's schedule for today
  */
 export const fetchMyTodaySchedule = async () => {
-  const response = await axios.get(`${API_URL}/students/timetable/today`, { headers: getAuthHeader() });
+  const response = await api.get(`${BASE}/timetable/today`);
   return response.data;
 };
 
@@ -51,7 +46,7 @@ export const fetchMyTodaySchedule = async () => {
  * Fetch the logged-in student's financial portfolio
  */
 export const fetchMyFees = async () => {
-  const response = await axios.get(`${API_URL}/students/fees`, { headers: getAuthHeader() });
+  const response = await api.get(`${BASE}/fees`);
   return response.data;
 };
 
@@ -59,7 +54,14 @@ export const fetchMyFees = async () => {
  * Fetch the logged-in student's academic materials (PDFs, Notes)
  */
 export const fetchMyMaterials = async () => {
-  const response = await axios.get(`${API_URL}/students/materials`, { headers: getAuthHeader() });
+  const response = await api.get(`${BASE}/materials`);
   return response.data;
 };
 
+/**
+ * Submit a mock payment for a specific fee structure
+ */
+export const submitPayment = async (payload: { feeStructureId: string, amount: number, mode?: string }) => {
+  const response = await api.post(`${BASE}/pay`, payload);
+  return response.data;
+};

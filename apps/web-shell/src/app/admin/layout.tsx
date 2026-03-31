@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { 
   Users, 
   UserCheck, 
@@ -40,12 +40,34 @@ const NAV_ITEMS = [
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [authorized, setAuthorized] = React.useState(false);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    if (!token || !user.role) {
+      router.replace("/login");
+    } else if (!["SUPER_ADMIN", "COLLEGE_ADMIN"].includes(user.role)) {
+      router.replace("/");
+    } else {
+      setAuthorized(true);
+    }
+  }, [router]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     router.push("/login");
   };
+
+  if (!authorized) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-900">
+        <div className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-6" />
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] animate-pulse">Securing Administrative Environment...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
@@ -147,7 +169,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Dashboard Content */}
         <main className="flex-1 overflow-y-auto p-12 custom-scrollbar bg-slate-50/50">
           <div className="max-w-7xl mx-auto h-full">
-            {children}
+            {authorized ? children : null}
           </div>
         </main>
       </div>
