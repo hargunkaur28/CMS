@@ -52,8 +52,11 @@ export default function LibraryPage() {
   };
 
   useEffect(() => {
+    const userRole = JSON.parse(localStorage.getItem("user") || "{}").role;
     loadBooks();
-    loadTransactions();
+    if (userRole === "STUDENT") {
+      loadTransactions();
+    }
   }, [searchTerm, activeCategory]);
 
   const handleReserve = async (bookId: string) => {
