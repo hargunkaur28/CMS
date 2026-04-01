@@ -1,6 +1,4 @@
-// FILE: apps/web-shell/src/lib/api/academics.ts
-
-export const API_URL = "http://localhost:5005/api";
+import api from "@/lib/api";
 
 export interface ApiResponse<T> {
   success?: boolean;
@@ -8,55 +6,35 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
-export const getHeaders = () => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
-  };
-};
-
 // --- Departments ---
 export const getDepartments = async (): Promise<any> => {
-  const res = await fetch(`${API_URL}/departments`, { headers: getHeaders() });
-  return res.json();
+  const res = await api.get("/departments");
+  return res.data;
 };
 
 export const createDepartment = async (data: any): Promise<any> => {
-  const res = await fetch(`${API_URL}/departments`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  const res = await api.post("/departments", data);
+  return res.data;
 };
 
 // --- Courses ---
 export const getCourses = async (): Promise<any> => {
-  const res = await fetch(`${API_URL}/courses`, { headers: getHeaders() });
-  return res.json();
+  const res = await api.get("/courses");
+  return res.data;
 };
 
 export const createCourse = async (data: any): Promise<any> => {
-  const res = await fetch(`${API_URL}/courses`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  const res = await api.post("/courses", data);
+  return res.data;
 };
 
 // --- Batches ---
 export const getBatches = async (): Promise<any> => {
-  const res = await fetch(`${API_URL}/batches`, { headers: getHeaders() });
-  return res.json();
+  const res = await api.get("/batches");
+  return res.data;
 };
 
 export const createBatch = async (data: any): Promise<any> => {
-  const res = await fetch(`${API_URL}/batches`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  const res = await api.post("/batches", data);
+  return res.data;
 };

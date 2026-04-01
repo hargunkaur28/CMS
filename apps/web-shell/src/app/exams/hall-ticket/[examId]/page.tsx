@@ -5,6 +5,7 @@ import { ChevronLeft, Printer, Download, Loader2, AlertCircle } from "lucide-rea
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import { getMyStudent } from "@/lib/api/students";
+import { getHallTicket } from "@/lib/api/exams";
 
 export default function HallTicketPage({ params }: { params: Promise<{ examId: string }> }) {
   const { examId } = use(params);
@@ -20,15 +21,9 @@ export default function HallTicketPage({ params }: { params: Promise<{ examId: s
         if (!profileRes.success) throw new Error("Could not find student profile");
         
         const studentId = profileRes.data._id;
-        const token = localStorage.getItem("token");
 
         // 2. Get hall ticket from API
-        const res = await fetch(`http://localhost:5005/api/exams/hall-tickets/${studentId}/${examId}`, {
-          headers: {
-            "Authorization": `Bearer ${token}`
-          }
-        });
-        const data = await res.json();
+        const data = await getHallTicket(studentId, examId);
         
         if (data.success) {
           setTicket(data.data);

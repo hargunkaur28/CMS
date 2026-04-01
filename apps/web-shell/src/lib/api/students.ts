@@ -1,6 +1,4 @@
-// FILE: apps/web-shell/src/lib/api/students.ts
-
-const API_URL = "http://localhost:5005/api";
+import api from "@/lib/api";
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -8,81 +6,60 @@ export interface ApiResponse<T> {
   message: string;
 }
 
-const getHeaders = (isMultipart = false) => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
-  const headers: any = {
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
-  };
-  if (!isMultipart) headers["Content-Type"] = "application/json";
-  return headers;
-};
+const BASE = "/students";
 
 export const getStudents = async (params?: any): Promise<ApiResponse<any[]>> => {
-  const query = params ? new URLSearchParams(params).toString() : "";
-  const res = await fetch(`${API_URL}/students?${query}`, { headers: getHeaders() });
-  return res.json();
+  const response = await api.get(BASE, { params });
+  return response.data;
 };
 
 export const getStudentById = async (id: string): Promise<ApiResponse<any>> => {
-  const res = await fetch(`${API_URL}/students/${id}`, { headers: getHeaders() });
-  return res.json();
+  const response = await api.get(`${BASE}/${id}`);
+  return response.data;
 };
 
 export const getMyStudent = async (): Promise<ApiResponse<any>> => {
-  const res = await fetch(`${API_URL}/students/me`, { headers: getHeaders() });
-  return res.json();
+  const response = await api.get(`${BASE}/me`);
+  return response.data;
 };
 
 export const createStudent = async (data: any): Promise<ApiResponse<any>> => {
-  const res = await fetch(`${API_URL}/students`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  const response = await api.post(BASE, data);
+  return response.data;
 };
 
 export const updateStudent = async (id: string, data: any): Promise<ApiResponse<any>> => {
-  const res = await fetch(`${API_URL}/students/${id}`, {
-    method: "PATCH",
-    headers: getHeaders(),
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  const response = await api.patch(`${BASE}/${id}`, data);
+  return response.data;
 };
 
 export const uploadPhoto = async (id: string, formData: FormData): Promise<ApiResponse<any>> => {
-  const res = await fetch(`${API_URL}/students/${id}/photo`, {
-    method: "POST",
-    headers: getHeaders(true),
-    body: formData,
+  const response = await api.post(`${BASE}/${id}/photo`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
   });
-  return res.json();
+  return response.data;
 };
 
 export const bulkImportStudents = async (formData: FormData): Promise<ApiResponse<any>> => {
-  const res = await fetch(`${API_URL}/students/import`, {
-    method: "POST",
-    headers: getHeaders(true),
-    body: formData,
+  const response = await api.post(`${BASE}/import`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
   });
-  return res.json();
+  return response.data;
 };
 
 export const getStudentStats = async (): Promise<ApiResponse<any>> => {
-  const res = await fetch(`${API_URL}/students/stats`);
-  return res.json();
+  const response = await api.get(`${BASE}/stats`);
+  return response.data;
 };
 
 export const getDepartments = async (): Promise<ApiResponse<any[]>> => {
-  const res = await fetch(`${API_URL}/departments`);
-  return res.json();
+  const response = await api.get(`/departments`);
+  return response.data;
 };
 
 export const uploadDocuments = async (formData: FormData): Promise<ApiResponse<any[]>> => {
-  const res = await fetch(`${API_URL}/students/upload-docs`, {
-    method: "POST",
-    body: formData,
+  const response = await api.post(`${BASE}/upload-docs`, formData, {
+    headers: { "Content-Type": "multipart/form-data" }
   });
-  return res.json();
+  return response.data;
 };

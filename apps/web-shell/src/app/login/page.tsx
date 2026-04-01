@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
+import api from "@/lib/api";
 import Card from "@/components/ui/Card";
 
 // Validation Schema
@@ -47,15 +48,10 @@ export default function LoginPage() {
 
     try {
       // 2. Authentication Request
-      const res = await fetch("http://localhost:5005/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(sanitizedData),
-      });
+      const response = await api.post("/auth/login", sanitizedData);
+      const data = response.data;
 
-      const data = await res.json();
-
-      if (res.ok) {
+      if (response.status === 200 || response.status === 201) {
         // 3. Session Persistence
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify({
@@ -68,11 +64,9 @@ export default function LoginPage() {
         // 4. Redirect
         router.push("/");
         router.refresh();
-      } else {
-        setError(data.message || "Authentication credentials rejected");
       }
-    } catch (err) {
-      setError("Institutional cluster connectivity failure");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Institutional cluster connectivity failure");
     } finally {
       setLoading(false);
     }

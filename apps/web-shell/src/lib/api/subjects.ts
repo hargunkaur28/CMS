@@ -1,24 +1,28 @@
-const API_URL = "http://localhost:5005/api";
+import api from "@/lib/api";
 
-const getHeaders = () => {
-  const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
-  return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {})
-  };
+const BASE = "/subjects";
+
+/**
+ * Fetch all subjects associated with the logged-in student's batch
+ */
+export const fetchMySubjects = async () => {
+  const response = await api.get(BASE);
+  return response.data;
 };
 
+/**
+ * Fetch list of subjects (filtered by course if provided)
+ */
 export const getSubjects = async (courseId?: string): Promise<any> => {
-  const url = courseId ? `${API_URL}/subjects?courseId=${courseId}` : `${API_URL}/subjects`;
-  const res = await fetch(url, { headers: getHeaders() });
-  return res.json();
+  const url = courseId ? `${BASE}?courseId=${courseId}` : BASE;
+  const res = await api.get(url);
+  return res.data;
 };
 
+/**
+ * Create a new subject
+ */
 export const createSubject = async (data: any): Promise<any> => {
-  const res = await fetch(`${API_URL}/subjects`, {
-    method: "POST",
-    headers: getHeaders(),
-    body: JSON.stringify(data),
-  });
-  return res.json();
+  const res = await api.post(BASE, data);
+  return res.data;
 };
