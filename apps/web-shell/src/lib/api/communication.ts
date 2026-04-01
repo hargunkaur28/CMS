@@ -1,12 +1,4 @@
-import axios from "axios";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5005/api";
-console.log("[COMMUNICATION_API] Using API_URL:", API_URL);
-
-const getAuthHeader = () => {
-  const token = localStorage.getItem("token");
-  return { Authorization: `Bearer ${token}` };
-};
+import api from "@/lib/api";
 
 const getRole = (): string => {
   try {
@@ -18,20 +10,20 @@ const getRole = (): string => {
 };
 
 /**
- * Get the base URL prefix for communication endpoints based on role
+ * Get the base path for communication endpoints based on role
  */
-const getCommBase = (): string => {
+const getCommPath = (): string => {
   const role = getRole();
-  if (role === "PARENT") return `${API_URL}/parent/me`;
-  return `${API_URL}/students`;
+  if (role === "PARENT") return `/parent/me`;
+  return `/students`;
 };
 
 /**
  * Fetch announcements (batch-filtered for students, child-filtered for parents)
  */
 export const fetchMyAnnouncements = async () => {
-  const base = getCommBase();
-  const response = await axios.get(`${base}/announcements`, { headers: getAuthHeader() });
+  const path = getCommPath();
+  const response = await api.get(`${path}/announcements`);
   return response.data;
 };
 
@@ -40,11 +32,8 @@ export const fetchMyAnnouncements = async () => {
  */
 export const fetchMyTeachers = async () => {
   const role = getRole();
-  const base = role === "PARENT" ? `${API_URL}/parent/me` : `${API_URL}/students`;
-  const response = await axios.get(`${base}/teachers${role === "PARENT" ? "" : ""}`, {
-    headers: getAuthHeader(),
-  });
-  // Parent uses /me/teachers, Student uses /my-teachers
+  const path = role === "PARENT" ? `/parent/me` : `/students`;
+  const response = await api.get(`${path}/teachers`);
   return response.data;
 };
 
@@ -55,11 +44,11 @@ export const fetchTeachersForRole = async () => {
   const role = getRole();
   let url: string;
   if (role === "PARENT") {
-    url = `${API_URL}/parent/me/teachers`;
+    url = `/parent/me/teachers`;
   } else {
-    url = `${API_URL}/students/my-teachers`;
+    url = `/students/my-teachers`;
   }
-  const response = await axios.get(url, { headers: getAuthHeader() });
+  const response = await api.get(url);
   return response.data;
 };
 
@@ -67,10 +56,8 @@ export const fetchTeachersForRole = async () => {
  * Fetch conversation thread with a specific user
  */
 export const fetchConversation = async (otherUserId: string) => {
-  const base = getCommBase();
-  const response = await axios.get(`${base}/messages/${otherUserId}`, {
-    headers: getAuthHeader(),
-  });
+  const path = getCommPath();
+  const response = await api.get(`${path}/messages/${otherUserId}`);
   return response.data;
 };
 
@@ -78,12 +65,8 @@ export const fetchConversation = async (otherUserId: string) => {
  * Send a direct message
  */
 export const sendDirectMessage = async (receiverId: string, content: string) => {
-  const base = getCommBase();
-  const response = await axios.post(
-    `${base}/messages`,
-    { receiverId, content },
-    { headers: getAuthHeader() }
-  );
+  const path = getCommPath();
+  const response = await api.post(`${path}/messages`, { receiverId, content });
   return response.data;
 };
 
@@ -91,10 +74,8 @@ export const sendDirectMessage = async (receiverId: string, content: string) => 
  * Get count of unread messages
  */
 export const fetchUnreadCount = async () => {
-  const base = getCommBase();
-  const response = await axios.get(`${base}/messages/unread-count`, {
-    headers: getAuthHeader(),
-  });
+  const path = getCommPath();
+  const response = await api.get(`${path}/messages/unread-count`);
   return response.data;
 };
 
@@ -102,12 +83,8 @@ export const fetchUnreadCount = async () => {
  * Mark a specific message as read
  */
 export const markMessageAsRead = async (messageId: string) => {
-  const base = getCommBase();
-  const response = await axios.put(
-    `${base}/messages/${messageId}/read`,
-    {},
-    { headers: getAuthHeader() }
-  );
+  const path = getCommPath();
+  const response = await api.put(`${path}/messages/${messageId}/read`, {});
   return response.data;
 };
 
@@ -119,7 +96,7 @@ export const markMessageAsRead = async (messageId: string) => {
  * Fetch personal notifications for the logged-in user
  */
 export const fetchNotifications = async () => {
-  const response = await axios.get(`${API_URL}/notifications`, { headers: getAuthHeader() });
+  const response = await api.get(`/notifications`);
   return response.data;
 };
 
@@ -127,7 +104,7 @@ export const fetchNotifications = async () => {
  * Fetch unread notification count
  */
 export const fetchNotifUnreadCount = async () => {
-  const response = await axios.get(`${API_URL}/notifications/unread-count`, { headers: getAuthHeader() });
+  const response = await api.get(`/notifications/unread-count`);
   return response.data;
 };
 
@@ -135,6 +112,6 @@ export const fetchNotifUnreadCount = async () => {
  * Mark a specific notification as read
  */
 export const markNotifAsRead = async (id: string) => {
-  const response = await axios.put(`${API_URL}/notifications/${id}/read`, {}, { headers: getAuthHeader() });
+  const response = await api.put(`/notifications/${id}/read`, {});
   return response.data;
 };
