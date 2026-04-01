@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { API_URL, getHeaders } from "@/lib/api/academics";
+import api from "@/lib/api";
 import Link from "next/link";
 
 interface TimetableEntry {
@@ -57,8 +57,7 @@ const getColor = (name: string | undefined) =>
   SUBJECT_PALETTES[((name || "x").split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % SUBJECT_PALETTES.length];
 
 export default function TeacherTimetablePage() {
-  // Correct type: day -> startTime -> entries[]
-  const [timetable, setTimetable] = useState<Record<string, Record<string, TimetableEntry[]>>>({}); // Fixed closing parenthesis
+  const [timetable, setTimetable] = useState<Record<string, Record<string, TimetableEntry[]>>>({});
   const [todaySchedule, setTodaySchedule] = useState<TimetableEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState<{ entry: TimetableEntry; day: string; slot: typeof TIME_SLOTS[number] } | null>(null);
@@ -73,12 +72,12 @@ export default function TeacherTimetablePage() {
     try {
       setLoading(true);
       const [timeRes, todayRes] = await Promise.all([
-        fetch(`${API_URL}/teacher/timetable`, { headers: getHeaders() }),
-        fetch(`${API_URL}/teacher/timetable/today`, { headers: getHeaders() }),
+        api.get("/teacher/timetable"),
+        api.get("/teacher/timetable/today"),
       ]);
-      const [timeData, todayData] = await Promise.all([timeRes.json(), todayRes.json()]);
-      console.log('[TIMETABLE] weekly data:', JSON.stringify(timeData).slice(0, 500));
-      console.log('[TIMETABLE] today data:', JSON.stringify(todayData).slice(0, 500));
+      const timeData = timeRes.data;
+      const todayData = todayRes.data;
+      
       if (timeData.success) setTimetable(timeData.data);
       if (todayData.success) setTodaySchedule(todayData.data);
     } catch (e) {
@@ -88,7 +87,6 @@ export default function TeacherTimetablePage() {
     }
   };
 
-  // Flatten nested day -> startTime -> entries structure for total count
   const totalWeekClasses = days.reduce((sum, d) =>
     sum + Object.values(timetable[d] || {}).flatMap(v => v).length, 0);
   const todayTotal = todaySchedule.length;
@@ -107,8 +105,6 @@ export default function TeacherTimetablePage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] p-6 xl:p-8 space-y-6">
-
-      {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500 mb-1">Academic Hub</p>
@@ -118,7 +114,6 @@ export default function TeacherTimetablePage() {
           <p className="text-sm text-slate-400 font-medium mt-2">{dateLabel}</p>
         </div>
 
-        {/* Stat Pills */}
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-sm">
             <div className="w-7 h-7 rounded-xl bg-indigo-50 flex items-center justify-center">
@@ -149,15 +144,10 @@ export default function TeacherTimetablePage() {
         </div>
       </div>
 
-      {/* ── Main Layout ── */}
       <div className="flex flex-col xl:flex-row gap-6">
-
-        {/* ── Timetable Grid ── */}
         <div className="flex-1 min-w-0 bg-white rounded-3xl border border-slate-100 shadow-xl shadow-slate-100/60 overflow-hidden">
           <div className="overflow-x-auto">
             <div className="min-w-[900px]">
-
-              {/* Period Header Row */}
               <div className="grid grid-cols-[100px_repeat(8,1fr)] border-b border-slate-100">
                 <div className="p-4 flex items-center justify-center">
                   <Clock size={14} className="text-slate-300" />
@@ -170,7 +160,6 @@ export default function TeacherTimetablePage() {
                 ))}
               </div>
 
-              {/* Day Rows */}
               {days.map((day, dayIdx) => {
                 const isToday = day === todayName;
                 return (
@@ -182,7 +171,6 @@ export default function TeacherTimetablePage() {
                       isToday && "bg-indigo-50/40"
                     )}
                   >
-                    {/* Day Label */}
                     <div className={cn(
                       "p-4 flex flex-col items-center justify-center gap-1",
                       isToday ? "border-r-2 border-indigo-500" : "border-r border-slate-100"
@@ -198,12 +186,9 @@ export default function TeacherTimetablePage() {
                       )}
                     </div>
 
-                    {/* Period Cells */}
                     {TIME_SLOTS.map(slot => {
-                      // Primary: lookup by startTime. Fallback: lookup by period number across all slots in that day
                       const dayEntries = timetable[day] || {};
                       const byStart = dayEntries[slot.start] || [];
-                      // Fallback: find any entry whose period matches this slot
                       const byPeriod = byStart.length === 0
                         ? Object.values(dayEntries).flat().filter((e: any) => e.period === slot.period)
                         : [];
@@ -211,12 +196,12 @@ export default function TeacherTimetablePage() {
                       const entry: TimetableEntry | undefined = (entries as TimetableEntry[])[0];
 
                       if (entry) {
-                        const subName = (entry.subjectId as any)?.name || "";
-                        const subCode = (entry.subjectId as any)?.code || "";
-                        const batchName = (entry.batchId as any)?.name || "";
+                        const subName = entry.subjectId?.name || "";
+                        const subCode = entry.subjectId?.code || "";
+                        const batchName = entry.batchId?.name || "";
                         const color = getColor(subName);
-                        const bId = (entry.batchId as any)?._id || (entry as any).batchId;
-                        const sId = (entry.subjectId as any)?._id || (entry as any).subjectId;
+                        const bId = (entry.batchId as any)?._id || entry.batchId;
+                        const sId = (entry.subjectId as any)?._id || entry.subjectId;
 
                         return (
                           <div
@@ -228,21 +213,14 @@ export default function TeacherTimetablePage() {
                               "hover:brightness-95 cursor-pointer"
                             )}
                           >
-                            {/* Left accent bar */}
                             <div className={cn("absolute left-0 top-2 bottom-2 w-1 rounded-r-full", color.bar)} />
-
                             <div className="pl-2 flex flex-col h-full gap-2">
-                              {/* Subject code badge */}
                               <span className={cn("text-[8px] font-black uppercase tracking-widest rounded-md px-1.5 py-0.5 self-start", color.badge)}>
                                 {subCode}
                               </span>
-
-                              {/* Subject name */}
                               <p className={cn("text-[11px] font-black leading-tight line-clamp-2", color.text)}>
                                 {subName}
                               </p>
-
-                              {/* Meta */}
                               <div className="mt-auto space-y-1">
                                 <div className="flex items-center gap-1">
                                   <Users size={9} className="text-slate-500 shrink-0" />
@@ -254,8 +232,6 @@ export default function TeacherTimetablePage() {
                                 </div>
                               </div>
                             </div>
-
-                            {/* Hover action */}
                             <Link
                               href={`/teacher/attendance?batchId=${bId}&subjectId=${sId}&date=${new Date().toISOString()}&lecture=${slot.period}${entry.section ? `&section=${entry.section}` : ''}`}
                               onClick={e => e.stopPropagation()}
@@ -291,10 +267,7 @@ export default function TeacherTimetablePage() {
           </div>
         </div>
 
-        {/* ── Today's Sidebar ── */}
         <div className="w-full xl:w-72 shrink-0 space-y-4">
-
-          {/* Header card */}
           <div className="bg-slate-950 rounded-3xl p-6 border border-white/5 text-white">
             <div className="flex items-center justify-between mb-1">
               <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500">Today's Queue</p>
@@ -309,14 +282,13 @@ export default function TeacherTimetablePage() {
             </p>
           </div>
 
-          {/* Session list */}
           <div className="space-y-3">
-            {todaySchedule.length > 0 ? todaySchedule.map((s: any, i) => {
+            {todaySchedule.length > 0 ? todaySchedule.map((s, i) => {
               const subName = s.subjectId?.name || "";
               const subCode = s.subjectId?.code || "";
               const batchName = s.batchId?.name || "";
-              const bId = s.batchId?._id || (s as any).batchId;
-              const sId = s.subjectId?._id || (s as any).subjectId;
+              const bId = (s.batchId as any)?._id || s.batchId;
+              const sId = (s.subjectId as any)?._id || s.subjectId;
               const color = getColor(subName);
 
               return (
@@ -330,9 +302,7 @@ export default function TeacherTimetablePage() {
                   )}
                 >
                   <div className="flex items-start gap-3">
-                    {/* Color dot */}
                     <div className={cn("w-2 h-2 rounded-full mt-1.5 shrink-0", color.bar)} />
-
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
@@ -350,7 +320,6 @@ export default function TeacherTimetablePage() {
                       </p>
                     </div>
                   </div>
-
                   {s.isUpcoming && (
                     <Link
                       href={`/teacher/attendance?batchId=${bId}&subjectId=${sId}&date=${new Date().toISOString()}&lecture=${s.period}${s.section ? `&section=${s.section}` : ''}`}
@@ -373,15 +342,14 @@ export default function TeacherTimetablePage() {
         </div>
       </div>
 
-      {/* Slot Detail Modal */}
       {selectedSlot && (() => {
         const { entry, day, slot } = selectedSlot;
-        const subName = (entry.subjectId as any)?.name || "";
-        const subCode = (entry.subjectId as any)?.code || "";
-        const batchName = (entry.batchId as any)?.name || "";
+        const subName = entry.subjectId?.name || "";
+        const subCode = entry.subjectId?.code || "";
+        const batchName = entry.batchId?.name || "";
         const color = getColor(subName);
-        const bId = (entry.batchId as any)?._id || (entry as any).batchId;
-        const sId = (entry.subjectId as any)?._id || (entry as any).subjectId;
+        const bId = (entry.batchId as any)?._id || entry.batchId;
+        const sId = (entry.subjectId as any)?._id || entry.subjectId;
         return (
           <div
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -391,9 +359,7 @@ export default function TeacherTimetablePage() {
               className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
-              {/* Top accent */}
               <div className={cn("h-1.5 w-full", color.bar)} />
-
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div>

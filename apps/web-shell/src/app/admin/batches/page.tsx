@@ -6,7 +6,7 @@ import {
   AlertCircle, Users, Layers, Search, X, GraduationCap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { API_URL, getHeaders } from "@/lib/api/academics";
+import api from "@/lib/api";
 
 interface Course { _id: string; name: string; code: string; }
 interface Batch {
@@ -57,15 +57,14 @@ export default function BatchManagementPage() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [courseRes, batchRes, studentRes] = await Promise.all([
-        fetch(`${API_URL}/admin/courses`, { headers: getHeaders() }),
-        fetch(`${API_URL}/admin/batches`, { headers: getHeaders() }),
-        fetch(`${API_URL}/admin/students`, { headers: getHeaders() }),
+      const [cd, bd, sd] = await Promise.all([
+        api.get("/admin/courses"),
+        api.get("/admin/batches"),
+        api.get("/admin/students"),
       ]);
-      const [cd, bd, sd] = await Promise.all([courseRes.json(), batchRes.json(), studentRes.json()]);
-      if (cd.success) setCourses(cd.data);
-      if (bd.success) setBatches(bd.data);
-      if (sd.success) setAllStudents(sd.data);
+      if (cd.data.success) setCourses(cd.data.data);
+      if (bd.data.success) setBatches(bd.data.data);
+      if (sd.data.success) setAllStudents(sd.data.data);
     } catch {
       showToast("error", "Failed to load data");
     } finally {
@@ -77,9 +76,8 @@ export default function BatchManagementPage() {
 
   const fetchBatchStudents = async (batchId: string) => {
     try {
-      const res = await fetch(`${API_URL}/admin/batches/${batchId}/students`, { headers: getHeaders() });
-      const data = await res.json();
-      if (data.success) setBatchStudents(data.data);
+      const res = await api.get(`/admin/batches/${batchId}/students`);
+      if (res.data.success) setBatchStudents(res.data.data);
     } catch {
       setBatchStudents([]);
     }
@@ -103,12 +101,9 @@ export default function BatchManagementPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/admin/batches`, {
-        method: "POST", headers: getHeaders(),
-        body: JSON.stringify({ ...batchForm, sections: ["A"] }),
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const response = await api.post("/admin/batches", { ...batchForm, sections: ["A"] });
+      const data = response.data;
+      if (response.status === 200 || response.status === 201) {
         showToast("success", `Batch "${batchForm.name}" created`);
         setBatches(prev => [...prev, data.data]);
         setShowCreateBatch(false);
@@ -129,16 +124,13 @@ export default function BatchManagementPage() {
     if (!selectedBatch || !sectionInput.trim()) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/admin/batches/${selectedBatch._id}/sections`, {
-        method: "POST", headers: getHeaders(),
-        body: JSON.stringify({ section: sectionInput.trim().toUpperCase() }),
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const response = await api.post(`/admin/batches/${selectedBatch._id}/sections`, { section: sectionInput.trim().toUpperCase() });
+      const data = response.data;
+      if (response.status === 200 || response.status === 201) {
         showToast("success", `Section "${sectionInput.toUpperCase()}" added`);
         const updated = data.data;
         setBatches(prev => prev.map(b => b._id === updated._id ? { ...b, ...updated } : b));
-        setSelectedBatch(prev => prev ? { ...prev, sections: updated.sections } : null);
+        setSelectedBatch(prev => prev ? { ...prev, ...updated } : null);
         setSectionInput("");
         setShowAddSection(false);
       } else {
@@ -155,15 +147,13 @@ export default function BatchManagementPage() {
   const handleRemoveSection = async (section: string) => {
     if (!selectedBatch || !confirm(`Remove Section ${section}?`)) return;
     try {
-      const res = await fetch(`${API_URL}/admin/batches/${selectedBatch._id}/sections/${section}`, {
-        method: "DELETE", headers: getHeaders(),
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const response = await api.delete(`/admin/batches/${selectedBatch._id}/sections/${section}`);
+      const data = response.data;
+      if (response.status === 200) {
         showToast("success", `Section "${section}" removed`);
         const updated = data.data;
         setBatches(prev => prev.map(b => b._id === updated._id ? { ...b, ...updated } : b));
-        setSelectedBatch(prev => prev ? { ...prev, sections: updated.sections } : null);
+        setSelectedBatch(prev => prev ? { ...prev, ...updated } : null);
       } else {
         showToast("error", data.message || "Failed to remove section");
       }
@@ -177,12 +167,9 @@ export default function BatchManagementPage() {
     if (!selectedBatch) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/admin/assign-student-batch`, {
-        method: "POST", headers: getHeaders(),
-        body: JSON.stringify({ studentId, batchId: selectedBatch._id }),
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const response = await api.post("/admin/assign-student-batch", { studentId, batchId: selectedBatch._id });
+      const data = response.data;
+      if (response.status === 200 || response.status === 201) {
         showToast("success", "Student assigned to batch");
         fetchBatchStudents(selectedBatch._id);
         setShowAddStudent(false);
@@ -202,12 +189,9 @@ export default function BatchManagementPage() {
     if (!selectedBatch || !selectedSection || selectedStudentIds.size === 0) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/admin/batches/${selectedBatch._id}/sections/${selectedSection}/students`, {
-        method: "PUT", headers: getHeaders(),
-        body: JSON.stringify({ studentIds: Array.from(selectedStudentIds) }),
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const response = await api.put(`/admin/batches/${selectedBatch._id}/sections/${selectedSection}/students`, { studentIds: Array.from(selectedStudentIds) });
+      const data = response.data;
+      if (response.status === 200) {
         showToast("success", data.message || "Students assigned to section");
         fetchBatchStudents(selectedBatch._id);
         setShowBulkAssign(false);
@@ -227,12 +211,9 @@ export default function BatchManagementPage() {
     if (!selectedBatch || selectedStudentIds.size === 0) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_URL}/admin/bulk-assign-students-batch`, {
-        method: "POST", headers: getHeaders(),
-        body: JSON.stringify({ batchId: selectedBatch._id, studentIds: Array.from(selectedStudentIds) }),
-      });
-      const data = await res.json();
-      if (res.ok) {
+      const response = await api.post("/admin/bulk-assign-students-batch", { batchId: selectedBatch._id, studentIds: Array.from(selectedStudentIds) });
+      const data = response.data;
+      if (response.status === 200 || response.status === 201) {
         showToast("success", data.message || "Students assigned to batch");
         fetchBatchStudents(selectedBatch._id);
         setShowAddStudent(false);
@@ -252,14 +233,12 @@ export default function BatchManagementPage() {
   const handleRemoveStudent = async (studentId: string) => {
     if (!selectedBatch || !confirm("Remove student from this batch?")) return;
     try {
-      const res = await fetch(`${API_URL}/admin/batches/${selectedBatch._id}/students/${studentId}`, {
-        method: "DELETE", headers: getHeaders(),
-      });
-      if (res.ok) {
+      const response = await api.delete(`/admin/batches/${selectedBatch._id}/students/${studentId}`);
+      const data = response.data;
+      if (response.status === 200) {
         showToast("success", "Student removed");
         setBatchStudents(prev => prev.filter(s => s._id !== studentId));
       } else {
-        const data = await res.json();
         showToast("error", data.message || "Failed to remove student");
       }
     } catch {

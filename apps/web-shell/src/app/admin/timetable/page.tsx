@@ -14,7 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { API_URL, getHeaders } from "@/lib/api/academics";
+import api from "@/lib/api";
 
 // ── Fixed Time Slots (single source of truth on frontend) ──
 const TIME_SLOTS = [
@@ -88,24 +88,20 @@ export default function TimetableBuilderPage() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (selectedTeacherId) params.set("teacherId", selectedTeacherId);
+      const params: any = {};
+      if (selectedTeacherId) params.teacherId = selectedTeacherId;
 
       const [facRes, subRes, batRes, timeRes] = await Promise.all([
-        fetch(`${API_URL}/admin/faculty`, { headers: getHeaders() }),
-        fetch(`${API_URL}/admin/subjects`, { headers: getHeaders() }),
-        fetch(`${API_URL}/admin/batches`, { headers: getHeaders() }),
-        fetch(`${API_URL}/admin/timetable?${params}`, { headers: getHeaders() }),
+        api.get("/admin/faculty"),
+        api.get("/admin/subjects"),
+        api.get("/admin/batches"),
+        api.get("/admin/timetable", { params }),
       ]);
 
-      const [facData, subData, batData, timeData] = await Promise.all([
-        facRes.json(), subRes.json(), batRes.json(), timeRes.json(),
-      ]);
-
-      if (facData.success) setFaculties(facData.data);
-      if (subData.success) setSubjects(subData.data);
-      if (batData.success) setBatches(batData.data);
-      if (timeData.success) setTimetable(timeData.data);
+      if (facRes.data.success) setFaculties(facRes.data.data);
+      if (subRes.data.success) setSubjects(subRes.data.data);
+      if (batRes.data.success) setBatches(batRes.data.data);
+      if (timeRes.data.success) setTimetable(timeRes.data.data);
     } catch (err) {
       console.error("Fetch error:", err);
     } finally {
@@ -116,11 +112,10 @@ export default function TimetableBuilderPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const refreshTimetable = async () => {
-    const params = new URLSearchParams();
-    if (selectedTeacherId) params.set("teacherId", selectedTeacherId);
-    const res = await fetch(`${API_URL}/admin/timetable?${params}`, { headers: getHeaders() });
-    const data = await res.json();
-    if (data.success) setTimetable(data.data);
+    const params: any = {};
+    if (selectedTeacherId) params.teacherId = selectedTeacherId;
+    const res = await api.get("/admin/timetable", { params });
+    if (res.data.success) setTimetable(res.data.data);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -132,17 +127,13 @@ export default function TimetableBuilderPage() {
     setSubmitting(true);
     setMessage(null);
     try {
-      const res = await fetch(`${API_URL}/admin/timetable`, {
-        method: "POST",
-        headers: getHeaders(),
-        body: JSON.stringify({
-          ...formData,
-          teacherId: selectedTeacherId,
-          classId: formData.batchId,
-        }),
+      const response = await api.post("/admin/timetable", {
+        ...formData,
+        teacherId: selectedTeacherId,
+        classId: formData.batchId,
       });
-      const data = await res.json();
-      if (res.ok) {
+      const data = response.data;
+      if (response.status === 200 || response.status === 201) {
         setMessage({ type: "success", text: "Entry created successfully!" });
         await refreshTimetable();
       } else {
@@ -158,15 +149,12 @@ export default function TimetableBuilderPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this timetable entry?")) return;
     try {
-      const res = await fetch(`${API_URL}/admin/timetable/${id}`, {
-        method: "DELETE",
-        headers: getHeaders(),
-      });
-      if (res.ok) {
+      const response = await api.delete(`/admin/timetable/${id}`);
+      const data = response.data;
+      if (response.status === 200) {
         setMessage({ type: "success", text: "Entry deleted." });
         await refreshTimetable();
       } else {
-        const data = await res.json();
         setMessage({ type: "error", text: data.message || "Delete failed." });
       }
     } catch {
