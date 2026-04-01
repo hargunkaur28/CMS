@@ -25,7 +25,10 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (!token || !user._id) return;
 
-    const socketInstance = io(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5005", {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5005/api";
+    const socketUrl = apiUrl.replace(/\/api$/, "");
+    
+    const socketInstance = io(socketUrl, {
       auth: { token },
       transports: ["websocket"]
     });

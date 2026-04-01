@@ -28,7 +28,9 @@ import libraryRoutes from './routes/library.js';
 import notificationsRoutes from './routes/notifications.js';
 
 // Connect to MongoDB
+console.log("[DB] Attempting to connect to MongoDB...");
 await connectDB();
+console.log("[DB] MongoDB connection sequence completed.");
 
 const app = express();
 const httpServer = createServer(app);
@@ -37,7 +39,22 @@ const httpServer = createServer(app);
 initSocket(httpServer);
 
 // Middleware
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -80,6 +97,7 @@ app.use((err: any, req: Request, res: Response, next: any) => {
 
 const PORT = process.env.PORT || 5005;
 
+console.log(`[SERVER] Attempting to start server on port ${PORT}...`);
 httpServer.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`[SERVER] Success! Server is running on port ${PORT}`);
 });

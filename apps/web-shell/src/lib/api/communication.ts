@@ -1,6 +1,7 @@
 import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5005/api";
+console.log("[COMMUNICATION_API] Using API_URL:", API_URL);
 
 const getAuthHeader = () => {
   const token = localStorage.getItem("token");
