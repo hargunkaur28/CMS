@@ -4,6 +4,7 @@ import Attendance from '../models/Attendance.js';
 import Faculty from '../models/Faculty.js';
 import Student from '../models/Student.js';
 import Parent from '../models/Parent.js';
+import Timetable from '../models/Timetable.js';
 import mongoose from 'mongoose';
 import { emitToBatch } from '../config/socket.js';
 
@@ -39,7 +40,7 @@ export const markAttendance = async (req: Request, res: Response) => {
 export const markBulkAttendance = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { batchId, subjectId, date, lecture, records } = req.body;
+    const { batchId, subjectId, date, lecture, records, section } = req.body;
 
     if (!lecture) {
       return res.status(400).json({ success: false, message: 'Lecture number is required.' });
@@ -50,49 +51,74 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
     }
     const teacherId = user._id;
 
-    // 1. Authorization: verify teacher is assigned to this batch+subject
-    // Match the query pattern from teacherController.ts
     const faculty = await Faculty.findOne({ userId: user._id, collegeId: user.collegeId });
-    
-    if (!faculty || !faculty.assignedSubjects?.length) {
-      console.warn(`[ATTENDANCE][DENY] Faculty profile not found or empty for User: ${user._id}`);
-      return res.status(403).json({ success: false, message: 'No teaching assignments found. Contact admin.' });
-    }
-
-    // 2. Tenant Isolation: Optimized check
-    const userCollegeId = (req as any).user?.collegeId?.toString();
-    const facultyCollegeId = faculty.collegeId?.toString();
-    
-    // 3. Strict Assignment Check (ID Normalization)
     const normalizedSubjectId = subjectId?.toString().trim();
     const normalizedBatchId = batchId?.toString().trim();
 
-    console.log(`[ATTENDANCE][DEBUG] Attempting mark for: Batch ${normalizedBatchId}, Subject ${normalizedSubjectId}`);
+    let isAuthorized = false;
 
-    const isAuthorized = faculty.assignedSubjects.some((a: any) => {
-      // Robust extraction of hex string from potential ObjectId or Populated object
-      const sId = (a.subjectId?._id || a.subjectId)?.toString().trim();
-      const bId = (a.batchId?._id || a.batchId)?.toString().trim();
-      
-      return sId === normalizedSubjectId && bId === normalizedBatchId;
-    });
+    // Check 1: Faculty assignedSubjects
+    if (faculty && faculty.assignedSubjects?.length) {
+      isAuthorized = faculty.assignedSubjects.some((a: any) => {
+        const sId = (a.subjectId?._id || a.subjectId)?.toString().trim();
+        const bId = (a.batchId?._id || a.batchId)?.toString().trim();
+        return sId === normalizedSubjectId && bId === normalizedBatchId;
+      });
+    }
+
+    // Check 2: Timetable fallback (Dynamic assignment - fixes 403 errors when Faculty Profile is out of sync)
+    if (!isAuthorized) {
+      try {
+        // Build a flexible query — match on teacher + subject + batch, section optional
+        // Using new mongoose.Types.ObjectId for safe comparison with DB stored IDs
+        const timetableQuery: any = {
+          teacherId: new mongoose.Types.ObjectId(user._id.toString()),
+          isActive: true
+        };
+
+        if (user.collegeId) {
+          timetableQuery.collegeId = new mongoose.Types.ObjectId(user.collegeId.toString());
+        }
+
+        if (normalizedBatchId && mongoose.Types.ObjectId.isValid(normalizedBatchId)) {
+          timetableQuery.batchId = new mongoose.Types.ObjectId(normalizedBatchId);
+        }
+        if (normalizedSubjectId && mongoose.Types.ObjectId.isValid(normalizedSubjectId)) {
+          timetableQuery.subjectId = new mongoose.Types.ObjectId(normalizedSubjectId);
+        }
+        
+        // If a specific section is provided, match it exactly.
+        if (section && section !== 'General') {
+          timetableQuery.section = section;
+        }
+
+        console.log(`[ATTENDANCE][AUTH] Timetable query:`, JSON.stringify(timetableQuery));
+
+        const timetableEntry = await Timetable.findOne(timetableQuery);
+
+        if (timetableEntry) {
+          console.log(`[ATTENDANCE][AUTH] Authorized via Timetable for Teacher: ${user._id}`);
+          isAuthorized = true;
+        } else {
+          // Debug: show what timetable entries exist for this teacher
+          const allEntries = await Timetable.find({ 
+            teacherId: new mongoose.Types.ObjectId(user._id.toString()), 
+            isActive: true 
+          })
+          .select('batchId subjectId section collegeId dayOfWeek period')
+          .lean();
+          console.warn(`[ATTENDANCE][DEBUG] Teacher's timetable entries:`, JSON.stringify(allEntries));
+        }
+      } catch (err: any) {
+        console.error(`[ATTENDANCE][ERROR] Timetable auth check failed:`, err.message);
+      }
+    }
 
     if (!isAuthorized) {
-      const available = faculty.assignedSubjects.map((a: any) => ({
-          s: (a.subjectId?._id || a.subjectId)?.toString().trim(),
-          b: (a.batchId?._id || a.batchId)?.toString().trim()
-      }));
-
-      console.warn("[ATTENDANCE][DENY] Authorization mismatch:", {
-        teacherId: user._id, 
-        provided: { s: normalizedSubjectId, b: normalizedBatchId },
-        available: available
-      });
-
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Forbidden: You are not assigned to this subject/batch combination.',
-        debug: { provided: { s: normalizedSubjectId, b: normalizedBatchId }, available }
+      console.warn("[ATTENDANCE][DENY] Authorization failed for Teacher:", user._id, "Provided:", { s: normalizedSubjectId, b: normalizedBatchId, sec: section || 'None' });
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: You are not assigned to this subject/batch/section in your Faculty Profile or Timetable.'
       });
     }
 
@@ -102,12 +128,11 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
     }
     sessionDate.setHours(0, 0, 0, 0);
 
-    // 24-hour edit window check & change tracking
     const existingAttendance = await Attendance.findOne({ 
-       classId: batchId, subjectId, date: sessionDate, lecture 
+       classId: batchId, subjectId, date: sessionDate, lecture, section: section || 'General'
     });
 
-    let updateQuery: any = { teacherId, records };
+    let updateQuery: any = { teacherId, records, section: section || 'General' };
 
     if (existingAttendance) {
        const twentyFourHours = 24 * 60 * 60 * 1000;
@@ -115,8 +140,6 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
           return res.status(403).json({ success: false, message: 'Editing is disabled. The 24-hour modification window for this lecture has expired.' });
        }
 
-       // TRACK RECTIFICATION
-       // Check if records actually changed
        const oldRecordsStr = JSON.stringify(existingAttendance.records.map((r: any) => ({ studentId: r.studentId.toString(), status: r.status })));
        const newRecordsStr = JSON.stringify(records.map((r: any) => ({ studentId: r.studentId.toString(), status: r.status })));
 
@@ -133,12 +156,11 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
     }
 
     const attendance = await Attendance.findOneAndUpdate(
-      { classId: batchId, subjectId, date: sessionDate, lecture },
+      { classId: batchId, subjectId, date: sessionDate, lecture, section: section || 'General' },
       updateQuery,
       { upsert: true, new: true }
     );
 
-    // Emit real-time notification to the batch room
     emitToBatch(batchId, "attendanceUpdated", { 
       batchId, 
       subjectId, 
@@ -155,7 +177,8 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
         classId: req.body.batchId, 
         subjectId: req.body.subjectId, 
         date: sessionDate,
-        lecture: req.body.lecture
+        lecture: req.body.lecture,
+        section: req.body.section || 'General'
       });
       return res.status(200).json({ success: true, data: existing, message: "Handled duplicate entry" });
     }
@@ -168,11 +191,19 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
  */
 export const getAttendance = async (req: Request, res: Response) => {
   try {
-    const { batchId, subjectId, date, lecture } = req.query;
+    const { batchId, subjectId, date, lecture, section } = req.query;
     const query: any = {};
     if (batchId) query.classId = batchId;
     if (subjectId) query.subjectId = subjectId;
     if (lecture) query.lecture = Number(lecture);
+    
+    // Crucial: Map 'section' correctly to Attendance records
+    if (section && section !== 'General') {
+       query.section = section;
+    } else {
+       // If no section or 'General', we match either 'General' or non-existent section field
+       query.$or = [{ section: 'General' }, { section: { $exists: false } }];
+    }
     if (date) {
       const d = new Date(date as string);
       d.setHours(0, 0, 0, 0);

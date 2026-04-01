@@ -72,10 +72,13 @@ export default function TeacherDashboard() {
     const currentTime = now.getHours() * 100 + now.getMinutes();
 
     return todayClasses.find((c: any) => {
-      const [startH, startM] = c.startTime.split(':').map(Number);
-      const [endH, endM] = c.endTime.split(':').map(Number);
-      const start = startH * 100 + startM;
-      const end = endH * 100 + endM;
+      if (!c.startTime || !c.endTime) return false;
+      const startParts = c.startTime.split(':');
+      const endParts = c.endTime.split(':');
+      if (startParts.length < 2 || endParts.length < 2) return false;
+      
+      const start = Number(startParts[0]) * 100 + Number(startParts[1]);
+      const end = Number(endParts[0]) * 100 + Number(endParts[1]);
       return currentTime >= start && currentTime <= end;
     });
   };
@@ -183,11 +186,11 @@ export default function TeacherDashboard() {
                         </div>
                         <div>
                            <p className="text-[10px] font-black text-indigo-300 uppercase tracking-[0.2em] mb-1">Ongoing Session</p>
-                           <h4 className="font-black text-white text-2xl uppercase tracking-tight">{liveClass.subjectId?.name}</h4>
+                           <h4 className="font-black text-white text-2xl uppercase tracking-tight">{liveClass.subjectId?.name || "Unnamed Subject"}</h4>
                            <div className="flex items-center gap-4 mt-2 text-xs font-bold text-indigo-100 uppercase tracking-widest">
-                              <span>Room {liveClass.room}</span>
+                              <span>Room {liveClass.room || "N/A"}</span>
                               <span>•</span>
-                              <span>Batch {liveClass.batchId?.name}</span>
+                              <span>Batch {liveClass.batchId?.name || "N/A"}</span>
                            </div>
                         </div>
                      </div>
@@ -208,12 +211,12 @@ export default function TeacherDashboard() {
                            <span className="text-lg leading-tight">{item.period}</span>
                         </div>
                         <div>
-                           <h4 className="font-bold text-slate-900 text-lg">{item.subjectId?.name}</h4>
+                           <h4 className="font-bold text-slate-900 text-lg">{item.subjectId?.name || "Unnamed Subject"}</h4>
                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs font-semibold text-slate-400 uppercase tracking-tighter">
                               <span className="flex items-center gap-1"><Clock size={12} /> {item.startTime} - {item.endTime}</span>
-                              <span className="flex items-center gap-1">• Room {item.room}</span>
-                              <span className="flex items-center gap-1">• Batch {item.batchId?.name}</span>
-                              <span className="flex items-center gap-1">• Sec {item.section}</span>
+                              <span className="flex items-center gap-1">• Room {item.room || "N/A"}</span>
+                              <span className="flex items-center gap-1">• Batch {item.batchId?.name || "N/A"}</span>
+                              <span className="flex items-center gap-1">• Sec {item.section || "N/A"}</span>
                            </div>
                         </div>
                      </div>

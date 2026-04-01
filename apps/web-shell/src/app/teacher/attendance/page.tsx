@@ -13,12 +13,15 @@ function AttendancePageContent() {
   const initialBatch = searchParams.get('batchId');
   const initialSubject = searchParams.get('subjectId');
   const initialLecture = searchParams.get('lecture');
+  const initialDate = searchParams.get('date');
+  const initialSection = searchParams.get('section');
 
-  const [sessionParams, setSessionParams] = useState<any>(null); // { batchId, subjectId, lecture, date, batch, subject }
+  const [sessionParams, setSessionParams] = useState<any>(null); // { batchId, subjectId, lecture, date, batch, subject, section }
   const [students, setStudents] = useState<any[]>([]);
   const [shortages, setShortages] = useState<any[]>([]);
   
   const [loading, setLoading] = useState(true);
+  const [initializing, setInitializing] = useState(!!(initialBatch && initialSubject && initialLecture));
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
@@ -36,9 +39,84 @@ function AttendancePageContent() {
   };
 
   useEffect(() => {
+    const initialize = async () => {
+      if (initialBatch && initialSubject && initialLecture) {
+        setInitializing(true);
+        // Force immediate session skip by setting basic params
+        const params = {
+          batchId: initialBatch,
+          subjectId: initialSubject,
+          lecture: parseInt(initialLecture),
+          date: initialDate ? new Date(initialDate) : new Date(),
+          batch: { name: "Loading Section..." },
+          subject: { name: "Loading Subject...", code: "..." }
+        };
+        
+        setSessionParams(params);
+
+        try {
+          // Fetch specific metadata via timetable since it's the most reliable source for these specific IDs
+          const [timeRes, batchRes, subRes] = await Promise.allSettled([
+            api.get('/teacher/timetable'),
+            api.get('/teacher/my-batches'),
+            api.get(`/teacher/my-subjects?batchId=${initialBatch}`)
+          ]);
+
+          let batch = null;
+          let subject = null;
+
+          // 1. Try resolving via Timetable first (since that's where we came from)
+          if (timeRes.status === 'fulfilled') {
+            const timeData = timeRes.value.data?.data || {};
+            const allEntries = Object.values(timeData).flatMap((day: any) => 
+              Object.values(day).flatMap((slots: any) => slots)
+            );
+            
+            const match = allEntries.find((e: any) => 
+              (e.batchId?._id === initialBatch || e.batchId === initialBatch) &&
+              (e.subjectId?._id === initialSubject || e.subjectId === initialSubject) &&
+              e.period === parseInt(initialLecture)
+            );
+
+            if (match) {
+              batch = match.batchId;
+              subject = match.subjectId;
+            }
+          }
+
+          // 2. Fallback to assigned lists if timetable lookup failed
+          if (!batch && batchRes.status === 'fulfilled') {
+            batch = (batchRes.value.data?.data || []).find((b: any) => b._id.toString() === initialBatch.toString());
+          }
+          if (!subject && subRes.status === 'fulfilled') {
+            subject = (subRes.value.data?.data || []).find((s: any) => s._id.toString() === initialSubject.toString());
+          }
+
+          // Update params with real metadata
+          const updatedParams = {
+            ...params,
+            date: initialDate ? new Date(initialDate) : params.date,
+            batch: batch || { name: "Assigned Section" },
+            subject: subject || { name: "Assigned Subject", code: "SYNC" },
+            section: initialSection
+          };
+          
+          await handleSelectionComplete(updatedParams);
+        } catch (err) {
+          console.error("Auto-initialization failure", err);
+          await handleSelectionComplete(params);
+        } finally {
+          setInitializing(false);
+          setLoading(false);
+        }
+      } else {
+        setLoading(false);
+      }
+    };
+
     fetchGlobalShortages();
-    setLoading(false); // Initial load done
-  }, []);
+    initialize();
+  }, [initialBatch, initialSubject, initialLecture]);
 
   const handleSelectionComplete = async (params: any) => {
     setSessionParams(params);
@@ -49,8 +127,9 @@ function AttendancePageContent() {
     setIsRectifying(false);
 
     try {
-      // 1. Fetch Students for this batch
-      const stuRes = await api.get(`/teacher/students?batchId=${params.batchId}`);
+      // 1. Fetch Students for this batch (and section if provided)
+      const sectionQuery = params.section ? `&section=${params.section}` : "";
+      const stuRes = await api.get(`/teacher/students?batchId=${params.batchId}${sectionQuery}`);
       const mappedStudents = (stuRes.data?.data || []).map((s: any) => ({
         _id: s._id,
         name: s.personalInfo?.name || `${s.personalInfo?.firstName} ${s.personalInfo?.lastName}`,
@@ -61,7 +140,7 @@ function AttendancePageContent() {
 
       // 2. Check if attendance already exists
       const dateStr = params.date.toISOString().split('T')[0];
-      const attRes = await api.get(`/teacher/attendance?batchId=${params.batchId}&subjectId=${params.subjectId}&date=${dateStr}&lecture=${params.lecture}`);
+      const attRes = await api.get(`/teacher/attendance?batchId=${params.batchId}&subjectId=${params.subjectId}&date=${dateStr}&lecture=${params.lecture}${sectionQuery}`);
       
       if (attRes.data?.data?.length > 0) {
         setExistingAttendance(attRes.data.data[0]);
@@ -85,6 +164,7 @@ function AttendancePageContent() {
         subjectId: sessionParams.subjectId,
         lecture: sessionParams.lecture,
         date: sessionParams.date,
+        section: sessionParams.section,
         records
       });
       setSuccess(true);
@@ -103,11 +183,14 @@ function AttendancePageContent() {
     }
   };
 
-  if (loading && !sessionParams) {
+  if ((loading || initializing) && !sessionParams) {
     return (
-      <div className="animate-pulse space-y-6">
-        <div className="h-10 w-64 bg-slate-200 rounded-lg"></div>
-        <div className="h-64 bg-slate-100 rounded-[2.5rem]"></div>
+      <div className="flex flex-col items-center justify-center h-[60vh] space-y-6 animate-in fade-in duration-700">
+        <div className="w-16 h-16 border-4 border-slate-900 border-t-transparent rounded-full animate-spin shadow-2xl" />
+        <div className="text-center">
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Syncing Matrix Core</p>
+          <p className="text-sm font-bold text-slate-900 mt-2 uppercase tracking-tighter">Automating Session Parameters...</p>
+        </div>
       </div>
     );
   }
@@ -174,7 +257,7 @@ function AttendancePageContent() {
           
           {/* Active Session Info Bar */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-             <InfoCard label="Section" value={sessionParams.batch.name} />
+             <InfoCard label="Section" value={sessionParams.batch.name} sub={sessionParams.section ? `Section ${sessionParams.section}` : undefined} />
              <InfoCard label="Subject Module" value={sessionParams.subject.name} sub={sessionParams.subject.code} />
              <InfoCard label="Lecture Node" value={`Lec ${sessionParams.lecture}`} highlight />
              <InfoCard 

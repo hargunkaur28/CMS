@@ -32,7 +32,7 @@ const TimetableSchema: Schema = new Schema(
       enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
       required: true
     },
-    period: { type: Number, required: true, min: 1, max: 10 },
+    period: { type: Number, required: true, min: 1, max: 8 },
     startTime: { type: String, required: true },
     endTime: { type: String, required: true },
     academicYear: { type: String, required: true },

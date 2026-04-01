@@ -26,6 +26,7 @@ export interface IStudent extends Document {
     semester: number;
     rollNumber?: string;
     enrollmentDate?: Date;
+    section?: string;
   };
   parentInfo: {
     name: string;
@@ -68,6 +69,7 @@ const StudentSchema: Schema = new Schema(
       semester: { type: Number, default: 1 },
       rollNumber: { type: String },
       enrollmentDate: { type: Date, default: Date.now },
+      section: { type: String },
     },
     parentInfo: {
       name: { type: String, required: true },

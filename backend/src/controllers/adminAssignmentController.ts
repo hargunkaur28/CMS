@@ -173,3 +173,47 @@ export const getAssignments = async (req: Request, res: Response) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/**
+ * @desc    Bulk assign multiple students to a batch
+ * @route   POST /api/admin/bulk-assign-students-batch
+ * @access  COLLEGE_ADMIN, SUPER_ADMIN
+ */
+export const bulkAssignStudentsToBatch = async (req: Request, res: Response) => {
+  try {
+    const { studentIds, batchId } = req.body;
+
+    if (!Array.isArray(studentIds) || studentIds.length === 0 || !batchId) {
+      return res.status(400).json({ success: false, message: 'studentIds array and batchId are required' });
+    }
+
+    const batch = await Batch.findById(batchId);
+    if (!batch) return res.status(404).json({ success: false, message: 'Batch not found' });
+
+    // Explicit check requested by user: fail if any student is already in THAT batch
+    const existingStudentIds = new Set(batch.students.map((s: any) => s.toString()));
+    const duplicates = studentIds.filter((id: string) => existingStudentIds.has(id.toString()));
+    
+    if (duplicates.length > 0) {
+      return res.status(400).json({ success: false, message: 'One or more selected students are already assigned to this batch.' });
+    }
+
+    // Update students' top-level batchId
+    await Student.updateMany(
+      { _id: { $in: studentIds } },
+      { $set: { batchId: batchId } }
+    );
+
+    batch.students.push(...studentIds);
+    await batch.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully assigned ${studentIds.length} students to ${batch.name}`,
+      data: { assignedCount: studentIds.length, batchId }
+    });
+  } catch (error: any) {
+    console.error('[BULK_ASSIGN_STUDENT_BATCH]', error.message);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

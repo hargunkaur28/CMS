@@ -14,6 +14,7 @@ export default function FacultyPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState<any>(null);
   const [assigningFaculty, setAssigningFaculty] = useState<any>(null);
+  const [viewingFaculty, setViewingFaculty] = useState<any>(null);
 
   useEffect(() => {
     loadFaculties();
@@ -158,6 +159,7 @@ export default function FacultyPage() {
           onDelete={handleDelete}
           onEdit={(id) => setEditingFaculty(faculties.find(f => f._id === id))}
           onAssign={(id) => setAssigningFaculty(faculties.find(f => f._id === id))}
+          onView={(id) => setViewingFaculty(faculties.find(f => f._id === id))}
         />
       )}
 
@@ -190,6 +192,13 @@ export default function FacultyPage() {
             setAssigningFaculty(null);
             loadFaculties();
           }} 
+        />
+      )}
+
+      {viewingFaculty && (
+        <FacultyProfileModal 
+          faculty={viewingFaculty}
+          onClose={() => setViewingFaculty(null)} 
         />
       )}
     </div>
@@ -515,6 +524,95 @@ function RegisterFacultyModal({ onClose, onSuccess }: any) {
             {loading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} className="text-indigo-400" />}
             Confirm Faculty Onboarding
           </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
+import { fetchFacultyAttendanceStats } from "@/lib/api/admin";
+
+function FacultyProfileModal({ faculty, onClose }: any) {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const res = await fetchFacultyAttendanceStats(faculty._id);
+        if (res.success) setStats(res.data);
+      } catch (err) { console.error(err); }
+      finally { setLoading(false); }
+    };
+    loadStats();
+  }, [faculty._id]);
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
+      <div className="relative w-full max-w-3xl bg-white rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+        <div className="flex justify-between items-center px-10 py-8 border-b border-slate-100 shrink-0">
+           <div>
+            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Faculty Performance Ledger</h2>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Audit Trail & Attendance Matrix Metrics</p>
+          </div>
+          <button onClick={onClose} className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 rounded-2xl transition-colors"><X size={20} /></button>
+        </div>
+
+        <div className="p-10 overflow-y-auto space-y-8">
+           {/* Summary Cards */}
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-6 bg-slate-900 rounded-3xl text-white">
+                 <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">Total Rectifications</p>
+                 <h3 className="text-4xl font-black">{stats?.totalRectifications || 0}</h3>
+              </div>
+              <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100">
+                 <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2">Active Assignments</p>
+                 <h3 className="text-4xl font-black text-emerald-900">{faculty.assignedSubjects?.length || 0}</h3>
+              </div>
+              <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Last Sync</p>
+                 <p className="text-sm font-black text-slate-900 uppercase">{new Date().toLocaleDateString()}</p>
+              </div>
+           </div>
+
+           {/* Detailed Log */}
+           <div className="space-y-4">
+              <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                 <span className="w-4 h-1 bg-slate-900 rounded-full" />
+                 Attendance Rectification History
+              </h3>
+              
+              {loading ? (
+                <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-slate-300" /></div>
+              ) : !stats?.history?.length ? (
+                <div className="py-12 text-center border-2 border-dashed border-slate-100 rounded-3xl">
+                   <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest">No Rectifications Recorded</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                   {stats.history.map((log: any, idx: number) => (
+                     <div key={idx} className="p-4 bg-white border border-slate-100 rounded-2xl flex items-center justify-between hover:border-slate-300 transition-all shadow-sm">
+                        <div className="flex items-center gap-4">
+                           <div className="w-10 h-10 bg-slate-50 rounded-xl flex flex-col items-center justify-center">
+                              <span className="text-[10px] font-black text-slate-900 leading-none">{new Date(log.date).getDate()}</span>
+                              <span className="text-[8px] font-bold text-slate-400 uppercase">{new Date(log.date).toLocaleString('default', { month: 'short' })}</span>
+                           </div>
+                           <div>
+                              <p className="text-[11px] font-black text-slate-900 uppercase">{log.subjectId?.name}</p>
+                              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{log.classId?.name} • Lec {log.lecture}</p>
+                           </div>
+                        </div>
+                        <div className="text-right">
+                           <p className="text-[10px] font-black text-rose-500 uppercase">Rectified</p>
+                           <p className="text-[8px] font-bold text-slate-400 uppercase">{new Date(log.lastRectifiedAt).toLocaleTimeString()}</p>
+                        </div>
+                     </div>
+                   ))}
+                </div>
+              )}
+           </div>
         </div>
       </div>
     </div>,

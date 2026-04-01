@@ -167,7 +167,12 @@ export const getMyStudentTimetable = async (req: Request, res: Response) => {
 
     console.log(`[DEBUG] Parent Timetable Fetch: studentId=${studentId}, batchId=${batchId}`);
 
-    const timetable = await Timetable.find({ collegeId, batchId, isActive: true })
+    const query: any = { collegeId, batchId, isActive: true };
+    if (student.academicInfo?.section) {
+      query.section = student.academicInfo.section;
+    }
+
+    const timetable = await Timetable.find(query)
       .populate("subjectId", "name code")
       .populate("teacherId", "name email")
       .sort({ period: 1 });

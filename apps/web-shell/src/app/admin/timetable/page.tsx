@@ -1,44 +1,42 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Users, 
-  BookOpen, 
-  Plus, 
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Clock,
+  MapPin,
+  Users,
+  Plus,
   AlertCircle,
   CheckCircle2,
   Loader2,
-  ChevronRight,
-  User as UserIcon
+  Trash2,
+  User as UserIcon,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API_URL, getHeaders } from "@/lib/api/academics";
 
+// ── Fixed Time Slots (single source of truth on frontend) ──
+const TIME_SLOTS = [
+  { period: 1, start: "09:00", end: "10:00", label: "9:00 AM – 10:00 AM" },
+  { period: 2, start: "10:00", end: "11:00", label: "10:00 AM – 11:00 AM" },
+  { period: 3, start: "11:00", end: "12:00", label: "11:00 AM – 12:00 PM" },
+  { period: 4, start: "12:00", end: "13:00", label: "12:00 PM – 1:00 PM" },
+  { period: 5, start: "13:00", end: "14:00", label: "1:00 PM – 2:00 PM" },
+  { period: 6, start: "14:00", end: "15:00", label: "2:00 PM – 3:00 PM" },
+  { period: 7, start: "15:00", end: "16:00", label: "3:00 PM – 4:00 PM" },
+  { period: 8, start: "16:00", end: "17:00", label: "4:00 PM – 5:00 PM" },
+];
+
+const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
 interface Faculty {
   _id: string;
-  userId: {
-    _id: string;
-    name: string;
-  };
-  personalInfo?: {
-    name?: string;
-  };
+  userId: { _id: string; name: string };
+  personalInfo?: { name?: string };
 }
-
-interface Subject {
-  _id: string;
-  name: string;
-  code: string;
-}
-
-interface Batch {
-  _id: string;
-  name: string;
-}
-
+interface Subject { _id: string; name: string; code: string; }
+interface Batch { _id: string; name: string; sections?: string[]; }
 interface TimetableEntry {
   _id: string;
   dayOfWeek: string;
@@ -52,125 +50,139 @@ interface TimetableEntry {
   section: string;
 }
 
-const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const periods = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const SLOT_COLORS = [
+  { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-200", badge: "bg-indigo-100 text-indigo-700" },
+  { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-200", badge: "bg-emerald-100 text-emerald-700" },
+  { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200", badge: "bg-amber-100 text-amber-700" },
+  { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-200", badge: "bg-rose-100 text-rose-700" },
+  { bg: "bg-sky-50", text: "text-sky-700", border: "border-sky-200", badge: "bg-sky-100 text-sky-700" },
+  { bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200", badge: "bg-violet-100 text-violet-700" },
+  { bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-200", badge: "bg-teal-100 text-teal-700" },
+];
 
-const getSubjectColor = (name: string) => {
-  const colors = [
-    { bg: "bg-indigo-50", text: "text-indigo-700", border: "border-indigo-100", accent: "bg-indigo-500", light: "bg-indigo-50/50" },
-    { bg: "bg-emerald-50", text: "text-emerald-700", border: "border-emerald-100", accent: "bg-emerald-500", light: "bg-emerald-50/50" },
-    { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-100", accent: "bg-amber-500", light: "bg-amber-50/50" },
-    { bg: "bg-rose-50", text: "text-rose-700", border: "border-rose-100", accent: "bg-rose-500", light: "bg-rose-50/50" },
-    { bg: "bg-sky-50", text: "text-sky-700", border: "border-sky-100", accent: "bg-sky-500", light: "bg-sky-50/50" },
-    { bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-100", accent: "bg-violet-500", light: "bg-violet-50/50" },
-    { bg: "bg-teal-50", text: "text-teal-700", border: "border-teal-100", accent: "bg-teal-500", light: "bg-teal-50/50" },
-  ];
-  const index = (name || 'default').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return colors[index % colors.length];
-};
+const getColor = (name: string) =>
+  SLOT_COLORS[(name || "x").split("").reduce((a, c) => a + c.charCodeAt(0), 0) % SLOT_COLORS.length];
 
 export default function TimetableBuilderPage() {
   const [faculties, setFaculties] = useState<Faculty[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>("all");
-  const [timetable, setTimetable] = useState<Record<string, Record<number, TimetableEntry[]>>>({});
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  // timetable is now keyed: { [day]: { [startTime]: TimetableEntry[] } }
+  const [timetable, setTimetable] = useState<Record<string, Record<string, TimetableEntry[]>>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Form State
+  // Form
   const [formData, setFormData] = useState({
-    teacherId: "",
     subjectId: "",
     batchId: "",
-    classId: "",
     section: "A",
     room: "",
     dayOfWeek: "Monday",
-    period: 1,
     startTime: "09:00",
-    endTime: "10:00",
-    academicYear: "2025-26"
+    academicYear: "2025-26",
   });
 
-  // Sync form with filter
-  useEffect(() => {
-    if (selectedTeacherId !== "all") {
-      setFormData(prev => ({ ...prev, teacherId: selectedTeacherId }));
-    }
-  }, [selectedTeacherId]);
-
-  useEffect(() => {
-    fetchInitialData();
-  }, []);
-
-  const fetchInitialData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const url = new URL(`${API_URL}/admin/timetable`);
-      if (selectedTeacherId !== "all") url.searchParams.append("teacherId", selectedTeacherId);
+      const params = new URLSearchParams();
+      if (selectedTeacherId) params.set("teacherId", selectedTeacherId);
 
       const [facRes, subRes, batRes, timeRes] = await Promise.all([
         fetch(`${API_URL}/admin/faculty`, { headers: getHeaders() }),
         fetch(`${API_URL}/admin/subjects`, { headers: getHeaders() }),
         fetch(`${API_URL}/admin/batches`, { headers: getHeaders() }),
-        fetch(url.toString(), { headers: getHeaders() })
+        fetch(`${API_URL}/admin/timetable?${params}`, { headers: getHeaders() }),
       ]);
 
       const [facData, subData, batData, timeData] = await Promise.all([
-        facRes.json(),
-        subRes.json(),
-        batRes.json(),
-        timeRes.json()
+        facRes.json(), subRes.json(), batRes.json(), timeRes.json(),
       ]);
 
       if (facData.success) setFaculties(facData.data);
       if (subData.success) setSubjects(subData.data);
       if (batData.success) setBatches(batData.data);
       if (timeData.success) setTimetable(timeData.data);
-    } catch (error) {
-      console.error("Fetch error:", error);
+    } catch (err) {
+      console.error("Fetch error:", err);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchInitialData();
   }, [selectedTeacherId]);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
+
+  const refreshTimetable = async () => {
+    const params = new URLSearchParams();
+    if (selectedTeacherId) params.set("teacherId", selectedTeacherId);
+    const res = await fetch(`${API_URL}/admin/timetable?${params}`, { headers: getHeaders() });
+    const data = await res.json();
+    if (data.success) setTimetable(data.data);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedTeacherId) {
+      setMessage({ type: "error", text: "Please select a teacher first." });
+      return;
+    }
     setSubmitting(true);
     setMessage(null);
-
     try {
       const res = await fetch(`${API_URL}/admin/timetable`, {
-        method: 'POST',
+        method: "POST",
         headers: getHeaders(),
         body: JSON.stringify({
           ...formData,
-        })
+          teacherId: selectedTeacherId,
+          classId: formData.batchId,
+        }),
       });
-
       const data = await res.json();
-
       if (res.ok) {
-        setMessage({ type: 'success', text: "Timetable entry created successfully!" });
-        // Refresh timetable
-        const timeRes = await fetch(`${API_URL}/admin/timetable`, { headers: getHeaders() });
-        const timeData = await timeRes.json();
-        if (timeData.success) setTimetable(timeData.data);
+        setMessage({ type: "success", text: "Entry created successfully!" });
+        await refreshTimetable();
       } else {
-        setMessage({ type: 'error', text: data.message || "Failed to create entry" });
+        setMessage({ type: "error", text: data.message || "Failed to create entry" });
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: "An error occurred. Please try again." });
+    } catch {
+      setMessage({ type: "error", text: "An error occurred." });
     } finally {
       setSubmitting(false);
     }
   };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Delete this timetable entry?")) return;
+    try {
+      const res = await fetch(`${API_URL}/admin/timetable/${id}`, {
+        method: "DELETE",
+        headers: getHeaders(),
+      });
+      if (res.ok) {
+        setMessage({ type: "success", text: "Entry deleted." });
+        await refreshTimetable();
+      } else {
+        const data = await res.json();
+        setMessage({ type: "error", text: data.message || "Delete failed." });
+      }
+    } catch {
+      setMessage({ type: "error", text: "An error occurred." });
+    }
+  };
+
+  // Auto-dismiss messages
+  useEffect(() => {
+    if (message) {
+      const t = setTimeout(() => setMessage(null), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [message]);
+
+  const teacherName = faculties.find(f => f.userId?._id === selectedTeacherId)?.userId?.name;
 
   if (loading) {
     return (
@@ -181,314 +193,261 @@ export default function TimetableBuilderPage() {
   }
 
   return (
-    <div className="p-8 space-y-8 bg-[#F8FAFC] min-h-screen">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* ── Page Header + Teacher Selector ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-black text-slate-950 tracking-tight leading-none">
-            Timetable <span className="text-indigo-600/40">Builder</span>
+          <h1 className="text-3xl font-black text-slate-950 tracking-tight leading-none">
+            Timetable <span className="text-indigo-500/40">Builder</span>
           </h1>
-          <p className="text-slate-500 mt-2 font-medium italic">Architecting institutional weekly frameworks</p>
+          <p className="text-slate-400 mt-1 text-sm font-medium">
+            {selectedTeacherId && teacherName
+              ? `Showing schedule for ${teacherName}`
+              : "Select a teacher to manage their timetable"}
+          </p>
         </div>
-        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl border border-slate-200 shadow-sm pr-6">
-           <div className="bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2 flex items-center gap-2">
-             <UserIcon size={16} className="text-indigo-400" />
-             <select 
-               className="text-xs font-black text-indigo-700 bg-transparent outline-none cursor-pointer uppercase tracking-widest"
-               value={selectedTeacherId}
-               onChange={(e) => setSelectedTeacherId(e.target.value)}
-             >
-               <option value="all">Global View</option>
-               {faculties.map(f => (
-                 <option key={f._id} value={f.userId?._id}>{f.userId?.name || f.personalInfo?.name}</option>
-               ))}
-             </select>
-           </div>
-           <div className="flex flex-col items-end">
-             <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Academic Cycle</span>
-             <span className="text-xs font-black text-slate-900">{formData.academicYear}</span>
-           </div>
+        <div className="flex items-center gap-3">
+          <div className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 flex items-center gap-3 shadow-sm">
+            <UserIcon size={16} className="text-indigo-500" />
+            <select
+              className="text-xs font-bold text-slate-700 bg-transparent outline-none cursor-pointer min-w-[180px]"
+              value={selectedTeacherId}
+              onChange={(e) => setSelectedTeacherId(e.target.value)}
+            >
+              <option value="">-- Select Teacher --</option>
+              {faculties.map(f => (
+                <option key={f._id} value={f.userId?._id}>
+                  {f.userId?.name || f.personalInfo?.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-sm">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block leading-none">Cycle</span>
+            <span className="text-xs font-black text-slate-900">{formData.academicYear}</span>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-8">
-        {/* Builder Form */}
-        <div className="col-span-12 lg:col-span-4 xl:col-span-3">
-          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-2xl shadow-indigo-100/20 overflow-hidden sticky top-8 border-b-4 border-b-indigo-600">
-            <div className="p-8 border-b border-slate-100 bg-slate-50/50">
-              <h3 className="text-xl font-black text-slate-900 flex items-center gap-3 uppercase tracking-tighter">
-                <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-indigo-100">
-                  <Plus size={20} />
-                </div>
-                Add Entry
-              </h3>
-            </div>
-            
-            <form onSubmit={handleSubmit} className="p-8 space-y-6">
-              {message && (
-                <div className={cn(
-                  "p-5 rounded-2xl flex items-start gap-3 text-xs font-bold animate-in zoom-in-95 duration-200",
-                  message.type === 'success' ? "bg-emerald-50 text-emerald-700 border border-emerald-100" : "bg-red-50 text-red-700 border border-red-100"
-                )}>
-                  <div className="shrink-0 mt-0.5">
-                    {message.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                  </div>
-                  <span>{message.text}</span>
-                </div>
-              )}
-
-              <div className="space-y-5">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Teacher Node</label>
-                  <select 
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-xs font-black text-slate-700 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
-                    value={formData.teacherId}
-                    onChange={e => setFormData({ ...formData, teacherId: e.target.value })}
-                  >
-                    <option value="">Select Faculty</option>
-                    {faculties.map(f => (
-                      <option key={f._id} value={f.userId?._id}>
-                        {f.userId?.name || f.personalInfo?.name || 'Unnamed Faculty'}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Subject Module</label>
-                  <select 
-                    required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-3.5 text-xs font-black text-slate-700 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
-                    value={formData.subjectId}
-                    onChange={e => setFormData({ ...formData, subjectId: e.target.value })}
-                  >
-                    <option value="">Select Subject</option>
-                    {subjects.map(s => (
-                      <option key={s._id} value={s._id}>[{s.code}] {s.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Batch</label>
-                    <select 
-                      required
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-black text-slate-700 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
-                      value={formData.batchId}
-                      onChange={e => setFormData({ ...formData, batchId: e.target.value, classId: e.target.value })}
-                    >
-                      <option value="">Select</option>
-                      {batches.map(b => (
-                        <option key={b._id} value={b._id}>{b.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Section</label>
-                    <input 
-                      required
-                      type="text"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-black text-slate-700 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
-                      value={formData.section}
-                      onChange={e => setFormData({ ...formData, section: e.target.value })}
-                      placeholder="A"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Day</label>
-                    <select 
-                      required
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-black text-slate-700 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
-                      value={formData.dayOfWeek}
-                      onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value })}
-                    >
-                      {days.map(day => (
-                        <option key={day} value={day}>{day}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Period</label>
-                    <input 
-                      required
-                      type="number"
-                      min="1"
-                      max="10"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-black text-slate-700 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
-                      value={formData.period}
-                      onChange={e => {
-                        const val = parseInt(e.target.value);
-                        setFormData({ ...formData, period: isNaN(val) ? "" : val } as any);
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Start</label>
-                    <input 
-                      required
-                      type="time"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-black text-slate-700 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
-                      value={formData.startTime}
-                      onChange={e => setFormData({ ...formData, startTime: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">End</label>
-                    <input 
-                      required
-                      type="time"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-black text-slate-700 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
-                      value={formData.endTime}
-                      onChange={e => setFormData({ ...formData, endTime: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Room Allocation</label>
-                  <div className="relative">
-                    <MapPin size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input 
-                      required
-                      type="text"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-5 py-3.5 text-xs font-black text-slate-700 focus:ring-4 focus:ring-indigo-50 transition-all outline-none"
-                      value={formData.room}
-                      onChange={e => setFormData({ ...formData, room: e.target.value })}
-                      placeholder="e.g. 302"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <button 
-                type="submit"
-                disabled={submitting}
-                className="w-full py-5 bg-slate-950 hover:bg-black text-white rounded-[1.4rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-slate-900/20 active:scale-[0.98] transition-all flex items-center justify-center gap-3 group disabled:opacity-50 disabled:pointer-events-none"
-              >
-                {submitting ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    Archive Entry
-                    <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
+      {/* ── Toast Message ── */}
+      {message && (
+        <div className={cn(
+          "px-5 py-3 rounded-2xl flex items-center gap-3 text-xs font-bold animate-in slide-in-from-top-2 duration-200",
+          message.type === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-red-50 text-red-700 border border-red-200"
+        )}>
+          {message.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+          <span>{message.text}</span>
+          <button onClick={() => setMessage(null)} className="ml-auto p-1 hover:bg-white/50 rounded-lg"><X size={14} /></button>
         </div>
+      )}
 
-        {/* Weekly Grid */}
-        <div className="col-span-12 lg:col-span-8 xl:col-span-9">
-          <div className="bg-white rounded-[3rem] border border-slate-200 shadow-xl shadow-slate-200/40 overflow-hidden min-h-[700px]">
-            <div className="overflow-x-auto custom-scrollbar p-8 lg:p-10">
-              <table className="w-full border-separate border-spacing-2">
-                <thead>
-                  <tr>
-                    <th className="p-4 text-left text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] w-32 [writing-mode:vertical-lr] rotate-180">
-                      Day / Period
-                    </th>
-                    {periods.map(p => (
-                      <th key={p} className="p-4 py-6 text-center bg-slate-50/50 border border-slate-100 rounded-2xl min-w-[220px]">
-                         <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Period {p}</span>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {days.map(day => (
-                    <tr key={day} className="group">
-                      <td className="p-4 align-middle">
-                        <div className="bg-slate-50 rounded-2xl p-4 flex flex-col items-center justify-center h-full min-h-[140px] group-hover:bg-indigo-600 transition-all duration-500 group-hover:shadow-xl group-hover:shadow-indigo-100">
-                          <span className="text-xs font-black text-slate-400 uppercase tracking-widest group-hover:text-white transition-colors">{day.slice(0,3)}</span>
-                        </div>
-                      </td>
-                      {periods.map(p => {
-                        const entries = (timetable[day] || {})[p] || [];
-                        return (
-                          <td key={p} className="p-0 min-h-[140px] align-top">
-                            {entries.length > 0 ? (
-                              <div className="space-y-3">
-                                {entries.map((entry, idx) => {
-                                  const color = getSubjectColor(entry.subjectId?.name);
-                                  return (
-                                    <div key={idx} className={cn(
-                                      "rounded-[1.8rem] p-5 space-y-4 shadow-sm border relative group/entry transition-all hover:shadow-2xl hover:shadow-slate-200 hover:-translate-y-1",
-                                      entries.length > 1 ? "bg-rose-50 border-rose-200 shadow-none grayscale-[0.5]" : `${color.bg} ${color.border}`
-                                    )}>
-                                       {entries.length > 1 && (
-                                         <div className="absolute -top-2 -right-2 bg-rose-600 text-white rounded-xl p-2 shadow-lg z-10 animate-pulse">
-                                           <AlertCircle size={14} />
-                                         </div>
-                                       )}
-                                       
-                                       <div className="space-y-1.5">
-                                         <div className="flex items-center justify-between">
-                                           <span className={cn(
-                                             "text-[9px] font-black uppercase tracking-widest opacity-60",
-                                             entries.length > 1 ? "text-rose-600" : color.text
-                                           )}>
-                                             {entry.subjectId?.code}
-                                           </span>
-                                           <div className="flex items-center gap-1.5 bg-white/60 px-2 py-0.5 rounded-lg border border-white">
-                                              <Clock size={10} className="text-slate-400" />
-                                              <span className="text-[9px] font-black text-slate-600 tabular-nums">{entry.startTime}</span>
-                                           </div>
-                                         </div>
-                                         <h4 className="text-[11px] xl:text-xs font-black text-slate-900 leading-tight line-clamp-2">
-                                           {entry.subjectId?.name}
-                                         </h4>
-                                       </div>
- 
-                                       <div className="space-y-2 pt-2 border-t border-white/40">
-                                         <div className="flex items-center gap-2.5">
-                                            <div className="w-6 h-6 rounded-lg bg-white/60 flex items-center justify-center shrink-0">
-                                              <UserIcon size={12} className="text-slate-400" />
-                                            </div>
-                                            <span className="text-[10px] font-bold text-slate-700 truncate">{entry.teacherId?.name}</span>
-                                         </div>
-                                         <div className="flex items-center gap-2.5">
-                                            <div className="w-6 h-6 rounded-lg bg-white/60 flex items-center justify-center shrink-0">
-                                              <Users size={12} className="text-slate-400" />
-                                            </div>
-                                            <span className="text-[10px] font-bold text-slate-700 truncate">{entry.batchId?.name} ({entry.section})</span>
-                                         </div>
-                                         <div className="flex items-center gap-2.5">
-                                            <div className="w-6 h-6 rounded-lg bg-white/60 flex items-center justify-center shrink-0">
-                                              <MapPin size={12} className="text-slate-400" />
-                                            </div>
-                                            <span className="text-[10px] font-bold text-slate-700 truncate underline decoration-indigo-200/50 decoration-2">RM {entry.room}</span>
-                                         </div>
-                                       </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            ) : (
-                              <div className="h-40 border-2 border-dashed border-slate-50 bg-slate-50/10 rounded-[1.8rem] flex items-center justify-center group/empty transition-all hover:bg-indigo-50/20 hover:border-indigo-100">
-                                <div className="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-200 scale-75 group-hover/empty:scale-110 transition-transform">
-                                  <span className="font-black text-xs">—</span>
-                                </div>
+      {/* ── Add Entry Form (Horizontal) ── */}
+      {selectedTeacherId && (
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-end gap-3 flex-wrap">
+            {/* Day */}
+            <div className="space-y-1 min-w-[120px]">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Day</label>
+              <select
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
+                value={formData.dayOfWeek}
+                onChange={e => setFormData({ ...formData, dayOfWeek: e.target.value })}
+              >
+                {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+
+            {/* Time Slot */}
+            <div className="space-y-1 min-w-[180px]">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Time Slot</label>
+              <select
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
+                value={formData.startTime}
+                onChange={e => setFormData({ ...formData, startTime: e.target.value })}
+              >
+                {TIME_SLOTS.map(s => (
+                  <option key={s.period} value={s.start}>P{s.period} · {s.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Subject */}
+            <div className="space-y-1 min-w-[160px] flex-1">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Subject</label>
+              <select
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
+                value={formData.subjectId}
+                onChange={e => setFormData({ ...formData, subjectId: e.target.value })}
+              >
+                <option value="">Select Subject</option>
+                {subjects.map(s => (
+                  <option key={s._id} value={s._id}>[{s.code}] {s.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Batch */}
+            <div className="space-y-1 min-w-[130px]">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Batch</label>
+              <select
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
+                value={formData.batchId}
+                onChange={e => setFormData({ ...formData, batchId: e.target.value })}
+              >
+                <option value="">Select</option>
+                {batches.map(b => <option key={b._id} value={b._id}>{b.name}</option>)}
+              </select>
+            </div>
+
+            {/* Section */}
+            <div className="space-y-1 w-[70px]">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sec</label>
+              <input
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
+                value={formData.section}
+                onChange={e => setFormData({ ...formData, section: e.target.value })}
+                placeholder="A"
+              />
+            </div>
+
+            {/* Room */}
+            <div className="space-y-1 w-[90px]">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Room</label>
+              <input
+                required
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
+                value={formData.room}
+                onChange={e => setFormData({ ...formData, room: e.target.value })}
+                placeholder="302"
+              />
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={submitting}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-5 py-2.5 text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-colors disabled:opacity-50 shadow-sm shadow-indigo-200 whitespace-nowrap"
+            >
+              {submitting ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+              Add
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* ── Timetable Grid ── */}
+      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse min-w-[900px]">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="p-3 text-left text-[9px] font-black text-slate-400 uppercase tracking-widest w-[140px] border-r border-slate-100">
+                  Time Slot
+                </th>
+                {DAYS.map(day => (
+                  <th key={day} className="p-3 text-center text-[9px] font-black text-slate-400 uppercase tracking-widest border-r border-slate-100 last:border-r-0">
+                    {day.slice(0, 3)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {TIME_SLOTS.map((slot, slotIdx) => (
+                <tr key={slot.period} className={cn(
+                  "border-b border-slate-100 last:border-b-0",
+                  slotIdx % 2 === 0 ? "bg-white" : "bg-slate-50/30"
+                )}>
+                  {/* Time label cell */}
+                  <td className="p-3 border-r border-slate-100 align-middle">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-indigo-50 flex items-center justify-center shrink-0">
+                        <span className="text-[10px] font-black text-indigo-600">P{slot.period}</span>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-600 leading-tight whitespace-nowrap">{slot.label}</p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Day cells */}
+                  {DAYS.map(day => {
+                    const entries = (timetable[day] || {})[slot.start] || [];
+                    const entry = entries[0];
+                    const hasConflict = entries.length > 1;
+
+                    if (entry) {
+                      const color = getColor(entry.subjectId?.name);
+                      return (
+                        <td key={day} className="p-1.5 border-r border-slate-100 last:border-r-0 align-top">
+                          <div className={cn(
+                            "rounded-xl p-2.5 h-full relative group/cell transition-all border",
+                            hasConflict ? "bg-rose-50 border-rose-200" : `${color.bg} ${color.border}`
+                          )}>
+                            {hasConflict && (
+                              <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-rose-500 text-white rounded-full flex items-center justify-center z-10">
+                                <AlertCircle size={10} />
                               </div>
                             )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                            <div className="space-y-1">
+                              <span className={cn("text-[8px] font-black uppercase tracking-widest", hasConflict ? "text-rose-600" : color.text)}>
+                                {entry.subjectId?.code}
+                              </span>
+                              <p className="text-[10px] font-black text-slate-800 leading-tight line-clamp-2">
+                                {entry.subjectId?.name}
+                              </p>
+                              <div className="flex items-center gap-1 text-[9px] text-slate-500 font-medium">
+                                <Users size={9} />
+                                <span className="truncate">{entry.batchId?.name} ({entry.section})</span>
+                              </div>
+                              <div className="flex items-center gap-1 text-[9px] text-slate-500 font-medium">
+                                <MapPin size={9} />
+                                <span>Rm {entry.room}</span>
+                              </div>
+                            </div>
+                            {/* Hover actions */}
+                            <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover/cell:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => handleDelete(entry._id)}
+                                className="w-6 h-6 bg-white border border-slate-200 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-600 hover:border-rose-200 transition-colors shadow-sm"
+                                title="Delete"
+                              >
+                                <Trash2 size={10} />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                      );
+                    }
+
+                    return (
+                      <td key={day} className="p-1.5 border-r border-slate-100 last:border-r-0 align-top">
+                        <div className="h-[80px] rounded-xl border border-dashed border-slate-100 flex items-center justify-center bg-slate-50/30 hover:bg-indigo-50/30 hover:border-indigo-200 transition-colors cursor-default">
+                          <span className="text-slate-200 text-lg font-light">—</span>
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
+
+      {/* ── No teacher selected state ── */}
+      {!selectedTeacherId && (
+        <div className="text-center py-16">
+          <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <UserIcon size={28} className="text-slate-300" />
+          </div>
+          <p className="text-sm font-bold text-slate-400">Select a teacher above to view and manage their timetable</p>
+        </div>
+      )}
     </div>
   );
 }

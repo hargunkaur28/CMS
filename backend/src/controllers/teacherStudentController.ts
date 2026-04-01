@@ -13,6 +13,9 @@ export const getMyStudents = async (req: Request, res: Response) => {
     if (req.query.batchId) {
       query.batchId = req.query.batchId;
     }
+    if (req.query.section) {
+      query['academicInfo.section'] = req.query.section;
+    }
     
     // In a real system, we'd query batches assigned to this teacher
     // Filtering fields for relevant data

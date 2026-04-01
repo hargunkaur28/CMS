@@ -63,7 +63,11 @@ export const deleteStudent = async (id: string) => {
 export const bulkImportStudents = async (file: File) => {
   const formData = new FormData();
   formData.append("file", file);
-  const response = await api.post(`${BASE}/students/bulk-import`, formData);
+  const response = await api.post(`${BASE}/students/bulk-import`, formData, {
+    headers: {
+      "Content-Type": "multipart/form-data"
+    }
+  });
   return response.data;
 };
 
@@ -95,6 +99,11 @@ export const deleteFaculty = async (id: string) => {
 
 export const assignFacultySubjects = async (id: string, subjectIds: string[]) => {
   const response = await api.put(`${BASE}/faculty/${id}/assign`, { subjectIds });
+  return response.data;
+};
+
+export const fetchFacultyAttendanceStats = async (id: string) => {
+  const response = await api.get(`${BASE}/faculty/${id}/attendance-stats`);
   return response.data;
 };
 

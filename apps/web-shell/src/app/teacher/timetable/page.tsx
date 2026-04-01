@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   BookOpen,
   Zap,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { API_URL, getHeaders } from "@/lib/api/academics";
@@ -31,14 +32,15 @@ interface TimetableEntry {
 
 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-const periods = [
-  { id: 1, range: "09:00–10:00" },
-  { id: 2, range: "10:00–11:00" },
-  { id: 3, range: "11:15–12:15" },
-  { id: 4, range: "12:15–13:15" },
-  { id: 5, range: "14:00–15:00" },
-  { id: 6, range: "15:00–16:00" },
-  { id: 7, range: "16:00–17:00" },
+const TIME_SLOTS = [
+  { period: 1, start: "09:00", end: "10:00", label: "9:00 AM – 10:00 AM", short: "9–10 AM" },
+  { period: 2, start: "10:00", end: "11:00", label: "10:00 AM – 11:00 AM", short: "10–11 AM" },
+  { period: 3, start: "11:00", end: "12:00", label: "11:00 AM – 12:00 PM", short: "11–12 PM" },
+  { period: 4, start: "12:00", end: "13:00", label: "12:00 PM – 1:00 PM", short: "12–1 PM" },
+  { period: 5, start: "13:00", end: "14:00", label: "1:00 PM – 2:00 PM", short: "1–2 PM" },
+  { period: 6, start: "14:00", end: "15:00", label: "2:00 PM – 3:00 PM", short: "2–3 PM" },
+  { period: 7, start: "15:00", end: "16:00", label: "3:00 PM – 4:00 PM", short: "3–4 PM" },
+  { period: 8, start: "16:00", end: "17:00", label: "4:00 PM – 5:00 PM", short: "4–5 PM" },
 ];
 
 const SUBJECT_PALETTES = [
@@ -51,13 +53,15 @@ const SUBJECT_PALETTES = [
   { bg: "bg-orange-100", text: "text-orange-700", bar: "bg-orange-500", badge: "bg-orange-500/10 text-orange-600" },
 ];
 
-const getColor = (name: string) =>
-  SUBJECT_PALETTES[name.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % SUBJECT_PALETTES.length];
+const getColor = (name: string | undefined) =>
+  SUBJECT_PALETTES[((name || "x").split("").reduce((a, c) => a + c.charCodeAt(0), 0)) % SUBJECT_PALETTES.length];
 
 export default function TeacherTimetablePage() {
-  const [timetable, setTimetable] = useState<Record<string, TimetableEntry[]>>({});
+  // Correct type: day -> startTime -> entries[]
+  const [timetable, setTimetable] = useState<Record<string, Record<string, TimetableEntry[]>>>({}); // Fixed closing parenthesis
   const [todaySchedule, setTodaySchedule] = useState<TimetableEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedSlot, setSelectedSlot] = useState<{ entry: TimetableEntry; day: string; slot: typeof TIME_SLOTS[number] } | null>(null);
 
   const now = new Date();
   const todayName = days[now.getDay() - 1] ?? "Sunday";
@@ -73,6 +77,8 @@ export default function TeacherTimetablePage() {
         fetch(`${API_URL}/teacher/timetable/today`, { headers: getHeaders() }),
       ]);
       const [timeData, todayData] = await Promise.all([timeRes.json(), todayRes.json()]);
+      console.log('[TIMETABLE] weekly data:', JSON.stringify(timeData).slice(0, 500));
+      console.log('[TIMETABLE] today data:', JSON.stringify(todayData).slice(0, 500));
       if (timeData.success) setTimetable(timeData.data);
       if (todayData.success) setTodaySchedule(todayData.data);
     } catch (e) {
@@ -82,9 +88,9 @@ export default function TeacherTimetablePage() {
     }
   };
 
-  // Derived stats
+  // Flatten nested day -> startTime -> entries structure for total count
   const totalWeekClasses = days.reduce((sum, d) =>
-    sum + Object.values((timetable[d] || {}) as Record<string, TimetableEntry[]>).flat().length, 0);
+    sum + Object.values(timetable[d] || {}).flatMap(v => v).length, 0);
   const todayTotal = todaySchedule.length;
   const upcomingCount = todaySchedule.filter(s => s.isUpcoming).length;
 
@@ -152,14 +158,14 @@ export default function TeacherTimetablePage() {
             <div className="min-w-[900px]">
 
               {/* Period Header Row */}
-              <div className="grid grid-cols-[100px_repeat(7,1fr)] border-b border-slate-100">
+              <div className="grid grid-cols-[100px_repeat(8,1fr)] border-b border-slate-100">
                 <div className="p-4 flex items-center justify-center">
                   <Clock size={14} className="text-slate-300" />
                 </div>
-                {periods.map(p => (
-                  <div key={p.id} className="p-4 border-l border-slate-100 text-center">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">P{p.id}</p>
-                    <p className="text-[9px] font-bold text-slate-300 mt-0.5 tabular-nums">{p.range}</p>
+                {TIME_SLOTS.map(s => (
+                  <div key={s.period} className="p-4 border-l border-slate-100 text-center">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">P{s.period}</p>
+                    <p className="text-[9px] font-bold text-slate-300 mt-0.5 tabular-nums">{s.short}</p>
                   </div>
                 ))}
               </div>
@@ -171,7 +177,7 @@ export default function TeacherTimetablePage() {
                   <div
                     key={day}
                     className={cn(
-                      "grid grid-cols-[100px_repeat(7,1fr)]",
+                      "grid grid-cols-[100px_repeat(8,1fr)]",
                       dayIdx !== days.length - 1 && "border-b border-slate-100",
                       isToday && "bg-indigo-50/40"
                     )}
@@ -193,18 +199,29 @@ export default function TeacherTimetablePage() {
                     </div>
 
                     {/* Period Cells */}
-                    {periods.map(p => {
-                      const entries = ((timetable[day] || {}) as any)[p.id] || [];
-                      const entry: TimetableEntry | undefined = entries[0];
+                    {TIME_SLOTS.map(slot => {
+                      // Primary: lookup by startTime. Fallback: lookup by period number across all slots in that day
+                      const dayEntries = timetable[day] || {};
+                      const byStart = dayEntries[slot.start] || [];
+                      // Fallback: find any entry whose period matches this slot
+                      const byPeriod = byStart.length === 0
+                        ? Object.values(dayEntries).flat().filter((e: any) => e.period === slot.period)
+                        : [];
+                      const entries = byStart.length > 0 ? byStart : byPeriod;
+                      const entry: TimetableEntry | undefined = (entries as TimetableEntry[])[0];
 
                       if (entry) {
-                        const color = getColor(entry.subjectId.name);
-                        const bId = entry.batchId._id || (entry as any).batchId;
-                        const sId = entry.subjectId._id || (entry as any).subjectId;
+                        const subName = (entry.subjectId as any)?.name || "";
+                        const subCode = (entry.subjectId as any)?.code || "";
+                        const batchName = (entry.batchId as any)?.name || "";
+                        const color = getColor(subName);
+                        const bId = (entry.batchId as any)?._id || (entry as any).batchId;
+                        const sId = (entry.subjectId as any)?._id || (entry as any).subjectId;
 
                         return (
                           <div
-                            key={p.id}
+                            key={slot.period}
+                            onClick={() => setSelectedSlot({ entry, day, slot })}
                             className={cn(
                               "relative border-l border-slate-100 p-3 group/cell transition-all duration-200",
                               color.bg,
@@ -217,19 +234,19 @@ export default function TeacherTimetablePage() {
                             <div className="pl-2 flex flex-col h-full gap-2">
                               {/* Subject code badge */}
                               <span className={cn("text-[8px] font-black uppercase tracking-widest rounded-md px-1.5 py-0.5 self-start", color.badge)}>
-                                {entry.subjectId.code}
+                                {subCode}
                               </span>
 
                               {/* Subject name */}
                               <p className={cn("text-[11px] font-black leading-tight line-clamp-2", color.text)}>
-                                {entry.subjectId.name}
+                                {subName}
                               </p>
 
                               {/* Meta */}
                               <div className="mt-auto space-y-1">
                                 <div className="flex items-center gap-1">
                                   <Users size={9} className="text-slate-500 shrink-0" />
-                                  <span className="text-[9px] font-bold text-slate-600 truncate">{entry.batchId.name}</span>
+                                  <span className="text-[9px] font-bold text-slate-600 truncate">{batchName}</span>
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <MapPin size={9} className="text-slate-500 shrink-0" />
@@ -240,7 +257,7 @@ export default function TeacherTimetablePage() {
 
                             {/* Hover action */}
                             <Link
-                              href={`/teacher/attendance?batchId=${bId}&subjectId=${sId}&date=${new Date().toISOString()}&lecture=${p.id}`}
+                              href={`/teacher/attendance?batchId=${bId}&subjectId=${sId}&date=${new Date().toISOString()}&lecture=${slot.period}${entry.section ? `&section=${entry.section}` : ''}`}
                               onClick={e => e.stopPropagation()}
                               className="absolute inset-0 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm opacity-0 group-hover/cell:opacity-100 transition-opacity duration-200 rounded-none"
                             >
@@ -254,7 +271,7 @@ export default function TeacherTimetablePage() {
 
                       return (
                         <div
-                          key={p.id}
+                          key={slot.period}
                           className={cn(
                             "border-l border-slate-100 flex items-center justify-center",
                             isToday ? "bg-indigo-50/30" : "bg-transparent"
@@ -294,10 +311,13 @@ export default function TeacherTimetablePage() {
 
           {/* Session list */}
           <div className="space-y-3">
-            {todaySchedule.length > 0 ? todaySchedule.map((s, i) => {
-              const bId = s.batchId._id || (s as any).batchId;
-              const sId = s.subjectId._id || (s as any).subjectId;
-              const color = getColor(s.subjectId.name);
+            {todaySchedule.length > 0 ? todaySchedule.map((s: any, i) => {
+              const subName = s.subjectId?.name || "";
+              const subCode = s.subjectId?.code || "";
+              const batchName = s.batchId?.name || "";
+              const bId = s.batchId?._id || (s as any).batchId;
+              const sId = s.subjectId?._id || (s as any).subjectId;
+              const color = getColor(subName);
 
               return (
                 <div
@@ -324,16 +344,16 @@ export default function TeacherTimetablePage() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm font-black text-slate-900 leading-tight truncate">{s.subjectId.name}</p>
+                      <p className="text-sm font-black text-slate-900 leading-tight truncate">{subName}</p>
                       <p className="text-[10px] font-bold text-slate-400 mt-1">
-                        {s.batchId.name} · Rm {s.room}
+                        {batchName} · Rm {s.room}
                       </p>
                     </div>
                   </div>
 
                   {s.isUpcoming && (
                     <Link
-                      href={`/teacher/attendance?batchId=${bId}&subjectId=${sId}&date=${new Date().toISOString()}&lecture=${s.period}`}
+                      href={`/teacher/attendance?batchId=${bId}&subjectId=${sId}&date=${new Date().toISOString()}&lecture=${s.period}${s.section ? `&section=${s.section}` : ''}`}
                       className="mt-3 w-full bg-slate-950 text-white rounded-xl py-2.5 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors"
                     >
                       <ClipboardCheck size={12} /> Mark Attendance <ChevronRight size={11} />
@@ -352,6 +372,95 @@ export default function TeacherTimetablePage() {
           </div>
         </div>
       </div>
+
+      {/* Slot Detail Modal */}
+      {selectedSlot && (() => {
+        const { entry, day, slot } = selectedSlot;
+        const subName = (entry.subjectId as any)?.name || "";
+        const subCode = (entry.subjectId as any)?.code || "";
+        const batchName = (entry.batchId as any)?.name || "";
+        const color = getColor(subName);
+        const bId = (entry.batchId as any)?._id || (entry as any).batchId;
+        const sId = (entry.subjectId as any)?._id || (entry as any).subjectId;
+        return (
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setSelectedSlot(null)}
+          >
+            <div
+              className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-sm overflow-hidden"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Top accent */}
+              <div className={cn("h-1.5 w-full", color.bar)} />
+
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <span className={cn("text-[9px] font-black uppercase tracking-widest rounded-md px-2 py-1", color.badge)}>
+                      {subCode}
+                    </span>
+                    <h3 className="text-xl font-black text-slate-900 mt-2 leading-tight">{subName}</h3>
+                  </div>
+                  <button
+                    onClick={() => setSelectedSlot(null)}
+                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors"
+                  >
+                    <X size={16} className="text-slate-500" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 py-4 border-y border-slate-100">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                      <Calendar size={14} className="text-slate-400" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Day</p>
+                      <p className="text-sm font-black text-slate-800">{day}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                      <Clock size={14} className="text-slate-400" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Period {slot.period} · Time</p>
+                      <p className="text-sm font-black text-slate-800">{slot.label}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                      <Users size={14} className="text-slate-400" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Batch · Section</p>
+                      <p className="text-sm font-black text-slate-800">{batchName} · Section {entry.section}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center shrink-0">
+                      <MapPin size={14} className="text-slate-400" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Room</p>
+                      <p className="text-sm font-black text-slate-800">{entry.room}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/teacher/attendance?batchId=${bId}&subjectId=${sId}&date=${new Date().toISOString()}&lecture=${slot.period}${entry.section ? `&section=${entry.section}` : ''}`}
+                  className="mt-4 w-full bg-slate-950 text-white rounded-2xl py-3.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-indigo-700 transition-colors"
+                  onClick={() => setSelectedSlot(null)}
+                >
+                  <ClipboardCheck size={14} /> Mark Attendance
+                </Link>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -25,7 +25,8 @@ import {
   createFaculty,
   updateFaculty,
   softDeleteFaculty,
-  assignSubjects
+  assignSubjects,
+  getFacultyAttendanceStats
 } from "../controllers/facultyController.js";
 import {
   getCourses,
@@ -35,7 +36,12 @@ import {
   createSubject,
   getBatches,
   createBatch,
-  updateBatch
+  updateBatch,
+  addBatchSection,
+  removeBatchSection,
+  getBatchStudents,
+  removeStudentFromBatch,
+  assignStudentsToSection
 } from "../controllers/academicsController.js";
 import {
   getAttendanceOverview,
@@ -77,13 +83,17 @@ import { getDashboardStats } from "../controllers/adminDashboardController.js";
 import {
   assignTeacher,
   assignStudentToBatch,
+  bulkAssignStudentsToBatch,
   removeTeacherAssignment,
   getAssignments
 } from "../controllers/adminAssignmentController.js";
 import {
   createTimetableEntry,
   getFullTimetable,
-  getConflicts
+  getConflicts,
+  deleteTimetableEntry,
+  updateTimetableEntry,
+  getTimeSlots
 } from "../controllers/timetableController.js";
 
 const router = express.Router();
@@ -104,6 +114,7 @@ router.get("/assignments", getAssignments);
 router.post("/assign-teacher", assignTeacher);
 router.delete("/assign-teacher", removeTeacherAssignment);
 router.post("/assign-student-batch", assignStudentToBatch);
+router.post("/bulk-assign-students-batch", bulkAssignStudentsToBatch);
 
 // Module 1: Admissions
 router.post("/enquiries", createEnquiry);
@@ -132,6 +143,7 @@ router.post("/faculty", createFaculty);
 router.put("/faculty/:id", updateFaculty);
 router.delete("/faculty/:id", softDeleteFaculty);
 router.put("/faculty/:id/assign", assignSubjects);
+router.get("/faculty/:id/attendance-stats", getFacultyAttendanceStats);
 
 // Module 4: Academics
 router.get("/courses", getCourses);
@@ -144,6 +156,11 @@ router.post("/subjects", createSubject);
 router.get("/batches", getBatches);
 router.post("/batches", createBatch);
 router.put("/batches/:id", updateBatch);
+router.get("/batches/:id/students", getBatchStudents);
+router.delete("/batches/:id/students/:studentId", removeStudentFromBatch);
+router.put("/batches/:id/sections/:section/students", assignStudentsToSection);
+router.post("/batches/:id/sections", addBatchSection);
+router.delete("/batches/:id/sections/:section", removeBatchSection);
 
 // Module 5: Attendance
 router.get("/attendance/overview", getAttendanceOverview);
@@ -182,8 +199,11 @@ router.put("/naac/documents/:id/status", updateDocumentStatus);
 router.get("/naac/stats", getComplianceStats);
 
 // Module 10: Timetable
+router.get("/timetable/slots", getTimeSlots);
 router.get("/timetable", getFullTimetable);
 router.post("/timetable", createTimetableEntry);
+router.put("/timetable/:id", updateTimetableEntry);
+router.delete("/timetable/:id", deleteTimetableEntry);
 router.get("/timetable/conflicts", getConflicts);
 
 export default router;

@@ -5,6 +5,7 @@ export interface IAttendance extends Document {
   teacherId: mongoose.Types.ObjectId;
   classId: mongoose.Types.ObjectId;
   subjectId: mongoose.Types.ObjectId;
+  section?: string;
   date: Date;
   lecture: number;
   records: {
@@ -19,6 +20,7 @@ const AttendanceSchema: Schema = new Schema({
   teacherId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   classId: { type: Schema.Types.ObjectId, ref: 'Batch', required: true }, // Using Batch ref as classId for consistency
   subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
+  section: { type: String, default: 'General' },
   date: { type: Date, required: true },
   lecture: { type: Number, required: true, min: 1, max: 8, default: 1 },
   records: [{
@@ -36,8 +38,8 @@ const AttendanceSchema: Schema = new Schema({
   }]
 }, { timestamps: true });
 
-// Index for quick performance on reports and ensuring uniqueness per class/subject/date/lecture
+// Index for quick performance on reports and ensuring uniqueness per class/subject/date/lecture/section
 AttendanceSchema.index({ "records.studentId": 1, date: 1 });
-AttendanceSchema.index({ classId: 1, subjectId: 1, date: 1, lecture: 1 }, { unique: true });
+AttendanceSchema.index({ classId: 1, subjectId: 1, date: 1, lecture: 1, section: 1 }, { unique: true });
 
 export default mongoose.model<IAttendance>("Attendance", AttendanceSchema);

@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useEffect } from "react";
-import { 
-  Users, 
-  UserCheck, 
-  GraduationCap, 
-  Calendar, 
-  ClipboardCheck, 
-  FileText, 
-  CreditCard, 
-  MessageSquare, 
+import {
+  Users,
+  UserCheck,
+  GraduationCap,
+  Calendar,
+  ClipboardCheck,
+  FileText,
+  CreditCard,
+  MessageSquare,
   ShieldCheck,
   LayoutDashboard,
   UserPlus,
@@ -17,7 +17,8 @@ import {
   Sparkles,
   Search,
   Settings,
-  LogOut
+  LogOut,
+  Layers
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -30,6 +31,8 @@ const NAV_ITEMS = [
   { icon: Users, label: "Students", href: "/admin/students" },
   { icon: UserCheck, label: "Faculty", href: "/admin/faculty" },
   { icon: GraduationCap, label: "Academics", href: "/admin/academics" },
+  { icon: Layers, label: "Batches", href: "/admin/batches" },
+  { icon: Calendar, label: "Schedule", href: "/admin/timetable" },
   { icon: ClipboardCheck, label: "Attendance", href: "/admin/attendance" },
   { icon: FileText, label: "Exams", href: "/admin/exams" },
   { icon: CreditCard, label: "Fees", href: "/admin/fees" },

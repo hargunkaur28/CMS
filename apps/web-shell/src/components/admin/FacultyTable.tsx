@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { MoreHorizontal, Mail, Phone, Book, Briefcase, Trash2, Edit2, Shield } from "lucide-react";
+import { MoreHorizontal, Mail, Phone, Book, Briefcase, Trash2, Edit2, Shield, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FacultyTableProps {
@@ -9,9 +9,10 @@ interface FacultyTableProps {
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onAssign: (id: string) => void;
+  onView: (id: string) => void;
 }
 
-export default function FacultyTable({ faculties, onDelete, onEdit, onAssign }: FacultyTableProps) {
+export default function FacultyTable({ faculties, onDelete, onEdit, onAssign, onView }: FacultyTableProps) {
   return (
     <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
       <table className="w-full text-left border-collapse">
@@ -70,8 +71,15 @@ export default function FacultyTable({ faculties, onDelete, onEdit, onAssign }: 
               </td>
               <td className="px-6 py-4">
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                   <button 
-                     onClick={() => onAssign(faculty._id)}
+                    <button 
+                      onClick={() => onView(faculty._id)}
+                      className="p-1.5 text-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg border border-transparent hover:border-emerald-100 transition-all shadow-sm"
+                      title="View Profile Stats"
+                    >
+                      <Eye size={14} />
+                    </button>
+                    <button 
+                      onClick={() => onAssign(faculty._id)}
                      className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg border border-transparent hover:border-indigo-100 transition-all"
                      title="Assign Subjects"
                    >
