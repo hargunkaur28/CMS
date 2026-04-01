@@ -59,9 +59,25 @@ export const fetchMyMaterials = async () => {
 };
 
 /**
+ * Fetch the logged-in student's assignments specifically
+ */
+export const fetchMyAssignments = async () => {
+  const response = await api.get(`${BASE}/materials?type=Assignment`);
+  return response.data;
+};
+
+/**
  * Submit a mock payment for a specific fee structure
  */
 export const submitPayment = async (payload: { feeStructureId: string, amount: number, mode?: string }) => {
   const response = await api.post(`${BASE}/pay`, payload);
+  return response.data;
+};
+
+/**
+ * Fetch the logged-in student's active library transactions
+ */
+export const fetchMyLibraryTransactions = async (filters: { limit?: number } = {}) => {
+  const response = await api.get(`/library/my-transactions`, { params: filters });
   return response.data;
 };

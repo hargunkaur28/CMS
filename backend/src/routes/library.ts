@@ -6,31 +6,79 @@ const router = express.Router();
 
 router.use(protect);
 
-/**
- * @route   GET /api/library
- * @desc    Get all books (Catalog search)
- */
+// ─── Book Catalog (all authenticated users) ───────────────────────────────────
 router.get("/", libraryController.getBooks);
 
-/**
- * @route   POST /api/library
- * @desc    Add a brand new title to the system
- * @access  Admin, Librarian, Staff
- */
-router.post("/", authorize("SUPER_ADMIN", "COLLEGE_ADMIN", "TEACHER"), libraryController.addBook);
+// ─── Librarian + Admin: Book CRUD ────────────────────────────────────────────
+router.post(
+  "/",
+  authorize("SUPER_ADMIN", "COLLEGE_ADMIN", "LIBRARIAN"),
+  libraryController.addBook
+);
+router.put(
+  "/:id",
+  authorize("SUPER_ADMIN", "COLLEGE_ADMIN", "LIBRARIAN"),
+  libraryController.updateBook
+);
+router.delete(
+  "/:id",
+  authorize("SUPER_ADMIN", "COLLEGE_ADMIN", "LIBRARIAN"),
+  libraryController.deleteBook
+);
 
-/**
- * @route   PUT /api/library/:id
- * @desc    Update a specific title or stock count
- * @access  Admin, Librarian, Staff
- */
-router.put("/:id", authorize("SUPER_ADMIN", "COLLEGE_ADMIN", "TEACHER"), libraryController.updateBook);
+// ─── Stats (librarian dashboard) ─────────────────────────────────────────────
+router.get(
+  "/stats",
+  authorize("SUPER_ADMIN", "COLLEGE_ADMIN", "LIBRARIAN"),
+  libraryController.getLibraryStats
+);
 
-/**
- * @route   DELETE /api/library/:id
- * @desc    Remove a specific title
- * @access  Admin, Librarian, Staff
- */
-router.delete("/:id", authorize("SUPER_ADMIN", "COLLEGE_ADMIN"), libraryController.deleteBook);
+// ─── Transactions ─────────────────────────────────────────────────────────────
+router.get(
+  "/transactions",
+  authorize("SUPER_ADMIN", "COLLEGE_ADMIN", "LIBRARIAN"),
+  libraryController.getTransactions
+);
+
+// ─── Issue a book ─────────────────────────────────────────────────────────────
+router.post(
+  "/issue",
+  authorize("LIBRARIAN", "SUPER_ADMIN", "COLLEGE_ADMIN"),
+  libraryController.issueBook
+);
+
+// ─── Return a book ───────────────────────────────────────────────────────────
+router.put(
+  "/return/:txId",
+  authorize("LIBRARIAN", "SUPER_ADMIN", "COLLEGE_ADMIN"),
+  libraryController.returnBook
+);
+
+// ─── Lightweight student search (librarian only, dedicated endpoint) ──────────
+router.get(
+  "/students/search",
+  authorize("LIBRARIAN", "SUPER_ADMIN", "COLLEGE_ADMIN"),
+  libraryController.searchStudents
+);
+
+// ─── Student Dashboard ────────────────────────────────────────────────────────
+router.get(
+  "/my-transactions",
+  authorize("STUDENT"),
+  libraryController.getStudentLibraryTransactions
+);
+
+// ─── Reservation System ───────────────────────────────────────────────────────
+router.post(
+  "/reserve/:bookId",
+  authorize("STUDENT"),
+  libraryController.reserveBook
+);
+
+router.put(
+  "/approve-reservation/:txId",
+  authorize("LIBRARIAN", "SUPER_ADMIN", "COLLEGE_ADMIN"),
+  libraryController.approveReservation
+);
 
 export default router;

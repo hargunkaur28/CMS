@@ -1,0 +1,159 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import { Bell, X, Info, CheckCircle, AlertTriangle, Book } from "lucide-react";
+import { useSocket } from "@/components/providers/SocketProvider";
+import { fetchNotifUnreadCount, fetchNotifications, markNotifAsRead } from "@/lib/api/communication";
+import { cn } from "@/lib/utils";
+
+export default function NotificationBell() {
+  const { socket } = useSocket();
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [toast, setToast] = useState<{ title: string; message: string; type: string } | null>(null);
+
+  const loadNotifData = async () => {
+    try {
+      const [countRes, listRes] = await Promise.all([
+        fetchNotifUnreadCount(),
+        fetchNotifications()
+      ]);
+      if (countRes.success) setUnreadCount(countRes.data.count);
+      if (listRes.success) setNotifications(listRes.data);
+    } catch (err) {
+      console.error("Failed to load notifications", err);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifData();
+
+    if (socket) {
+      const handleNotif = (data: any) => {
+        setUnreadCount(prev => prev + 1);
+        setNotifications(prev => [data, ...prev].slice(0, 50));
+        setToast({
+          title: data.title,
+          message: data.message,
+          type: data.type || "info"
+        });
+
+        // Auto-clear toast after 5 seconds
+        setTimeout(() => setToast(null), 5000);
+      };
+
+      socket.on("notification", handleNotif);
+      return () => {
+        socket.off("notification", handleNotif);
+      };
+    }
+  }, [socket]);
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await markNotifAsRead(id);
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
+    } catch (err) {
+      console.error("Failed to mark notification as read", err);
+    }
+  };
+
+  const getIcon = (type: string) => {
+    switch (type) {
+      case "library": return <Book className="text-amber-500" size={16} />;
+      case "alert": return <AlertTriangle className="text-rose-500" size={16} />;
+      case "personal": return <CheckCircle className="text-emerald-500" size={16} />;
+      default: return <Info className="text-indigo-500" size={16} />;
+    }
+  };
+
+  return (
+    <div className="relative">
+      {/* Toast Notification Popup */}
+      {toast && (
+        <div className="fixed top-20 right-8 z-[100] animate-in slide-in-from-right-8 duration-500">
+           <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-slate-700 flex items-start gap-4 min-w-[320px] max-w-md">
+              <div className="w-10 h-10 rounded-xl bg-indigo-600/20 flex items-center justify-center shrink-0">
+                 <Bell className="text-indigo-400" size={20} />
+              </div>
+              <div className="flex-1 pt-0.5">
+                 <h4 className="text-sm font-bold">{toast.title}</h4>
+                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">{toast.message}</p>
+              </div>
+              <button onClick={() => setToast(null)} className="text-slate-500 hover:text-white pt-1">
+                 <X size={16} />
+              </button>
+           </div>
+        </div>
+      )}
+
+      {/* Bell Icon & Dropdown */}
+      <button 
+        onClick={() => setShowDropdown(!showDropdown)}
+        className={cn(
+          "relative p-2 transition-colors rounded-xl",
+          showDropdown ? "bg-slate-100 text-slate-900" : "text-slate-400 hover:text-slate-900"
+        )}
+      >
+        <Bell size={20} />
+        {unreadCount > 0 && (
+          <span className="absolute top-2 right-2 w-4 h-4 bg-indigo-600 text-[10px] font-black text-white rounded-full border-2 border-white flex items-center justify-center">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {showDropdown && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+          <div className="absolute right-0 mt-4 w-80 bg-white rounded-[2rem] border border-slate-100 shadow-ambient z-50 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Notifications</h3>
+              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{unreadCount} New</span>
+            </div>
+            
+            <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+              {notifications.length > 0 ? (
+                <div className="divide-y divide-slate-50">
+                  {notifications.map((n) => (
+                    <div 
+                      key={n._id} 
+                      className={cn(
+                        "p-5 flex gap-4 hover:bg-slate-50 transition-colors cursor-pointer relative",
+                        !n.isRead && "bg-indigo-50/20"
+                      )}
+                      onClick={() => !n.isRead && handleMarkAsRead(n._id)}
+                    >
+                      {!n.isRead && <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-indigo-600 rounded-full" />}
+                      <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0 shadow-sm">
+                        {getIcon(n.type)}
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900 leading-tight">{n.title}</p>
+                        <p className="text-[11px] text-slate-500 mt-1 line-clamp-2 leading-relaxed">{n.message}</p>
+                        <p className="text-[9px] text-slate-400 mt-2 font-bold uppercase tracking-tighter">
+                          {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 px-6 text-center opacity-40">
+                   <Bell size={32} className="mx-auto mb-4 text-slate-200" />
+                   <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No Alerts Found</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="p-4 border-t border-slate-50 bg-slate-50/30 text-center">
+              <button className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-700">Clear All History</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

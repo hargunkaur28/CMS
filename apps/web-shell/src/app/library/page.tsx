@@ -14,37 +14,109 @@ import {
   ArrowUpRight,
   Plus
 } from "lucide-react";
-import { fetchBooks } from "@/lib/api/library";
+import { fetchBooks, reserveBook } from "@/lib/api/library";
+import { fetchMyLibraryTransactions } from "@/lib/api/student";
 import Link from "next/link";
 
 const CATEGORIES = ["All", "Computer Science", "Business", "Mathematics", "Humanities", "Physics", "General"];
 
 export default function LibraryPage() {
   const [books, setBooks] = useState<any[]>([]);
+  const [myTransactions, setMyTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
 
+  const loadBooks = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchBooks({ 
+        search: searchTerm, 
+        category: activeCategory === 'All' ? undefined : activeCategory 
+      });
+      if (res.success) setBooks(res.data);
+    } catch (err) {
+      console.error("Failed to load library catalog", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadTransactions = async () => {
+    try {
+      const res = await fetchMyLibraryTransactions();
+      if (res.success) setMyTransactions(res.data);
+    } catch (err) {
+      console.error("Failed to load student transactions", err);
+    }
+  };
+
   useEffect(() => {
-    const loadBooks = async () => {
-      setLoading(true);
-      try {
-        const res = await fetchBooks({ 
-          search: searchTerm, 
-          category: activeCategory === 'All' ? undefined : activeCategory 
-        });
-        if (res.success) setBooks(res.data);
-      } catch (err) {
-        console.error("Failed to load library catalog", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadBooks();
+    loadTransactions();
   }, [searchTerm, activeCategory]);
+
+  const handleReserve = async (bookId: string) => {
+    try {
+      const res = await reserveBook(bookId);
+      if (res.success) {
+        alert("Book reserved successfully! You can pick it up from the library.");
+        loadBooks();
+      }
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Failed to reserve book");
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 max-w-7xl mx-auto w-full">
+      {/* My Activity Section */}
+      {myTransactions.length > 0 && (
+        <section className="animate-in slide-in-from-top-4 duration-700">
+          <div className="flex items-center gap-2 mb-4">
+             <Clock className="text-indigo-400" size={16} />
+             <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest">My Library Activity</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {myTransactions.map((tx) => {
+              const isReserved = tx.status === "reserved";
+              const isOverdue = tx.status === "overdue";
+              return (
+                <Card key={tx._id} className="p-4 bg-white border border-slate-100 shadow-sm rounded-2xl flex flex-col justify-between hover:shadow-md transition-all">
+                  <div>
+                    <div className="flex justify-between items-start mb-2">
+                       <span className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider border ${
+                         isReserved ? "bg-amber-50 text-amber-600 border-amber-100" :
+                         isOverdue ? "bg-rose-50 text-rose-600 border-rose-100 animate-pulse" :
+                         "bg-indigo-50 text-indigo-600 border-indigo-100"
+                       }`}>
+                         {tx.status}
+                       </span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-900 line-clamp-1">{tx.bookId?.title || "Unknown Book"}</p>
+                    <p className="text-[10px] text-slate-400 font-medium">{tx.bookId?.author}</p>
+                  </div>
+                  
+                  <div className="mt-4 pt-3 border-t border-slate-50 flex items-center justify-between">
+                     <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500">
+                        {isReserved ? (
+                          <><span>Awaiting Collection</span></>
+                        ) : (
+                          <>
+                            <Clock size={10} />
+                            <span>Due: {new Date(tx.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                          </>
+                        )}
+                     </div>
+                     <ArrowUpRight size={14} className="text-slate-300" />
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       {/* Header & Core Search */}
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="flex-1">
@@ -100,7 +172,7 @@ export default function LibraryPage() {
       ) : books.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {books.map((book) => (
-            <BookCard key={book._id} book={book} />
+            <BookCard key={book._id} book={book} onReserve={() => handleReserve(book._id)} />
           ))}
         </div>
       ) : (
@@ -114,7 +186,8 @@ export default function LibraryPage() {
   );
 }
 
-function BookCard({ book }: any) {
+function BookCard({ book, onReserve }: any) {
+  const [reserving, setReserving] = useState(false);
   const isAvailable = book.availableCopies > 0;
 
   return (
@@ -149,12 +222,17 @@ function BookCard({ book }: any) {
 
       <div className="flex items-center gap-3">
         <button 
-          disabled={!isAvailable}
+          disabled={!isAvailable || reserving}
+          onClick={async () => {
+             setReserving(true);
+             await onReserve();
+             setReserving(false);
+          }}
           className={`flex-1 py-3 rounded-xl font-bold text-xs transition-shadow shadow-lg shadow-slate-900/5 active:scale-95 ${
             isAvailable ? 'bg-slate-900 text-white hover:bg-indigo-600' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
           }`}
         >
-          {isAvailable ? 'Reserve Book' : 'Notify Me'}
+          {reserving ? 'Reserving...' : isAvailable ? 'Reserve Book' : 'Notify Me'}
         </button>
         <button className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-white border border-slate-100 rounded-xl transition-all shadow-sm">
            <ArrowUpRight size={18} />

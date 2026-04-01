@@ -26,7 +26,7 @@ import {
   Bell,
   Megaphone
 } from "lucide-react";
-import { fetchMyProfile, fetchMyAttendance, fetchMyResults, fetchMyTodaySchedule } from "@/lib/api/student";
+import { fetchMyProfile, fetchMyAttendance, fetchMyResults, fetchMyTodaySchedule, fetchMyLibraryTransactions, fetchMyAssignments } from "@/lib/api/student";
 import { fetchMyAnnouncements, fetchUnreadCount } from "@/lib/api/communication";
 import { fetchMyStudentProfile, fetchMyStudentAttendance, fetchMyStudentResults, fetchMyStudentTimetable, fetchMyStudentFees } from "@/lib/api/parent";
 import { useSocket } from "@/components/providers/SocketProvider";
@@ -49,11 +49,13 @@ export default function DashboardPage() {
       router.push("/admin");
     } else if (userRole === "TEACHER") {
       router.push("/teacher");
+    } else if (userRole === "LIBRARIAN") {
+      router.push("/librarian");
     }
   }, [router]);
 
   // Loading or Redirecting State
-  if (!role || role === "COLLEGE_ADMIN" || role === "SUPER_ADMIN" || role === "TEACHER") return (
+  if (!role || role === "COLLEGE_ADMIN" || role === "SUPER_ADMIN" || role === "TEACHER" || role === "LIBRARIAN") return (
     <div className="h-screen w-full flex items-center justify-center bg-slate-50">
        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
     </div>
@@ -553,17 +555,21 @@ function StudentDashboard() {
   const [schedule, setSchedule] = React.useState<any[]>([]);
   const [announcements, setAnnouncements] = React.useState<any[]>([]);
   const [unreadCount, setUnreadCount] = React.useState(0);
+  const [libraryTx, setLibraryTx] = React.useState<any[]>([]);
+  const [assignments, setAssignments] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
 
   const loadData = async () => {
     try {
-      const [profileRes, attendanceRes, resultsRes, scheduleRes, annRes, unreadRes] = await Promise.all([
+      const [profileRes, attendanceRes, resultsRes, scheduleRes, annRes, unreadRes, libraryRes, assignmentsRes] = await Promise.all([
         fetchMyProfile(),
         fetchMyAttendance(),
         fetchMyResults(),
         fetchMyTodaySchedule(),
         fetchMyAnnouncements(),
-        fetchUnreadCount()
+        fetchUnreadCount(),
+        fetchMyLibraryTransactions({ limit: 3 }).catch(() => ({ success: false, data: [] })),
+        fetchMyAssignments().catch(() => ({ success: false, data: [] }))
       ]);
       if (profileRes.success) {
         setProfile(profileRes.data);
@@ -577,6 +583,8 @@ function StudentDashboard() {
       if (scheduleRes.success) setSchedule(scheduleRes.data);
       if (annRes.success) setAnnouncements(annRes.data);
       if (unreadRes.success) setUnreadCount(unreadRes.data.count);
+      if (libraryRes?.success) setLibraryTx(libraryRes.data);
+      if (assignmentsRes?.success) setAssignments(assignmentsRes.data);
 
     } catch (err) {
       console.error("Failed to load student dashboard data", err);
@@ -592,10 +600,14 @@ function StudentDashboard() {
       socket.on("attendanceUpdated", loadData);
       socket.on("resultsPublished", loadData);
       socket.on("newMessage", loadData);
+      socket.on("libraryUpdate", loadData);
+      socket.on("notification", loadData);
       return () => {
         socket.off("attendanceUpdated", loadData);
         socket.off("resultsPublished", loadData);
         socket.off("newMessage", loadData);
+        socket.off("libraryUpdate", loadData);
+        socket.off("notification", loadData);
       };
     }
   }, [socket]);
@@ -625,17 +637,7 @@ function StudentDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          <Link 
-            href="/communication" 
-            className="relative p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-slate-900 transition-all shadow-sm group"
-          >
-            <Bell size={20} className="group-hover:rotate-12 transition-transform" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-indigo-600 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse border-2 border-white">
-                {unreadCount}
-              </span>
-            )}
-          </Link>
+
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Roll Number</p>
@@ -704,6 +706,71 @@ function StudentDashboard() {
             </Card>
           )}
 
+          {/* Active Assignments Widget */}
+          {assignments.length > 0 && (
+            <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl animate-in zoom-in-95 duration-700 delay-100">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 font-display">Active Assignments</h2>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Pending Coursework</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center shadow-sm border border-indigo-100">
+                  <Book size={20} className="text-indigo-600" />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {assignments.map((assignment: any) => {
+                  const dueDate = new Date(assignment.dueDate || new Date());
+                  const diffDays = Math.ceil((dueDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                  
+                  let status = "Active";
+                  let statusClass = "bg-indigo-50 text-indigo-600 border-indigo-100";
+                  let Icon = Book;
+
+                  if (diffDays < 0) {
+                    status = "Late";
+                    statusClass = "bg-rose-50 text-rose-600 border-rose-100 shadow-sm shadow-rose-500/10";
+                    Icon = AlertCircle;
+                  } else if (diffDays <= 2) {
+                    status = `Due in ${diffDays}d`;
+                    statusClass = "bg-amber-50 text-amber-600 border-amber-100";
+                    Icon = Clock;
+                  }
+
+                  return (
+                    <div key={assignment._id} className="p-5 border border-slate-100 rounded-2xl bg-slate-50 flex flex-col group hover:bg-white hover:shadow-ambient hover:-translate-y-1 transition-all duration-300 relative overflow-hidden">
+                      <div className={`absolute top-0 left-0 w-1 h-full ${statusClass.split(' ')[0]}`} />
+                      <div className="flex justify-between items-start mb-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[9px] font-black uppercase tracking-wider border ${statusClass}`}>
+                          <Icon size={10} /> {status}
+                        </span>
+                        {assignment.teacherId && (
+                          <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-600 shadow-sm" title={assignment.teacherId.name}>
+                            {assignment.teacherId.name?.[0] || 'T'}
+                          </div>
+                        )}
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-900 line-clamp-2 leading-tight mb-1">{assignment.title}</h3>
+                      <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-4 truncate">
+                        {assignment.subjectId?.name || "General"}
+                      </p>
+                      <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-200/60">
+                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                           <Calendar size={12} />
+                           {dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                         </div>
+                         <a href={assignment.fileUrl.startsWith('http') ? assignment.fileUrl : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api'}`.replace('/api', '') + '/' + assignment.fileUrl.replace(/\\/g, '/')} target="_blank" rel="noopener noreferrer" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 bg-indigo-50/50 px-2.5 py-1.5 rounded-lg active:scale-95">
+                           View <ArrowUpRight size={12} />
+                         </a>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
           <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-xl font-bold text-slate-900">Registered Subjects</h2>
@@ -765,8 +832,8 @@ function StudentDashboard() {
           </Card>
         </div>
 
-        <div className="lg:col-span-4">
-          <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl h-full">
+        <div className="lg:col-span-4 space-y-8">
+          <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-slate-900 font-display">Today's Schedule</h2>
               <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -797,6 +864,74 @@ function StudentDashboard() {
               View Full Timetable
             </Link>
           </Card>
+
+          {/* Library Reminders Widget */}
+          {libraryTx && libraryTx.length > 0 && (
+            <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl overflow-hidden animate-in zoom-in-95 duration-500">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center shrink-0 border border-teal-100">
+                  <Book size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 font-display">Library Details</h2>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Active Issues</p>
+                </div>
+              </div>
+              <div className="space-y-4">
+                {libraryTx.map((tx) => {
+                  const bookTitle = tx.bookId?.title || "Unknown Book";
+                  const isOverdue = tx.status === "overdue";
+                  const isReserved = tx.status === "reserved";
+                  
+                  const dueDateObj = tx.dueDate ? new Date(tx.dueDate) : null;
+                  const todayObj = new Date();
+                  const diffMs = dueDateObj ? dueDateObj.getTime() - todayObj.getTime() : 0;
+                  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                  
+                  let statusText = "Issued";
+                  let statusColor = "bg-indigo-50 text-indigo-600 border-indigo-100";
+                  let icon = <Clock size={12} />;
+
+                  if (isReserved) {
+                    statusText = "Reserved";
+                    statusColor = "bg-amber-50 text-amber-600 border-amber-100";
+                    icon = <Clock size={12} />;
+                  } else if (isOverdue) {
+                    statusText = "Overdue";
+                    statusColor = "bg-rose-50 text-rose-600 border-rose-100 animate-pulse shadow-sm shadow-rose-600/20";
+                    icon = <AlertCircle size={12} />;
+                  } else if (diffDays <= 3) {
+                    statusText = `Due in ${diffDays} day${diffDays === 1 ? '' : 's'}`;
+                    statusColor = "bg-amber-50 text-amber-600 border-amber-100";
+                    icon = <AlertCircle size={12} />;
+                  }
+
+                  return (
+                    <div key={tx._id} className="p-5 border border-slate-100 rounded-2xl bg-slate-50 flex flex-col hover:bg-white hover:shadow-ambient hover:border-teal-100 transition-all">
+                      <div className="mb-3">
+                        <p className="text-sm font-bold text-slate-900 leading-tight mb-2">{bookTitle}</p>
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+                          <Calendar size={12} />
+                          Due: {dueDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between mt-2 pt-3 border-t border-slate-200 border-dashed">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border ${statusColor}`}>
+                          {icon} {statusText}
+                        </span>
+                        {isOverdue && tx.fine > 0 && (
+                          <span className="text-xs font-black text-rose-600 px-2 py-0.5">
+                            Fine: ₹{tx.fine}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
         </div>
       </div>
     </div>

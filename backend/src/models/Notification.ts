@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface INotification extends Document {
   title: string;
   message: string;
-  type: 'announcement' | 'alert' | 'personal';
+  type: 'announcement' | 'alert' | 'personal' | 'library';
   recipientRole?: string; // e.g., STUDENT, TEACHER
   recipientUserId?: mongoose.Types.ObjectId;
   senderUserId: mongoose.Types.ObjectId;
@@ -14,7 +14,7 @@ export interface INotification extends Document {
 const NotificationSchema: Schema = new Schema({
   title: { type: String, required: true },
   message: { type: String, required: true },
-  type: { type: String, enum: ['announcement', 'alert', 'personal'], default: 'announcement' },
+  type: { type: String, enum: ['announcement', 'alert', 'personal', 'library'], default: 'announcement' },
   recipientRole: { type: String },
   recipientUserId: { type: Schema.Types.ObjectId, ref: 'User' },
   senderUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },

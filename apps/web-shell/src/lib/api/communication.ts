@@ -109,3 +109,31 @@ export const markMessageAsRead = async (messageId: string) => {
   );
   return response.data;
 };
+
+// ====================================================================
+// GENERIC NOTIFICATIONS (Personal Alerts, Library, etc.)
+// ====================================================================
+
+/**
+ * Fetch personal notifications for the logged-in user
+ */
+export const fetchNotifications = async () => {
+  const response = await axios.get(`${API_URL}/notifications`, { headers: getAuthHeader() });
+  return response.data;
+};
+
+/**
+ * Fetch unread notification count
+ */
+export const fetchNotifUnreadCount = async () => {
+  const response = await axios.get(`${API_URL}/notifications/unread-count`, { headers: getAuthHeader() });
+  return response.data;
+};
+
+/**
+ * Mark a specific notification as read
+ */
+export const markNotifAsRead = async (id: string) => {
+  const response = await axios.put(`${API_URL}/notifications/${id}/read`, {}, { headers: getAuthHeader() });
+  return response.data;
+};

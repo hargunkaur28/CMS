@@ -25,6 +25,7 @@ import teacherRoutes from './routes/teacher.js';
 import adminRoutes from './routes/admin.routes.js';
 import parentRoutes from './routes/parentRoutes.js';
 import libraryRoutes from './routes/library.js';
+import notificationsRoutes from './routes/notifications.js';
 
 // Connect to MongoDB
 await connectDB();
@@ -61,7 +62,7 @@ app.use('/api/teacher', teacherRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/parent', parentRoutes);
 app.use('/api/library', libraryRoutes);
-
+app.use('/api/notifications', notificationsRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('AI-Powered College Management System API is running...');

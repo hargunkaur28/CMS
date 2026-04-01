@@ -6,6 +6,7 @@ import Student from "../models/Student.js";
 import Parent from "../models/Parent.js";
 import Faculty from "../models/Faculty.js";
 import Batch from "../models/Batch.js";
+import Notification from "../models/Notification.js";
 
 // ====================================================================
 // ANNOUNCEMENTS
@@ -59,9 +60,9 @@ export const getStudentAnnouncements = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user?._id;
 
-    // Find the student profile to get batch info
     const student = await Student.findOne({ userId });
     const batchName = student?.academicInfo?.batch || null;
+    const batchIdStr = student?.batchId?.toString() || null;
 
     // Always include "all" / broadcast announcements.
     // Also include batch-specific ones if the student belongs to a batch.
@@ -74,6 +75,9 @@ export const getStudentAnnouncements = async (req: Request, res: Response) => {
 
     if (batchName) {
       orConditions.push({ targetClass: batchName });
+    }
+    if (batchIdStr) {
+      orConditions.push({ targetClass: batchIdStr });
     }
 
     const announcements = await Announcement.find({ $or: orConditions })
@@ -102,16 +106,23 @@ export const getParentAnnouncements = async (req: Request, res: Response) => {
 
     const student = await Student.findById(parent.students[0]);
     const batchName = student?.academicInfo?.batch || null;
+    const batchIdStr = student?.batchId?.toString() || null;
 
     const query: any = {};
+    const orConditions: any[] = [
+      { targetClass: "all" },
+      { targetClass: { $exists: false } },
+      { targetClass: "" },
+      { targetClass: null },
+    ];
+
     if (batchName) {
-      query.$or = [
-        { targetClass: batchName },
-        { targetClass: "all" },
-        { targetClass: { $exists: false } },
-        { targetClass: "" },
-      ];
+      orConditions.push({ targetClass: batchName });
     }
+    if (batchIdStr) {
+      orConditions.push({ targetClass: batchIdStr });
+    }
+    query.$or = orConditions;
 
     const announcements = await Announcement.find(query)
       .populate("senderId", "name role")
@@ -407,6 +418,64 @@ export const markAsRead = async (req: Request, res: Response) => {
 
     await Message.findOneAndUpdate(
       { _id: messageId, receiverId: userId },
+      { $set: { isRead: true } }
+    );
+
+    res.status(200).json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ====================================================================
+// GENERIC NOTIFICATIONS
+// ====================================================================
+
+/**
+ * GET /notifications
+ * Returns all personal notifications for the logged-in user
+ */
+export const getNotifications = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const notifications = await Notification.find({ recipientUserId: userId })
+      .sort({ createdAt: -1 })
+      .limit(50);
+
+    res.status(200).json({ success: true, data: notifications });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * GET /notifications/unread-count
+ * Returns count of unread personal notifications
+ */
+export const getNotificationUnreadCount = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const count = await Notification.countDocuments({
+      recipientUserId: userId,
+      isRead: false,
+    });
+    res.status(200).json({ success: true, data: { count } });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * PUT /notifications/:notifId/read
+ * Mark a specific notification as read
+ */
+export const markNotificationAsRead = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    const { notifId } = req.params;
+
+    await Notification.findOneAndUpdate(
+      { _id: notifId, recipientUserId: userId },
       { $set: { isRead: true } }
     );
 
