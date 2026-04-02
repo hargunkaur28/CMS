@@ -8,6 +8,52 @@ import Student from "../models/Student.js";
 import Batch from "../models/Batch.js";
 import User from "../models/User.js";
 
+const DEFAULT_STUDENT_PASSWORD = "Student@123";
+
+const ensureStudentUser = async (params: {
+  email: string;
+  fullName: string;
+  collegeId?: any;
+}) => {
+  const email = String(params.email || "").trim().toLowerCase();
+  if (!email) throw new Error("Student email is required");
+
+  let user = await User.findOne({ email });
+  if (!user) {
+    user = new User({
+      name: params.fullName,
+      email,
+      password: DEFAULT_STUDENT_PASSWORD,
+      role: "STUDENT",
+      collegeId: params.collegeId,
+      isActive: true,
+    });
+    await user.save();
+    return user;
+  }
+
+  let changed = false;
+  if (user.role !== "STUDENT") {
+    user.role = "STUDENT";
+    changed = true;
+  }
+  if (!user.isActive) {
+    user.isActive = true;
+    changed = true;
+  }
+  if (params.collegeId && !user.collegeId) {
+    user.collegeId = params.collegeId;
+    changed = true;
+  }
+  if (params.fullName && user.name !== params.fullName) {
+    user.name = params.fullName;
+    changed = true;
+  }
+  if (changed) await user.save();
+
+  return user;
+};
+
 // --- Enquiry Controllers ---
 
 export const createEnquiry = async (req: Request, res: Response) => {
@@ -142,6 +188,13 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
 
       const randomDigits = Math.floor(1000 + Math.random() * 9000);
       const studentId = `NGCMS-${new Date().getFullYear()}-${randomDigits}`;
+      const studentEmail = String(application.studentDetails.email || "").trim().toLowerCase();
+      const studentFirstName = String(application.studentDetails.firstName || "").trim();
+      const studentLastName = String(application.studentDetails.lastName || "").trim();
+
+      if (!studentEmail || !studentFirstName) {
+        return res.status(400).json({ success: false, message: "Approved application is missing student email or first name" });
+      }
 
       // Resolve actual batchId from string name
       const batchDoc = await Batch.findOne({ 
@@ -153,17 +206,24 @@ export const updateApplicationStatus = async (req: Request, res: Response) => {
         console.warn(`[ENROLLMENT] Could not find Batch document for name "${application.assignedBatch}". Student batchId will be null.`);
       }
 
+      const loginUser = await ensureStudentUser({
+        email: studentEmail,
+        fullName: `${studentFirstName} ${studentLastName}`.trim(),
+        collegeId: (req as any).user?.collegeId,
+      });
+
       const newStudent = new Student({
         uniqueStudentId: studentId,
+        userId: loginUser._id,
         batchId: batchDoc?._id, // LINK RESOLVED ID HERE
 
         personalInfo: {
-          firstName: application.studentDetails.firstName,
-          lastName: application.studentDetails.lastName,
+          firstName: studentFirstName,
+          lastName: studentLastName,
           dob: application.studentDetails.dob,
           gender: application.studentDetails.gender,
           phone: application.studentDetails.phone,
-          email: application.studentDetails.email,
+          email: studentEmail,
           address: application.studentDetails.address,
         },
         academicInfo: {

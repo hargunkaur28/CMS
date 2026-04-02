@@ -13,7 +13,10 @@ export default function NotificationBell() {
   const [showDropdown, setShowDropdown] = useState(false);
   const [toast, setToast] = useState<{ title: string; message: string; type: string } | null>(null);
 
+  const isAuthenticated = typeof window !== "undefined" && !!localStorage.getItem("token");
+
   const loadNotifData = async () => {
+    if (!isAuthenticated) return;
     try {
       const [countRes, listRes] = await Promise.all([
         fetchNotifUnreadCount(),

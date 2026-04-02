@@ -71,6 +71,15 @@ export const bulkImportStudents = async (file: File) => {
   return response.data;
 };
 
+export const resetStudentPasswords = async (payload: {
+  emails?: string[];
+  studentIds?: string[];
+  newPassword?: string;
+}) => {
+  const response = await api.post(`${BASE}/students/reset-passwords`, payload);
+  return response.data;
+};
+
 // --- Faculty Management ---
 export const fetchFaculties = async (filters: any = {}) => {
   const response = await api.get(`${BASE}/faculty`, { params: filters });

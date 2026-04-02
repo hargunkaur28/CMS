@@ -10,6 +10,19 @@ export interface IUser extends Document {
   registrationId?: string;
   isActive: boolean;
   profilePicture?: string;
+  phone?: string;
+  authentication: {
+    two_factor_enabled: boolean;
+    two_factor_method: 'email' | 'sms' | 'authenticator_app';
+    last_login?: Date;
+    login_count: number;
+    failed_login_attempts: number;
+    account_locked_until?: Date;
+  };
+  permissions: {
+    role_based: string[];
+    custom_permissions: string[];
+  };
   matchPassword(password: string): Promise<boolean>;
 }
 
@@ -22,6 +35,19 @@ const UserSchema: Schema = new Schema({
   registrationId: { type: String, unique: true, sparse: true },
   isActive: { type: Boolean, default: true },
   profilePicture: { type: String },
+  phone: { type: String },
+  authentication: {
+    two_factor_enabled: { type: Boolean, default: false },
+    two_factor_method: { type: String, enum: ['email', 'sms', 'authenticator_app'], default: 'email' },
+    last_login: { type: Date },
+    login_count: { type: Number, default: 0 },
+    failed_login_attempts: { type: Number, default: 0 },
+    account_locked_until: { type: Date }
+  },
+  permissions: {
+    role_based: { type: [String], default: [] },
+    custom_permissions: { type: [String], default: [] }
+  }
 }, { timestamps: true });
 
 UserSchema.pre('save', async function (this: IUser) {

@@ -17,7 +17,8 @@ import {
   updateStudent,
   softDeleteStudent,
   bulkImportStudents,
-  updateStudentStatus
+  updateStudentStatus,
+  resetStudentPasswordsBulk
 } from "../controllers/studentsController.js";
 import {
   getFaculties,
@@ -135,6 +136,7 @@ router.put("/students/:id", updateStudent);
 router.delete("/students/:id", softDeleteStudent);
 router.post("/students/bulk-import", uploadCsv.single("file"), bulkImportStudents);
 router.put("/students/:id/status", updateStudentStatus);
+router.post("/students/reset-passwords", resetStudentPasswordsBulk);
 
 // Module 3: Faculty Management
 router.get("/faculty", getFaculties);

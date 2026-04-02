@@ -10,6 +10,53 @@ import Batch from "../models/Batch.js";
 import FeeStructure from "../models/FeeStructure.js";
 import Payment from "../models/Payment.js";
 
+const DEFAULT_STUDENT_PASSWORD = "Student@123";
+
+const ensureStudentUser = async (params: {
+  email: string;
+  fullName: string;
+  collegeId: any;
+}) => {
+  const email = String(params.email || "").trim().toLowerCase();
+  if (!email) throw new Error("Student email is required");
+
+  let user = await User.findOne({ email });
+  if (!user) {
+    user = new User({
+      name: params.fullName,
+      email,
+      password: DEFAULT_STUDENT_PASSWORD,
+      role: "STUDENT",
+      collegeId: params.collegeId,
+      isActive: true,
+    });
+    await user.save();
+    return user;
+  }
+
+  // Keep legacy users compatible with student login flow.
+  let changed = false;
+  if (user.role !== "STUDENT") {
+    user.role = "STUDENT";
+    changed = true;
+  }
+  if (!user.collegeId && params.collegeId) {
+    user.collegeId = params.collegeId;
+    changed = true;
+  }
+  if (!user.isActive) {
+    user.isActive = true;
+    changed = true;
+  }
+  if (params.fullName && user.name !== params.fullName) {
+    user.name = params.fullName;
+    changed = true;
+  }
+  if (changed) await user.save();
+
+  return user;
+};
+
 export const getStudents = async (req: Request, res: Response) => {
   try {
     const { course, batch, batchId, department, status, search } = req.query;
@@ -105,17 +152,22 @@ export const createStudent = async (req: Request, res: Response) => {
     studentData.uniqueStudentId = await generateStudentId();
     studentData.collegeId = (req as any).user.collegeId;
 
-    // Create a corresponding User account for the student
-    const newUser = new User({
-      name: `${studentData.personalInfo.firstName} ${studentData.personalInfo.lastName}`,
-      email: studentData.personalInfo.email,
-      password: "Student@123", // Default password
-      role: "STUDENT",
-      collegeId: studentData.collegeId
+    const first = String(studentData?.personalInfo?.firstName || "").trim();
+    const last = String(studentData?.personalInfo?.lastName || "").trim();
+    const email = String(studentData?.personalInfo?.email || "").trim().toLowerCase();
+    if (!email || !first) {
+      return res.status(400).json({ success: false, message: "Student first name and email are required" });
+    }
+
+    // Create or re-use a corresponding User account for the student.
+    const newUser = await ensureStudentUser({
+      email,
+      fullName: `${first} ${last || ""}`.trim(),
+      collegeId: studentData.collegeId,
     });
-    await newUser.save();
     
     studentData.userId = newUser._id;
+    studentData.personalInfo.email = email;
     const student = new Student(studentData);
     await student.save();
     
@@ -131,6 +183,17 @@ export const updateStudent = async (req: Request, res: Response) => {
     const collegeId = (req as any).user.collegeId;
     const student = await Student.findOneAndUpdate({ uniqueStudentId: id, collegeId }, req.body, { new: true });
     if (!student) return res.status(404).json({ success: false, message: "Student not found" });
+
+    const studentEmail = String(student?.personalInfo?.email || "").trim().toLowerCase();
+    const fullName = `${student?.personalInfo?.firstName || ""} ${student?.personalInfo?.lastName || ""}`.trim();
+    if (studentEmail) {
+      const user = await ensureStudentUser({ email: studentEmail, fullName, collegeId });
+      if (!student.userId || String(student.userId) !== String(user._id)) {
+        student.userId = user._id as any;
+        await student.save();
+      }
+    }
+
     res.status(200).json({ success: true, data: student, message: "Student profile updated" });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
@@ -205,7 +268,7 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
         const dobStr = getVal(["dob", "date of birth", "birthday"]);
         const dob = (dobStr && !isNaN(Date.parse(dobStr))) ? new Date(dobStr) : new Date();
 
-        // Create a corresponding User account first
+        // Create or re-use a corresponding User account first
         const studentEmail = getVal(["email", "email address"]);
         const firstName = getVal(["firstName", "first name", "name"]);
         const lastName = getVal(["lastName", "last name", "surname"]) || "N/A";
@@ -214,14 +277,12 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
           throw new Error("Missing required identity fields (Email or Name)");
         }
 
-        const newUser = new User({
-          name: `${firstName} ${lastName}`,
-          email: studentEmail,
-          password: "Student@123", // Default password
-          role: "STUDENT",
-          collegeId
+        const normalizedEmail = String(studentEmail).trim().toLowerCase();
+        const newUser = await ensureStudentUser({
+          email: normalizedEmail,
+          fullName: `${firstName} ${lastName}`.trim(),
+          collegeId,
         });
-        await newUser.save();
 
         // Map CSV row to Student Schema with fallbacks
         const student = new Student({
@@ -231,7 +292,7 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
           personalInfo: {
             firstName,
             lastName,
-            email: studentEmail,
+            email: normalizedEmail,
             phone: getVal(["phone", "mobile", "contact"]) || "0000000000",
             gender: (getVal(["gender"]) || "other").toLowerCase(),
             dob,
@@ -438,6 +499,85 @@ export const getMyFees = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error(`[GET_MY_FEES_ERROR] userId=${(req as any).user?._id}:`, error);
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Bulk reset student passwords for selected students/emails in the current college.
+ */
+export const resetStudentPasswordsBulk = async (req: Request, res: Response) => {
+  try {
+    const collegeId = (req as any).user?.collegeId;
+    const { emails = [], studentIds = [], newPassword } = req.body || {};
+
+    const targetPassword = String(newPassword || DEFAULT_STUDENT_PASSWORD);
+    if (targetPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+    }
+
+    const studentQuery: any = { collegeId };
+    const normalizedEmails = Array.isArray(emails)
+      ? emails.map((email: any) => String(email || '').trim().toLowerCase()).filter(Boolean)
+      : [];
+
+    if (normalizedEmails.length > 0 || (Array.isArray(studentIds) && studentIds.length > 0)) {
+      studentQuery.$or = [];
+      if (normalizedEmails.length > 0) {
+        studentQuery.$or.push({ 'personalInfo.email': { $in: normalizedEmails } });
+      }
+      if (Array.isArray(studentIds) && studentIds.length > 0) {
+        studentQuery.$or.push({ uniqueStudentId: { $in: studentIds } });
+      }
+    }
+
+    const students = await Student.find(studentQuery).select('userId personalInfo collegeId uniqueStudentId');
+
+    let resetCount = 0;
+    const failed: Array<{ studentId: string; email: string; reason: string }> = [];
+
+    for (const student of students) {
+      try {
+        const email = String(student?.personalInfo?.email || '').trim().toLowerCase();
+        const fullName = `${student?.personalInfo?.firstName || ''} ${student?.personalInfo?.lastName || ''}`.trim();
+        if (!email) {
+          failed.push({ studentId: String(student.uniqueStudentId || ''), email: '', reason: 'Missing student email' });
+          continue;
+        }
+
+        const user = await ensureStudentUser({ email, fullName, collegeId: student.collegeId });
+        user.password = targetPassword;
+        user.isActive = true;
+        user.authentication.failed_login_attempts = 0;
+        user.authentication.account_locked_until = undefined;
+        await user.save();
+
+        if (!student.userId || String(student.userId) !== String(user._id)) {
+          student.userId = user._id as any;
+          await student.save();
+        }
+
+        resetCount += 1;
+      } catch (error: any) {
+        failed.push({
+          studentId: String(student.uniqueStudentId || ''),
+          email: String(student?.personalInfo?.email || ''),
+          reason: error?.message || 'Reset failed',
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: 'Student passwords reset completed.',
+      data: {
+        totalMatched: students.length,
+        resetCount,
+        failed,
+        defaultPassword: targetPassword,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

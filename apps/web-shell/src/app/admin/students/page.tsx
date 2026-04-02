@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { fetchStudents, deleteStudent, bulkImportStudents, updateStudent } from "@/lib/api/admin";
+import { fetchStudents, deleteStudent, bulkImportStudents, updateStudent, fetchBatches } from "@/lib/api/admin";
 import { Search, Download, UserPlus, FileUp, Loader2, Sparkles, X, Users, HelpCircle, FileText, CheckCircle } from "lucide-react";
 import StudentTable from "@/components/admin/StudentTable";
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
+  const [batches, setBatches] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [course, setCourse] = useState("All Courses");
@@ -21,6 +22,25 @@ export default function StudentsPage() {
   useEffect(() => {
     loadStudents();
   }, [search, course, batch, status]);
+
+  useEffect(() => {
+    loadBatches();
+  }, []);
+
+  const loadBatches = async () => {
+    try {
+      const res = await fetchBatches();
+      if (res.success) {
+        const items = Array.isArray(res.data) ? res.data : [];
+        setBatches(items);
+        if (items.length > 0 && batch === "All Batches") {
+          setBatch(items[0]?.name || "All Batches");
+        }
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const loadStudents = async () => {
     try {
@@ -169,10 +189,15 @@ export default function StudentsPage() {
               className="px-4 py-3 bg-slate-50 border-none rounded-2xl text-[10px] font-black uppercase tracking-widest focus:ring-2 focus:ring-slate-900 transition-all cursor-pointer"
             >
               <option>All Batches</option>
-              <option>Batch 2021</option>
-              <option>Batch 2022</option>
-              <option>Batch 2023</option>
-              <option>Batch 2024</option>
+              {batches.map((item) => {
+                const label = String(item?.name || item?.batchName || "").trim();
+                if (!label) return null;
+                return (
+                  <option key={String(item?._id || label)} value={label}>
+                    {label}
+                  </option>
+                );
+              })}
             </select>
             <select 
               value={status}
@@ -237,7 +262,7 @@ import { createStudent } from "@/lib/api/admin";
 function ImportCSVModal({ onClose, onImport, importing }: any) {
   const downloadTemplate = () => {
     const headers = ["firstName", "lastName", "email", "phone", "gender", "dob", "address", "course", "batch", "departmentId", "parentName", "parentPhone", "parentEmail", "relation"];
-    const sampleRow = ["John", "Doe", "john.doe@college.edu", "9876543210", "Male", "2002-05-15", "123 Campus Lane", "B.Tech Computer Science", "Batch 2022-26", "Optional_Dept_ID", "Jane Doe", "9876543211", "jane.doe@example.com", "Mother"];
+    const sampleRow = ["John", "Doe", "john.doe@college.edu", "9876543210", "Male", "2002-05-15", "123 Campus Lane", "B.Tech Computer Science", "Batch 2022-2026", "Optional_Dept_ID", "Jane Doe", "9876543211", "jane.doe@example.com", "Mother"];
     
     const csvContent = [headers, sampleRow].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -339,7 +364,7 @@ function RegisterStudentModal({ onClose, onSuccess }: any) {
     },
     academicInfo: {
       course: "B.Tech Computer Science",
-      batch: "Batch 2022-26",
+      batch: "Batch 2022-2026",
       department: "660a2b9e1c2e3a001c2e3a00", // CSE Dept ID (Fallback for Demo)
       semester: 1
     },
@@ -432,7 +457,7 @@ function RegisterStudentModal({ onClose, onSuccess }: any) {
                   className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-xs font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-slate-200"
                   onChange={(e) => setFormData({...formData, academicInfo: {...formData.academicInfo, batch: e.target.value}})}
                 >
-                  <option>Batch 2022-26</option>
+                  <option>Batch 2022-2026</option>
                   <option>Batch 2024-28</option>
                 </select>
                 <input 

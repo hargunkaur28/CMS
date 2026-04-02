@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-dotenv.config({ override: true });
+dotenv.config();
 
 console.log("--- SYSTEM BOOT DIAGNOSTICS ---");
 console.log("PORT:", process.env.PORT);
@@ -26,6 +26,9 @@ import adminRoutes from './routes/admin.routes.js';
 import parentRoutes from './routes/parentRoutes.js';
 import libraryRoutes from './routes/library.js';
 import notificationsRoutes from './routes/notifications.js';
+import superAdminRoutes from './routes/superAdmin.routes.js';
+import publicSettingsRoutes from './routes/publicSettings.routes.js';
+import timetableRoutes from './routes/timetableRoutes.js';
 
 // Connect to MongoDB
 console.log("[DB] Attempting to connect to MongoDB...");
@@ -80,6 +83,9 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/parent', parentRoutes);
 app.use('/api/library', libraryRoutes);
 app.use('/api/notifications', notificationsRoutes);
+app.use('/api/super-admin', superAdminRoutes);
+app.use('/api/settings', publicSettingsRoutes);
+app.use('/api/timetable', timetableRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('AI-Powered College Management System API is running...');

@@ -45,7 +45,9 @@ export default function DashboardPage() {
     setRole(userRole);
     
     // Strategic Redirection to Specialized Portals
-    if (userRole === "COLLEGE_ADMIN" || userRole === "SUPER_ADMIN") {
+    if (userRole === "SUPER_ADMIN") {
+      router.push("/super-admin/dashboard");
+    } else if (userRole === "COLLEGE_ADMIN") {
       router.push("/admin");
     } else if (userRole === "TEACHER") {
       router.push("/teacher");

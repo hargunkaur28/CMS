@@ -1,3 +1,12 @@
+export const DAYS = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+] as const;
+
 export const TIME_SLOTS = [
   { period: 1, start: "09:00", end: "10:00", label: "9:00 AM – 10:00 AM" },
   { period: 2, start: "10:00", end: "11:00", label: "10:00 AM – 11:00 AM" },
@@ -10,6 +19,10 @@ export const TIME_SLOTS = [
 ] as const;
 
 export type TimeSlot = typeof TIME_SLOTS[number];
+
+export type TimetableDay = typeof DAYS[number];
+
+export const TIME_SLOT_STARTS = TIME_SLOTS.map((slot) => slot.start);
 
 export const getSlotByPeriod = (period: number): TimeSlot | undefined =>
   TIME_SLOTS.find(s => s.period === period);

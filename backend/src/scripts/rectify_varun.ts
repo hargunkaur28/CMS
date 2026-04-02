@@ -50,7 +50,7 @@ const rectifyVarun = async () => {
     // 3. Create Faculty Profile
     const existingFaculty = await Faculty.findOne({ userId: user._id });
     if (!existingFaculty) {
-      const batch = await Batch.findOne({ name: 'Batch 2022-26' });
+      const batch = await Batch.findOne({ name: 'Batch 2022-2026' });
       const subjects = await Subject.find({ 
         name: { $in: ['Applied Cyber Security', 'Machine Learning'] } 
       });

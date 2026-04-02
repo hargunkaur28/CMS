@@ -3,6 +3,7 @@ import Course from "../models/Course.js";
 import Subject from "../models/Subject.js";
 import Batch from "../models/Batch.js";
 import Student from "../models/Student.js";
+import Section from "../models/Section.js";
 
 // --- Courses ---
 
@@ -235,7 +236,14 @@ export const assignStudentsToSection = async (req: Request, res: Response) => {
 
     await Student.updateMany(
       { _id: { $in: studentIds } }, 
-      { $set: { "academicInfo.section": section } }
+      {
+        $set: {
+          "academicInfo.section": section,
+          "academicInfo.batch": batch.name,
+          "batchId": batch._id,
+          "collegeId": batch.collegeId,
+        }
+      }
     );
 
     res.status(200).json({ success: true, message: `Successfully assigned ${studentIds.length} students to Section ${section}` });

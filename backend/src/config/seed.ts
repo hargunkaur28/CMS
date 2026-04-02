@@ -67,7 +67,7 @@ const seedData = async () => {
 
     // 3. Create Batch & Subjects
     const batch = await Batch.create({
-      name: 'Batch 2022-26',
+      name: 'Batch 2022-2026',
       courseId: course._id,
       collegeId: college._id,
       startYear: 2022,
@@ -151,7 +151,7 @@ const seedData = async () => {
         },
         academicInfo: {
           course: 'B.Tech Computer Science',
-          batch: 'Batch 2022-26',
+          batch: 'Batch 2022-2026',
           department: dept._id,
           status: 'active',
           semester: 6,

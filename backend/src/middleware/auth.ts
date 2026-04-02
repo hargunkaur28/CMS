@@ -1,9 +1,11 @@
 import jwt from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
 import User from '../models/User.js';
+import Session from '../models/Session.js';
 
 interface AuthRequest extends Request {
   user?: any;
+  token?: string;
 }
 
 export const protect = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -13,14 +15,27 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
   if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
       token = req.headers.authorization.split(' ')[1];
+      req.token = token;
       console.log(`[AUTH] Token extracted: ${token.substring(0, 10)}...`);
       const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'secret');
       console.log(`[AUTH] Token decoded successfully. ID: ${decoded.id}`);
+
+      const activeSession = await Session.findOne({
+        jwt_token: token,
+        is_active: true,
+        expires_at: { $gt: new Date() }
+      });
+      if (!activeSession) {
+        return res.status(401).json({ message: 'Session expired or invalidated' });
+      }
 
       req.user = await User.findById(decoded.id).select('-password');
       if (!req.user) {
         return res.status(401).json({ message: 'Not authorized, user no longer exists' });
       }
+
+      activeSession.last_activity = new Date();
+      await activeSession.save();
       return next();
     } catch (error: any) {
       console.error('[AUTH ERROR] Token verification failure:', error.message);

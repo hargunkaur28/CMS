@@ -1,14 +1,14 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "main": "dist/server.js",
+  "main": "dist/backend/src/server.js",
   "type": "module",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "node dist/backend/src/server.js",
     "build": "tsc",
-    "dev": "nodemon --watch src --ext ts,js --exec \"node --max-old-space-size=4096 node_modules/typescript/bin/tsc && node dist/server.js\"",
-    "dev:watch": "nodemon --watch src --ext ts --exec \"node --max-old-space-size=4096 node_modules/typescript/bin/tsc && node dist/server.js\"",
-    "seed": "tsc && node dist/config/seed.js",
+    "dev": "nodemon --watch src --ext ts,js --exec \"node --max-old-space-size=4096 node_modules/typescript/bin/tsc && node dist/backend/src/server.js\"",
+    "dev:watch": "nodemon --watch src --ext ts --exec \"node --max-old-space-size=4096 node_modules/typescript/bin/tsc && node dist/backend/src/server.js\"",
+    "seed": "tsc && node dist/backend/src/config/seed.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

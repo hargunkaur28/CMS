@@ -21,7 +21,8 @@ export const getFaculties = async (req: Request, res: Response) => {
 
     const faculties = await Faculty.find(query)
       .populate("userId", "name email role")
-      .populate("assignedSubjects")
+      .populate("assignedSubjects.subjectId", "name code creditHours")
+      .populate("assignedSubjects.batchId", "name")
       .sort({ employeeId: 1 });
 
     res.status(200).json({ success: true, data: faculties });
@@ -34,7 +35,8 @@ export const getFacultyById = async (req: Request, res: Response) => {
   try {
     const faculty = await Faculty.findById(req.params.id)
       .populate("userId")
-      .populate("assignedSubjects");
+      .populate("assignedSubjects.subjectId", "name code creditHours")
+      .populate("assignedSubjects.batchId", "name");
     
     if (!faculty) return res.status(404).json({ success: false, message: "Faculty not found" });
     res.status(200).json({ success: true, data: faculty });

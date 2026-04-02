@@ -33,12 +33,14 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { SocketProvider } from "@/components/providers/SocketProvider";
 import NotificationBell from "@/components/layout/NotificationBell";
+import api from "@/lib/api";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [globalSettings, setGlobalSettings] = useState<any>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -56,6 +58,50 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     }
     setLoading(false);
   }, [pathname, router]);
+
+  useEffect(() => {
+    const fetchGlobalSettings = async () => {
+      try {
+        const response = await api.get('/settings/public');
+        const settings = response.data?.data;
+        if (settings) {
+          setGlobalSettings(settings);
+        }
+      } catch {
+        // Keep app functional with defaults if settings endpoint is unavailable.
+      }
+    };
+
+    fetchGlobalSettings();
+  }, []);
+
+  useEffect(() => {
+    if (pathname === '/login') return;
+
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    const timeoutMinutes = Number(globalSettings?.session_timeout || 30);
+    const timeoutMs = timeoutMinutes * 60 * 1000;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const resetTimer = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        localStorage.clear();
+        router.push('/login');
+      }, timeoutMs);
+    };
+
+    const events: Array<keyof WindowEventMap> = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach((event) => window.addEventListener(event, resetTimer));
+    resetTimer();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      events.forEach((event) => window.removeEventListener(event, resetTimer));
+    };
+  }, [globalSettings?.session_timeout, pathname, router]);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -86,7 +132,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   const isAdminRoute = pathname.startsWith("/admin");
-  const isPortalRoute = isAdminRoute || pathname.startsWith("/librarian");
+  const isSuperAdminRoute = pathname.startsWith("/super-admin");
+  const isPortalRoute = isAdminRoute || isSuperAdminRoute || pathname.startsWith("/librarian");
 
   return (
     <html lang="en">
@@ -148,9 +195,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   
                   <NavItem 
                     icon={<Calendar size={18} />} 
-                    label="Schedule" 
+                    label={user?.role === 'TEACHER' || user?.role === 'STUDENT' ? 'My Timetable' : 'Schedule'} 
                     href={
                       user?.role === 'TEACHER' ? '/teacher/timetable' : 
+                      user?.role === 'STUDENT' ? '/student/timetable' :
                       ['COLLEGE_ADMIN', 'SUPER_ADMIN'].includes(user?.role) ? '/admin/timetable' : 
                       '/timetable'
                     } 

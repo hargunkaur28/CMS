@@ -28,8 +28,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       // Handle unauthorized (redirect to login if needed)
       if (typeof window !== 'undefined') {
-        localStorage.clear();
-        window.location.href = '/login';
+        const isLoginRoute = window.location.pathname.startsWith('/login');
+        if (!isLoginRoute) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);
