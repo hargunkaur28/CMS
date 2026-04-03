@@ -19,22 +19,26 @@ interface MarksEntryTableProps {
 }
 
 export default function MarksEntryTable({ students, onSaveRow, onBulkSubmit, maxMarks }: MarksEntryTableProps) {
-  const [entries, setEntries] = useState<Record<string, { marks: string, remarks: string, status: 'idle' | 'saving' | 'saved' | 'error' }>>(() => {
+  const [entries, setEntries] = useState<Record<string, { marks: string, remarks: string, status: 'idle' | 'saving' | 'saved' | 'error' }>>({});
+
+  // Sync entries when students prop changes
+  React.useEffect(() => {
     const initial: any = {};
     students.forEach(s => {
       initial[s._id] = { marks: "", remarks: "", status: 'idle' };
     });
-    return initial;
-  });
+    setEntries(initial);
+  }, [students]);
 
   const handleInputChange = (studentId: string, field: 'marks' | 'remarks', value: string) => {
     setEntries(prev => ({
       ...prev,
-      [studentId]: { ...prev[studentId], [field]: value, status: 'idle' }
+      [studentId]: prev[studentId] ? { ...prev[studentId], [field]: value, status: 'idle' } : { marks: "", remarks: "", [field]: value, status: 'idle' }
     }));
   };
 
   const calculateGrade = (marks: string) => {
+    if (!marks) return null;
     const m = parseFloat(marks);
     if (isNaN(m)) return null;
     const percentage = (m / maxMarks) * 100;
@@ -48,7 +52,7 @@ export default function MarksEntryTable({ students, onSaveRow, onBulkSubmit, max
 
   const saveRow = async (studentId: string) => {
     const entry = entries[studentId];
-    if (!entry.marks) return;
+    if (!entry || !entry.marks) return;
     
     setEntries(prev => ({ ...prev, [studentId]: { ...prev[studentId], status: 'saving' } }));
     try {
@@ -74,9 +78,9 @@ export default function MarksEntryTable({ students, onSaveRow, onBulkSubmit, max
         </thead>
         <tbody>
           {students.map((student, index) => {
-            const entry = entries[student._id];
+            const entry = entries[student._id] || { marks: "", remarks: "", status: 'idle' };
             const grade = calculateGrade(entry.marks);
-            const isError = parseFloat(entry.marks) > maxMarks;
+            const isError = entry.marks ? parseFloat(entry.marks) > maxMarks : false;
 
             return (
               <tr key={student._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">

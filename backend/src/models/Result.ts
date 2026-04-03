@@ -11,7 +11,9 @@ export interface ISubjectResult {
 }
 
 export interface IResult extends Document {
-  examId: mongoose.Types.ObjectId;
+  type: 'EXAM' | 'ASSIGNMENT';
+  examId?: mongoose.Types.ObjectId;
+  assignmentId?: mongoose.Types.ObjectId;
   studentId: mongoose.Types.ObjectId;
   courseId: mongoose.Types.ObjectId;
   batchId: mongoose.Types.ObjectId;
@@ -29,7 +31,9 @@ export interface IResult extends Document {
 }
 
 const ResultSchema: Schema = new Schema({
-  examId: { type: Schema.Types.ObjectId, ref: 'Exam', required: true },
+  type: { type: String, enum: ['EXAM', 'ASSIGNMENT'], default: 'EXAM' },
+  examId: { type: Schema.Types.ObjectId, ref: 'Exam' }, // Optional for assignments
+  assignmentId: { type: Schema.Types.ObjectId, ref: 'Assignment' }, // NEW
   studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
   courseId: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
   batchId: { type: Schema.Types.ObjectId, ref: 'Batch', required: true },
@@ -53,8 +57,10 @@ const ResultSchema: Schema = new Schema({
 }, { timestamps: true });
 
 // Optimize for common queries
-ResultSchema.index({ examId: 1, studentId: 1 }, { unique: true });
+ResultSchema.index({ type: 1, examId: 1, studentId: 1 }, { unique: true, partialFilterExpression: { type: 'EXAM' } });
+ResultSchema.index({ type: 1, assignmentId: 1, studentId: 1 }, { unique: true, partialFilterExpression: { type: 'ASSIGNMENT' } });
 ResultSchema.index({ studentId: 1 });
 ResultSchema.index({ status: 1 });
+ResultSchema.index({ type: 1 });
 
 export default mongoose.model<IResult>('Result', ResultSchema);

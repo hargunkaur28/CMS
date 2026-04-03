@@ -9,7 +9,7 @@ import Link from "next/link";
 
 export default function StudentResultsPortal() {
   // Backend now automatically filters by the logged-in student's ID
-  const { results, loading, error } = useResults();
+  const { results, stats, loading, error } = useResults();
 
   if (loading) {
     return (
@@ -32,13 +32,15 @@ export default function StudentResultsPortal() {
       </header>
 
       {results && results.length > 0 ? (
-        <div className="space-y-12">
-          {/* Summary Overview */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <MiniStatCard label="Cumulative GPA" value="3.85" icon={<Award size={20} />} color="bg-indigo-50 text-indigo-600" />
-            <MiniStatCard label="Credits Earned" value="48" icon={<GraduationCap size={20} />} color="bg-emerald-50 text-emerald-600" />
-            <MiniStatCard label="Academic Status" value="EXCELLENT" icon={<div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />} color="bg-slate-900 text-white" />
-          </div>
+        <div className="space-y-12 animate-in fade-in zoom-in-95 duration-500">
+          {/* Summary Overview - Only show if data exists */}
+          {stats.totalExams > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <MiniStatCard label="Cumulative CGPA" value={stats.overallCgpa?.toFixed(2) || "0.00"} icon={<Award size={20} />} color="bg-indigo-50 text-indigo-600" />
+              <MiniStatCard label="Total Assessments" value={stats.totalExams || "0"} icon={<GraduationCap size={20} />} color="bg-emerald-50 text-emerald-600" />
+              <MiniStatCard label="Latest Performance" value={(stats.latestPercentage?.toFixed(1) || "0.0") + "%"} icon={<div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />} color="bg-slate-900 text-white" />
+            </div>
+          )}
 
           {/* Marksheets Section */}
           <div className="space-y-8">

@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Request, Response } from "express";
 import Announcement from "../models/Announcement.js";
 import Message from "../models/Message.js";
@@ -7,6 +8,7 @@ import Parent from "../models/Parent.js";
 import Faculty from "../models/Faculty.js";
 import Batch from "../models/Batch.js";
 import Notification from "../models/Notification.js";
+import { createAndEmitNotification, getRolePathPrefix } from "../services/notificationService.js";
 
 // ====================================================================
 // ANNOUNCEMENTS
@@ -40,11 +42,67 @@ export const getAnnouncements = async (req: Request, res: Response) => {
 export const createAnnouncement = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
+    const { title, content, targetAudience, targetClass, type: annType } = req.body;
+
     const announcement = new Announcement({
       ...req.body,
       senderId: user._id,
     });
     await announcement.save();
+
+    // Trigger Notifications
+    try {
+      const { createAndEmitBulkNotifications } = await import("../services/notificationService.js");
+      let recipientUserIds: mongoose.Types.ObjectId[] = [];
+
+      if (targetClass === "all" || !targetClass) {
+        // Broadcast to all students in college
+        const students = await Student.find({ collegeId: user.collegeId }).select("userId");
+        recipientUserIds = students.map(s => s.userId as mongoose.Types.ObjectId);
+      } else {
+        // Target specific batch
+        let batchId = targetClass;
+        // Check if targetClass is a name instead of ID
+        if (!mongoose.Types.ObjectId.isValid(targetClass)) {
+          const batch = await Batch.findOne({ name: targetClass, collegeId: user.collegeId });
+          if (batch) batchId = batch._id;
+        }
+
+        const students = await Student.find({ 
+          collegeId: user.collegeId, 
+          $or: [{ batchId }, { "academicInfo.batch": targetClass }] 
+        }).select("userId");
+        recipientUserIds = students.map(s => s.userId as mongoose.Types.ObjectId);
+
+        // Also notify parents if targetAudience includes parents
+        if (targetAudience === "parents" || targetAudience === "both") {
+          const studentIds = students.map(s => s._id);
+          const parents = await Parent.find({ students: { $in: studentIds } }).select("userId");
+          recipientUserIds.push(...parents.map(p => p.userId as mongoose.Types.ObjectId));
+        }
+      }
+
+      // Unique IDs and Roles
+      const uniqueRecipients = Array.from(new Set(recipientUserIds.map(id => id.toString())));
+      const recipients = await User.find({ _id: { $in: uniqueRecipients } }).select("_id role");
+
+      if (recipients.length > 0) {
+        await createAndEmitBulkNotifications(
+          recipients.map(r => ({ userId: r._id, role: r.role })),
+          {
+            title: `Announcement: ${title}`,
+            message: content.length > 100 ? content.substring(0, 97) + "..." : content,
+            type: annType === "urgent" ? "alert" : "announcement",
+            senderUserId: user._id,
+            collegeId: user.collegeId,
+            metadata: { announcementId: announcement._id, type: "announcement" }
+          },
+          (prefix) => `${prefix}/communication?tab=announcements`
+        );
+      }
+    } catch (notifErr) {
+      console.log("[NOTIF] Failed to send announcement notifications:", notifErr);
+    }
 
     res.status(201).json({ success: true, data: announcement });
   } catch (error: any) {
@@ -171,17 +229,42 @@ export const getStudentTeachers = async (req: Request, res: Response) => {
       "assignedSubjects.batchId": batchId,
     }).populate("userId", "name email profilePicture");
 
+    // Get unread counts for each teacher (sent to this student)
+    const unreadCounts = await Message.aggregate([
+      { 
+        $match: { 
+          receiverId: new mongoose.Types.ObjectId(userId), 
+          isRead: false 
+        } 
+      },
+      { 
+        $group: { 
+          _id: "$senderId", 
+          count: { $sum: 1 } 
+        } 
+      }
+    ]);
+
+    const unreadMap: Record<string, number> = {};
+    unreadCounts.forEach(item => {
+      unreadMap[item._id.toString()] = item.count;
+    });
+
     const teachers = faculty
       .filter((f) => f.userId) // Safety filter
-      .map((f) => ({
-        _id: f._id,
-        userId: f.userId,
-        name: (f.userId as any).name,
-        email: (f.userId as any).email,
-        profilePicture: (f.userId as any).profilePicture,
-        department: f.department,
-        designation: f.designation,
-      }));
+      .map((f) => {
+        const teacherUserId = (f.userId as any)._id;
+        return {
+          _id: f._id,
+          userId: f.userId,
+          name: (f.userId as any).name,
+          email: (f.userId as any).email,
+          profilePicture: (f.userId as any).profilePicture,
+          department: f.department,
+          designation: f.designation,
+          unreadCount: unreadMap[teacherUserId.toString()] || 0
+        };
+      });
 
     res.status(200).json({ success: true, data: teachers });
   } catch (error: any) {
@@ -224,17 +307,42 @@ export const getParentTeachers = async (req: Request, res: Response) => {
       "assignedSubjects.batchId": batchId,
     }).populate("userId", "name email profilePicture");
 
+    // Get unread counts for each teacher (sent to this parent)
+    const unreadCounts = await Message.aggregate([
+      { 
+        $match: { 
+          receiverId: new mongoose.Types.ObjectId(userId), 
+          isRead: false 
+        } 
+      },
+      { 
+        $group: { 
+          _id: "$senderId", 
+          count: { $sum: 1 } 
+        } 
+      }
+    ]);
+
+    const unreadMap: Record<string, number> = {};
+    unreadCounts.forEach(item => {
+      unreadMap[item._id.toString()] = item.count;
+    });
+
     const teachers = faculty
       .filter((f) => f.userId)
-      .map((f) => ({
-        _id: f._id,
-        userId: f.userId,
-        name: (f.userId as any).name,
-        email: (f.userId as any).email,
-        profilePicture: (f.userId as any).profilePicture,
-        department: f.department,
-        designation: f.designation,
-      }));
+      .map((f) => {
+        const teacherUserId = (f.userId as any)._id;
+        return {
+          _id: f._id,
+          userId: f.userId,
+          name: (f.userId as any).name,
+          email: (f.userId as any).email,
+          profilePicture: (f.userId as any).profilePicture,
+          department: f.department,
+          designation: f.designation,
+          unreadCount: unreadMap[teacherUserId.toString()] || 0
+        };
+      });
 
     res.status(200).json({ success: true, data: teachers });
   } catch (error: any) {
@@ -314,9 +422,29 @@ export const sendMessage = async (req: Request, res: Response) => {
         message,
         from: { _id: user._id, name: user.name, role: user.role },
       });
+
+      // Determine recipient role for correct actionUrl
+      const recipient = message.receiverId as any;
+      const prefix = getRolePathPrefix(recipient.role);
+      
+      // For message notifications, we want to open the sender's conversation
+      // If student is recipient, they see teacher's ID. If teacher is recipient, they see student's ID.
+      const idParamName = recipient.role === 'TEACHER' ? 'studentUserId' : 'teacherId';
+
+      // Create persistent notification for the bell icon
+      await createAndEmitNotification({
+        title: `New Message from ${user.name}`,
+        message: content.length > 50 ? content.substring(0, 47) + "..." : content,
+        type: "personal",
+        recipientUserId: receiverId,
+        senderUserId: user._id,
+        collegeId: user.collegeId,
+        metadata: { messageId: message._id, type: "direct_message" },
+        actionUrl: `${prefix}/communication?tab=messages&${idParamName}=${user._id}`
+      });
     } catch (socketErr) {
       // Socket emission is best-effort, don't fail the API call
-      console.log("[SOCKET] Failed to emit newMessage:", socketErr);
+      console.log("[SOCKET/NOTIF] Failed to emit/create notification:", socketErr);
     }
 
     res.status(201).json({ success: true, data: message });
@@ -358,8 +486,25 @@ export const parentSendMessage = async (req: Request, res: Response) => {
         message,
         from: { _id: user._id, name: user.name, role: user.role },
       });
+
+      // Determine recipient role for correct actionUrl
+      const recipient = message.receiverId as any;
+      const prefix = getRolePathPrefix(recipient.role);
+      const idParamName = recipient.role === 'TEACHER' ? 'studentUserId' : 'teacherId';
+
+      // Create persistent notification for the bell icon
+      await createAndEmitNotification({
+        title: `New Message from Parent`,
+        message: content.length > 50 ? content.substring(0, 47) + "..." : content,
+        type: "personal",
+        recipientUserId: receiverId,
+        senderUserId: user._id,
+        collegeId: user.collegeId,
+        metadata: { messageId: message._id, type: "direct_message" },
+        actionUrl: `${prefix}/communication?tab=messages&${idParamName}=${user._id}`
+      });
     } catch (socketErr) {
-      console.log("[SOCKET] Failed to emit newMessage:", socketErr);
+      console.log("[SOCKET/NOTIF] Failed to emit/create notification:", socketErr);
     }
 
     res.status(201).json({ success: true, data: message });

@@ -9,6 +9,8 @@ export interface INotification extends Document {
   senderUserId: mongoose.Types.ObjectId;
   collegeId: mongoose.Types.ObjectId;
   isRead: boolean;
+  metadata?: Record<string, any>;
+  actionUrl?: string;
 }
 
 const NotificationSchema: Schema = new Schema({
@@ -20,6 +22,8 @@ const NotificationSchema: Schema = new Schema({
   senderUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   collegeId: { type: Schema.Types.ObjectId, ref: 'College', required: true },
   isRead: { type: Boolean, default: false },
+  metadata: { type: Schema.Types.Mixed },
+  actionUrl: { type: String },
 }, { timestamps: true });
 
 export default mongoose.model<INotification>('Notification', NotificationSchema);

@@ -14,8 +14,8 @@ const getRole = (): string => {
  */
 const getCommPath = (): string => {
   const role = getRole();
-  if (role === "PARENT") return `/parent/me`;
-  return `/students`;
+  if (role === "PARENT") return `parent/me`;
+  return `students`;
 };
 
 /**
@@ -44,9 +44,9 @@ export const fetchTeachersForRole = async () => {
   const role = getRole();
   let url: string;
   if (role === "PARENT") {
-    url = `/parent/me/teachers`;
+    url = `parent/me/teachers`;
   } else {
-    url = `/students/my-teachers`;
+    url = `students/my-teachers`;
   }
   const response = await api.get(url);
   return response.data;

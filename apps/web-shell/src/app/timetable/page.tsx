@@ -17,7 +17,7 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 export default function TimetablePortal() {
-  const [timetable, setTimetable] = useState<Record<string, any[]>>({});
+  const [timetable, setTimetable] = useState<Record<string, Record<string, any[]>>>({});
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
 
@@ -60,7 +60,11 @@ export default function TimetablePortal() {
     );
   }
 
-  const currentDaySlots = timetable[activeDay] || [];
+  // Flatten the grouped slots for the current selected day
+  const currentDayGrouped = timetable[activeDay] || {};
+  const currentDaySlots = Object.values(currentDayGrouped)
+    .flat()
+    .sort((a, b) => (a as any).period - (b as any).period);
 
   return (
     <div className="max-w-7xl mx-auto w-full space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-1000">

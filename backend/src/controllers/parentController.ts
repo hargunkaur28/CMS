@@ -122,6 +122,7 @@ export const getMyStudentResults = async (req: Request, res: Response) => {
     const studentId = parent.students[0];
     const results = await Result.find({ studentId })
       .populate("examId", "name code totalMarks")
+      .populate("assignmentId", "title maxMarks") // NEW
       .sort({ createdAt: -1 });
 
     const totalExams = results.length;

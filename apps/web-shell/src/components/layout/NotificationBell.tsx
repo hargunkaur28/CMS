@@ -3,15 +3,24 @@
 import React, { useState, useEffect } from "react";
 import { Bell, X, Info, CheckCircle, AlertTriangle, Book } from "lucide-react";
 import { useSocket } from "@/components/providers/SocketProvider";
+import { useRouter } from "next/navigation";
 import { fetchNotifUnreadCount, fetchNotifications, markNotifAsRead } from "@/lib/api/communication";
 import { cn } from "@/lib/utils";
 
 export default function NotificationBell() {
   const { socket } = useSocket();
+  const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [toast, setToast] = useState<{ title: string; message: string; type: string } | null>(null);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+    setUser(savedUser);
+    loadNotifData();
+  }, []);
 
   const isAuthenticated = typeof window !== "undefined" && !!localStorage.getItem("token");
 
@@ -30,20 +39,23 @@ export default function NotificationBell() {
   };
 
   useEffect(() => {
-    loadNotifData();
-
     if (socket) {
       const handleNotif = (data: any) => {
-        setUnreadCount(prev => prev + 1);
-        setNotifications(prev => [data, ...prev].slice(0, 50));
-        setToast({
-          title: data.title,
-          message: data.message,
-          type: data.type || "info"
+        // Avoid duplicates
+        setNotifications(prev => {
+          if (prev.some(n => n._id === data._id)) return prev;
+          
+          setUnreadCount(c => c + 1);
+          setToast({
+            title: data.title,
+            message: data.message,
+            type: data.type || "info"
+          });
+          // Auto-clear toast after 5 seconds
+          setTimeout(() => setToast(null), 5000);
+          
+          return [data, ...prev].slice(0, 50);
         });
-
-        // Auto-clear toast after 5 seconds
-        setTimeout(() => setToast(null), 5000);
       };
 
       socket.on("notification", handleNotif);
@@ -53,13 +65,68 @@ export default function NotificationBell() {
     }
   }, [socket]);
 
-  const handleMarkAsRead = async (id: string) => {
+  const handleNotificationClick = async (notif: any) => {
     try {
-      await markNotifAsRead(id);
+      // Mark as read in backend
+      await markNotifAsRead(notif._id);
+      
+      // Update local state
+      setNotifications(prev => 
+        prev.map(n => n._id === notif._id ? { ...n, isRead: true } : n)
+      );
       setUnreadCount(prev => Math.max(0, prev - 1));
-      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-    } catch (err) {
-      console.error("Failed to mark notification as read", err);
+
+      let targetUrl = notif.actionUrl;
+      console.log("[NOTIF_DEBUG] Original ActionUrl:", targetUrl);
+
+      // Legacy URL rewrite for stale notifications
+      if (targetUrl?.includes('/communication/messages/')) {
+        const parts = targetUrl.split('/');
+        const id = parts[parts.length - 1];
+        const prefix = user?.role === 'TEACHER' ? '/teacher' : '';
+        const idParam = user?.role === 'TEACHER' ? 'studentUserId' : 'teacherId';
+        targetUrl = `${prefix}/communication?tab=messages&${idParam}=${id}`;
+        console.log("[NOTIF_DEBUG] Rewritten URL (Legacy Message):", targetUrl);
+      } else if (targetUrl === '/communication/announcements') {
+        const prefix = user?.role === 'TEACHER' ? '/teacher' : (user?.role?.includes('ADMIN') ? '/admin' : '');
+        targetUrl = `${prefix}/communication?tab=announcements`;
+        console.log("[NOTIF_DEBUG] Rewritten URL (Legacy Announcement):", targetUrl);
+      }
+
+      // Ensure we have user data for correct role-based pathing
+      if (!user?.role) {
+        console.warn("[NOTIF_DEBUG] User role missing, fetching again...");
+        const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+        if (!savedUser.role) {
+          router.push(targetUrl); // Fallback to original
+          setShowDropdown(false);
+          return;
+        }
+        setUser(savedUser);
+      }
+      if (targetUrl) {
+        router.push(targetUrl);
+        setShowDropdown(false);
+        return;
+      }
+
+      // 2. Flexible fallback navigation via metadata (Secondary)
+      if (notif.metadata?.type === 'direct_message') {
+        const prefix = user?.role === 'TEACHER' ? '/teacher' : '';
+        const idParam = user?.role === 'TEACHER' ? 'studentUserId' : 'teacherId';
+        const senderId = notif.senderUserId?._id || notif.senderUserId;
+        router.push(`${prefix}/communication?tab=messages&${idParam}=${senderId}`);
+        setShowDropdown(false);
+      } else if (notif.metadata?.type === 'announcement') {
+        const prefix = user?.role === 'TEACHER' ? '/teacher' : (user?.role?.includes('ADMIN') ? '/admin' : '');
+        router.push(`${prefix}/communication?tab=announcements`);
+        setShowDropdown(false);
+      } else if (notif.metadata?.type === 'material') {
+        router.push('/academics/materials');
+        setShowDropdown(false);
+      }
+    } catch (error) {
+      console.error("Failed to handle notification click:", error);
     }
   };
 
@@ -127,7 +194,7 @@ export default function NotificationBell() {
                         "p-5 flex gap-4 hover:bg-slate-50 transition-colors cursor-pointer relative",
                         !n.isRead && "bg-indigo-50/20"
                       )}
-                      onClick={() => !n.isRead && handleMarkAsRead(n._id)}
+                      onClick={() => handleNotificationClick(n)}
                     >
                       {!n.isRead && <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-indigo-600 rounded-full" />}
                       <div className="w-8 h-8 rounded-lg bg-white border border-slate-100 flex items-center justify-center shrink-0 shadow-sm">

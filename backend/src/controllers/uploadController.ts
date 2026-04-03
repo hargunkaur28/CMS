@@ -29,6 +29,30 @@ export const uploadMaterial = async (req: Request, res: Response) => {
       dueDate
     });
 
+    // Trigger Notifications for students in the batch
+    try {
+      const { createAndEmitBulkNotifications } = await import ("../services/notificationService.js");
+      const students = await Student.find({ batchId: classId }).select("userId");
+      const recipientUserIds = students.map(s => s.userId.toString());
+
+      if (recipientUserIds.length > 0) {
+        await createAndEmitBulkNotifications(
+          recipientUserIds.map(userId => ({ userId, role: "STUDENT" })),
+          {
+            title: `New Material: ${title}`,
+            message: `Subject: ${subjectId ? 'Related Subject' : 'General'}. Check your materials section.`,
+            type: "library",
+            senderUserId: teacherId,
+            collegeId: (req as any).user?.collegeId,
+            metadata: { materialId: material._id, type: "material" }
+          },
+          (prefix) => `${prefix}/academics/materials`
+        );
+      }
+    } catch (notifErr) {
+      console.log("[NOTIF] Failed to send material notifications:", notifErr);
+    }
+
     res.status(201).json({ success: true, data: material });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

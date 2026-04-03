@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import AnnouncementComposer from "@/components/teacher/AnnouncementComposer";
 import api from "@/lib/api";
 import { MessageSquare, Bell, Send, User, RotateCcw, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useSearchParams } from "next/navigation";
+import { useSocket } from "@/components/providers/SocketProvider";
 
-export default function CommunicationPage() {
+function TeacherCommunicationContent() {
   const [announcements, setAnnouncements] = useState([]);
-  const [students, setStudents] = useState([]);
+  const [students, setStudents] = useState<any[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState("");
@@ -16,6 +18,8 @@ export default function CommunicationPage() {
   const [activeTab, setActiveTab] = useState<'announcements' | 'messages'>('announcements');
 
   const [user, setUser] = useState<any>(null);
+  const searchParams = useSearchParams();
+  const { socket } = useSocket();
 
   const fetchData = async () => {
     setLoading(true);
@@ -39,6 +43,14 @@ export default function CommunicationPage() {
     try {
       const res = await api.get(`/teacher/messages/${studentUserId}`);
       setMessages(res.data.data);
+      // Clear unread count for this student locally
+      setStudents(prev => prev.map(s => {
+        const sId = s.userId?._id || s.userId;
+        if (sId === studentUserId) {
+          return { ...s, unreadCount: 0 };
+        }
+        return s;
+      }));
     } catch (err) {
       console.error("Failed to fetch messages");
     }
@@ -47,6 +59,54 @@ export default function CommunicationPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Real-time message listener
+  useEffect(() => {
+    if (socket) {
+      const handleMsg = (data: any) => {
+        const senderId = data.from?._id;
+        const selectedId = selectedStudent?.userId?._id || selectedStudent?.userId;
+
+        // If we're viewing this conversation, add the message
+        if (selectedStudent && senderId === selectedId) {
+          setMessages((prev) => [...prev, data.message]);
+        } else {
+          // Increment unread count for the sender in the students list
+          setStudents(prev => prev.map(s => {
+            const sId = s.userId?._id || s.userId;
+            if (sId === senderId) {
+              return { ...s, unreadCount: (s.unreadCount || 0) + 1 };
+            }
+            return s;
+          }));
+        }
+      };
+      socket.on("newMessage", handleMsg);
+      return () => {
+        socket.off("newMessage", handleMsg);
+      };
+    }
+  }, [socket, selectedStudent]);
+
+  // Handle deep-linking from query parameters
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    const studentUserIdParam = searchParams.get("studentUserId");
+
+    if (tabParam === "messages" || tabParam === "announcements") {
+      setActiveTab(tabParam as any);
+    }
+
+    if (studentUserIdParam && students.length > 0) {
+      const student = students.find(s => 
+        (s.userId?._id || s.userId) === studentUserIdParam || s._id === studentUserIdParam
+      );
+      if (student) {
+        setSelectedStudent(student);
+        setActiveTab("messages");
+      }
+    }
+  }, [searchParams, students]);
 
   useEffect(() => {
     if (selectedStudent) {
@@ -80,7 +140,7 @@ export default function CommunicationPage() {
     }
   };
 
-  if (loading) return <div className="animate-pulse space-y-8">
+  if (loading) return <div className="animate-pulse space-y-8 p-8">
      <div className="h-10 w-64 bg-slate-200 rounded-lg"></div>
      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 h-[600px] bg-slate-100 rounded-3xl"></div>
@@ -89,7 +149,7 @@ export default function CommunicationPage() {
   </div>;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 p-8 max-w-[1600px] mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -123,7 +183,7 @@ export default function CommunicationPage() {
                  <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden sticky top-24">
                     <div className="p-6 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Recent Sent</h3>
-                       <RotateCcw size={16} className="text-slate-400 animate-spin-slow" />
+                       <RotateCcw size={16} className="text-slate-400" />
                     </div>
                     <div className="divide-y divide-slate-50 max-h-[500px] overflow-y-auto custom-scrollbar">
                        {announcements.map((ann: any) => (
@@ -149,7 +209,6 @@ export default function CommunicationPage() {
               </div>
            </>
         ) : (
-           /* Messaging Section */
            <>
               <div className="lg:col-span-1 space-y-4">
                  <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
@@ -176,8 +235,15 @@ export default function CommunicationPage() {
                             <div className={cn("w-10 h-10 rounded-full flex items-center justify-center font-bold", selectedStudent?._id === stu._id ? "bg-white text-slate-900" : "bg-slate-100 text-slate-400")}>
                                {(stu.personalInfo?.firstName || '?')[0]}
                             </div>
-                            <div className="min-w-0">
-                               <p className="text-sm font-bold truncate">{`${stu.personalInfo?.firstName || ''} ${stu.personalInfo?.lastName || ''}`.trim()}</p>
+                            <div className="min-w-0 flex-1">
+                               <div className="flex items-center justify-between gap-2">
+                                  <p className="text-sm font-bold truncate">
+                                     {`${stu.personalInfo?.firstName || ''} ${stu.personalInfo?.lastName || ''}`.trim()}
+                                  </p>
+                                  {stu.unreadCount > 0 && selectedStudent?._id !== stu._id && (
+                                     <span className="w-2 h-2 bg-red-500 rounded-full shrink-0 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                                  )}
+                               </div>
                                <p className={cn("text-[10px] uppercase font-medium tracking-tighter truncate", selectedStudent?._id === stu._id ? "text-slate-400" : "text-slate-500")}>{stu.academicInfo?.rollNumber || 'N/A'}</p>
                             </div>
                          </button>
@@ -261,5 +327,13 @@ export default function CommunicationPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function CommunicationPage() {
+  return (
+    <Suspense fallback={<div className="p-8 animate-pulse text-slate-400 font-black uppercase tracking-widest">Waking Teacher Hub...</div>}>
+      <TeacherCommunicationContent />
+    </Suspense>
   );
 }

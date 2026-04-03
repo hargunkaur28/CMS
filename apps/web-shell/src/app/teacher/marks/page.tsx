@@ -78,14 +78,20 @@ export default function MarksPage() {
     setSelectedBatch(batchId);
     setFetchingStudents(true);
     try {
-      const res = await api.get(`/teacher/students?batchId=${batchId}`);
-      setStudents(res.data.data);
-    } catch (err) {
-      setError("Failed to load students for this batch");
-    } finally {
-      setFetchingStudents(false);
-    }
-  };
+    const res = await api.get(`/teacher/students?batchId=${batchId}`);
+    // Map nested backend data to the flat structure expected by MarksEntryTable
+    const mappedStudents = (res.data.data || []).map((s: any) => ({
+      _id: s._id,
+      name: s.personalInfo?.name || `${s.personalInfo?.firstName || ''} ${s.personalInfo?.lastName || ''}`.trim() || 'Unknown Student',
+      rollNumber: s.academicInfo?.rollNumber || s.uniqueStudentId || 'N/A'
+    }));
+    setStudents(mappedStudents);
+  } catch (err) {
+    setError("Failed to load students for this batch");
+  } finally {
+    setFetchingStudents(false);
+  }
+};
 
   const currentExams = exams.filter((ex: any) => 
     (ex.subjectId?._id || ex.subjectId) === selectedSubject

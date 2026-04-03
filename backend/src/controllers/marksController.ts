@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Marks from '../models/Marks.js';
 import Exam from '../models/Exam.js';
 import Faculty from '../models/Faculty.js';
+import { syncSingleResult } from '../services/resultService.js';
 
 /**
  * @desc    List assigned exams for teacher
@@ -91,6 +92,30 @@ export const enterMarks = async (req: Request, res: Response) => {
       remarks
     });
 
+    // Centralized Sync to Result Collection
+    const percentage = (marksObtained / maxMarks) * 100;
+    let grade = 'F';
+    if (percentage >= 90) grade = 'A+';
+    else if (percentage >= 80) grade = 'A';
+    else if (percentage >= 70) grade = 'B';
+    else if (percentage >= 60) grade = 'C';
+    else if (percentage >= 50) grade = 'D';
+
+    await syncSingleResult({
+      type: 'EXAM',
+      examId,
+      studentId,
+      subjectId,
+      marksObtained,
+      maxMarks,
+      grade,
+      gradePoint: percentage / 10,
+      status: percentage >= 40 ? 'PASS' : 'FAIL', // Standard passing threshold
+      collegeId,
+      batchId,
+      publishedBy: teacherId
+    });
+
     res.status(201).json({ success: true, data: marks });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -152,6 +177,29 @@ export const editMarks = async (req: Request, res: Response) => {
     marks.marksObtained = marksObtained;
     marks.remarks = remarks;
     await marks.save();
+
+    // Centralized Sync to Result Collection
+    const percentage = (marksObtained / marks.maxMarks) * 100;
+    let grade = 'F';
+    if (percentage >= 90) grade = 'A+';
+    else if (percentage >= 80) grade = 'A';
+    else if (percentage >= 70) grade = 'B';
+    else if (percentage >= 60) grade = 'C';
+    else if (percentage >= 50) grade = 'D';
+
+    await syncSingleResult({
+      type: 'EXAM',
+      examId: marks.examId,
+      studentId: marks.studentId,
+      subjectId: marks.subjectId,
+      marksObtained,
+      maxMarks: marks.maxMarks,
+      grade,
+      gradePoint: percentage / 10,
+      status: percentage >= 40 ? 'PASS' : 'FAIL',
+      collegeId,
+      publishedBy: teacherId
+    });
 
     res.status(200).json({ success: true, data: marks });
   } catch (error: any) {

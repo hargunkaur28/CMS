@@ -54,15 +54,15 @@ export const fetchMyFees = async () => {
  * Fetch the logged-in student's academic materials (PDFs, Notes)
  */
 export const fetchMyMaterials = async () => {
-  const response = await api.get(`${BASE}/materials`);
+  const response = await api.get(`${BASE}/materials/me`);
   return response.data;
 };
 
 /**
- * Fetch the logged-in student's assignments specifically
+ * Fetch the logged-in student's assignments specifically (tasks to be turned in)
  */
 export const fetchMyAssignments = async () => {
-  const response = await api.get(`${BASE}/materials?type=Assignment`);
+  const response = await api.get(`/assignments`);
   return response.data;
 };
 

@@ -3,6 +3,7 @@
 import React from "react";
 import Card from "@/components/ui/Card";
 import { Award, CheckCircle2, XCircle, Download } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ResultCardProps {
   result: any;
@@ -15,31 +16,42 @@ const ResultCard: React.FC<ResultCardProps> = ({ result }) => {
     <Card className="p-8 border-none bg-white shadow-ambient rounded-[2rem] overflow-hidden group hover:shadow-xl transition-all duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8">
         <div className="flex gap-4 items-center">
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform ${isPass ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform", 
+            result.type === 'ASSIGNMENT' ? 'bg-amber-50 text-amber-600 border border-amber-100' : (isPass ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'))}>
             <Award size={28} />
           </div>
           <div>
-            <h3 className="text-xl font-bold text-slate-900 font-display tracking-tight">{result.examId?.name || "Term Examination"}</h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">Academic Session 2024-25</p>
+            <h3 className="text-xl font-bold text-slate-900 font-display tracking-tight flex items-center gap-2">
+              {result.type === 'ASSIGNMENT' ? (result.assignmentId?.title || "Assignment Submission") : (result.examId?.name || "Term Examination")}
+              <span className={cn("px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tighter", 
+                result.type === 'ASSIGNMENT' ? "bg-amber-100 text-amber-700" : "bg-indigo-100 text-indigo-700")}>
+                {result.type === 'ASSIGNMENT' ? "Coursework" : "Official"}
+              </span>
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-0.5">
+              {result.type === 'ASSIGNMENT' ? 'Internal Assessment' : 'Academic Session 2024-25'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
-          <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-indigo-600 transition-all shadow-lg shadow-slate-900/10 active:scale-95">
-            <Download size={16} /> Marksheet
-          </button>
-          <div className={`px-5 py-2.5 rounded-xl text-xs font-black tracking-widest uppercase border shadow-sm ${
+          {result.type !== 'ASSIGNMENT' && (
+            <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-indigo-600 transition-all shadow-lg shadow-slate-900/10 active:scale-95">
+              <Download size={16} /> Marksheet
+            </button>
+          )}
+          <div className={cn("px-5 py-2.5 rounded-xl text-xs font-black tracking-widest uppercase border shadow-sm",
             isPass ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'
-          }`}>
+          )}>
             {result.status}
           </div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
-        <StatItem label="Score" value={`${result.totalMarksObtained}/${result.totalMaxMarks}`} sub="Total Marks" color="text-slate-900" />
-        <StatItem label="Percentage" value={`${result.percentage.toFixed(1)}%`} sub="Overall Weight" color="text-indigo-600" />
-        <StatItem label="CGPA" value={result.cgpa.toFixed(2)} sub="Grade Point" color="text-amber-600" />
-        <StatItem label="Rank" value="A+" sub="Class Standing" color="text-emerald-600" />
+        <StatItem label="Score" value={`${result.subjects[0]?.marks || 0}/${result.subjects[0]?.maxMarks || 0}`} sub="Marks Obtained" color="text-slate-900" />
+        <StatItem label="Type" value={result.type || 'EXAM'} sub="Assessment Category" color="text-indigo-600" />
+        <StatItem label="CGPA Equivalent" value={result.cgpa?.toFixed(2) || 'N/A'} sub="Grade Point" color="text-amber-600" />
+        <StatItem label="Outcome" value={result.status} sub="Final Result" color="text-emerald-600" />
       </div>
 
       <div className="overflow-hidden border border-slate-100 rounded-2xl bg-slate-50/30">

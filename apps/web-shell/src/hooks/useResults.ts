@@ -3,6 +3,7 @@ import * as api from '@/lib/api/exams';
 
 export const useResults = (studentId?: string, examId?: string) => {
   const [results, setResults] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>({ overallCgpa: 0, latestPercentage: 0, totalExams: 0 });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -11,7 +12,13 @@ export const useResults = (studentId?: string, examId?: string) => {
     try {
       const res = await api.getResults({ studentId, examId });
       if (res.success) {
-        setResults(res.data);
+        // Backend returns { overallCgpa, latestPercentage, totalExams, results } in data
+        setResults(res.data.results || []);
+        setStats({
+          overallCgpa: res.data.overallCgpa,
+          latestPercentage: res.data.latestPercentage,
+          totalExams: res.data.totalExams
+        });
       } else {
         setError(res.message);
       }
@@ -26,7 +33,7 @@ export const useResults = (studentId?: string, examId?: string) => {
     fetchResults();
   }, [fetchResults]);
 
-  return { results, loading, error, fetchResults };
+  return { results, stats, loading, error, fetchResults };
 };
 
 export const useHallTicket = (studentId: string, examId: string) => {

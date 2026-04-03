@@ -1,19 +1,16 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import Card from '@/components/ui/Card';
 import { 
-  Calendar, 
-  CheckCircle, 
-  XCircle, 
   Clock, 
-  ArrowLeft,
   ChevronRight,
-  Filter
+  Calendar
 } from 'lucide-react';
 import { fetchMyAttendance } from '@/lib/api/student';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import AttendanceSummary from '@/components/dashboard/attendance/AttendanceSummary';
+import AttendanceLogTable from '@/components/dashboard/attendance/AttendanceLogTable';
 
 export default function StudentAttendancePage() {
   const [attendance, setAttendance] = useState<any[]>([]);
@@ -76,7 +73,7 @@ export default function StudentAttendancePage() {
             <ChevronRight size={10} />
             <span className="text-slate-900">Attendance History</span>
           </nav>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Academic Presence</h1>
+          <h1 className="text-3xl font-bold text-slate-900 tracking-tight font-display uppercase tracking-tight">Academic Presence</h1>
           <p className="text-sm text-slate-500 mt-1">Detailed breakdown of subject-wise attendance and records.</p>
         </div>
 
@@ -91,33 +88,7 @@ export default function StudentAttendancePage() {
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <SummaryCard 
-          label="Overall Pct" 
-          value={`${stats.pct}%`} 
-          icon={<Calendar size={20} />} 
-          color="bg-indigo-50 text-indigo-600" 
-        />
-        <SummaryCard 
-          label="Total Classes" 
-          value={stats.total} 
-          icon={<Clock size={20} />} 
-          color="bg-slate-50 text-slate-600" 
-        />
-        <SummaryCard 
-          label="Present" 
-          value={stats.present} 
-          icon={<CheckCircle size={20} />} 
-          color="bg-emerald-50 text-emerald-600" 
-        />
-        <SummaryCard 
-          label="Absent" 
-          value={stats.absent} 
-          icon={<XCircle size={20} />} 
-          color="bg-rose-50 text-rose-600" 
-        />
-      </div>
+      <AttendanceSummary stats={stats} />
 
       {/* Subject Wise breakdown */}
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm">
@@ -137,7 +108,7 @@ export default function StudentAttendancePage() {
             onClick={() => setFilterSubject(filterSubject === sub ? "All Subjects" : sub)}
             >
                <div className="flex justify-between items-center mb-2">
-                 <p className={cn("text-sm font-bold", filterSubject === sub ? "text-white" : "text-slate-900")}>{sub}</p>
+                 <p className={cn("text-sm font-bold", filterSubject === sub ? "text-white" : "text-slate-900 font-utility")}>{sub}</p>
                  <span className={cn(
                    "text-xs font-black px-2 py-1 rounded-lg border",
                    filterSubject === sub ? "bg-white/20 border-white/20 text-white" : "text-indigo-600 bg-white border-slate-200"
@@ -146,7 +117,7 @@ export default function StudentAttendancePage() {
                  </span>
                </div>
                <div className={cn("h-2 rounded-full overflow-hidden", filterSubject === sub ? "bg-white/20" : "bg-slate-200")}>
-                 <div className={cn("h-full rounded-full", filterSubject === sub ? "bg-white" : "bg-indigo-500")} style={{ width: `${(data.p / data.t) * 100}%` }} />
+                 <div className={cn("h-full rounded-full transition-all duration-1000", filterSubject === sub ? "bg-white" : "bg-indigo-500")} style={{ width: `${(data.p / data.t) * 100}%` }} />
                </div>
                <p className={cn("text-[10px] font-bold uppercase mt-2", filterSubject === sub ? "text-indigo-100" : "text-slate-400")}>{data.p} of {data.t} Sessions</p>
             </div>
@@ -154,75 +125,12 @@ export default function StudentAttendancePage() {
         </div>
       </div>
 
-      {/* History Table */}
-      <Card className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <h3 className="text-lg font-bold text-slate-900">Attendance Log — {filterSubject}</h3>
-          <select 
-            value={filterSubject}
-            onChange={(e) => setFilterSubject(e.target.value)}
-            className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500/20"
-          >
-            <option value="All Subjects">All Subjects</option>
-            {subjects.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-        
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/50">
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Date & Time</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100">Subject</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-b border-slate-100 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm font-utility">
-              {filteredAttendance.map((record, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/50 transition-all group">
-                  <td className="px-6 py-4">
-                    <p className="font-bold text-slate-900">{new Date(record.date).toLocaleDateString()}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">
-                      {record.createdAt ? new Date(record.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '09:00 AM'}
-                    </p>
-                  </td>
-                  <td className="px-6 py-4 font-bold text-slate-700">
-                    {record.subject?.name || 'Unknown Subject'}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm ${
-                      record.status === 'Present' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                      record.status === 'Leave' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                      'bg-rose-50 text-rose-600 border border-rose-100'
-                    }`}>
-                      {record.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {filteredAttendance.length === 0 && (
-            <div className="p-12 text-center text-slate-400 font-bold italic">
-              No matching attendance records found.
-            </div>
-          )}
-        </div>
-      </Card>
+      <AttendanceLogTable 
+        filteredAttendance={filteredAttendance}
+        filterSubject={filterSubject}
+        setFilterSubject={setFilterSubject}
+        subjects={subjects}
+      />
     </div>
-  );
-}
-
-function SummaryCard({ label, value, icon, color }: any) {
-  return (
-    <Card className="p-6 border-none bg-white shadow-ambient flex items-center justify-between rounded-3xl group hover:scale-[1.02] transition-all">
-      <div>
-        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">{label}</h3>
-        <span className="text-2xl font-display font-black text-slate-900 tracking-tight">{value}</span>
-      </div>
-      <div className={`w-12 h-12 ${color} rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:rotate-12`}>
-        {icon}
-      </div>
-    </Card>
   );
 }

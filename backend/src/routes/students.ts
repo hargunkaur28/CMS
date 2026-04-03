@@ -38,6 +38,7 @@ router.get("/me/fees", protect, getMyFees);
 router.get("/fees", protect, getMyFees);
 router.post("/pay", protect, processMockPayment);
 router.get("/materials", protect, getStudentMaterials);
+router.get("/materials/me", protect, getStudentMaterials);
 
 // --- Communication ---
 router.get("/announcements", protect, communicationController.getStudentAnnouncements);

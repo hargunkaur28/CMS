@@ -8,6 +8,7 @@ import Parent from "../models/Parent.js";
 import mongoose from "mongoose";
 import { emitToStudent, emitToBatch } from "../config/socket.js";
 import { calculateTotalMarks, calculateGrade, calculateCGPA } from "../services/gradeCalculator.js";
+import { syncSingleResult, syncBulkResults } from "../services/resultService.js";
 
 /**
  * Create a new exam
@@ -122,6 +123,7 @@ export const enterMarks = async (req: Request, res: Response) => {
         batchId,
         components,
         totalMarks,
+        marksObtained: totalMarks, // Syncing marksObtained to totalMarks
         grade,
         gradePoint,
         status: 'COMPLETED',
@@ -131,7 +133,24 @@ export const enterMarks = async (req: Request, res: Response) => {
       { upsert: true, new: true }
     );
 
-    res.status(200).json({ success: true, data: marks, message: "Marks entered successfully" });
+    // Sync to Result Collection (Centralized)
+    await syncSingleResult({
+      type: 'EXAM',
+      examId,
+      studentId,
+      subjectId,
+      marksObtained: totalMarks,
+      maxMarks: exam.totalMarks,
+      grade,
+      gradePoint,
+      status: totalMarks >= exam.passingMarks ? 'PASS' : 'FAIL',
+      collegeId: exam.collegeId,
+      courseId,
+      batchId,
+      publishedBy: (req as any).user?._id
+    });
+
+    res.status(200).json({ success: true, data: marks, message: "Marks entered and synchronized successfully" });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -172,7 +191,31 @@ export const bulkImportMarks = async (req: Request, res: Response) => {
     });
 
     await Marks.bulkWrite(operations);
-    res.status(200).json({ success: true, message: `Marks imported for ${records.length} records` });
+
+    // Sync Bulk Results to Result Collection (Centralized)
+    const syncRecords = records.map((record: any) => {
+      const totalMarks = calculateTotalMarks(record.components);
+      const { grade, gradePoint } = calculateGrade(totalMarks, exam.totalMarks, exam.gradingScheme);
+      return {
+        type: 'EXAM',
+        examId,
+        studentId: record.studentId,
+        subjectId: record.subjectId,
+        marksObtained: totalMarks,
+        maxMarks: exam.totalMarks,
+        grade,
+        gradePoint,
+        status: totalMarks >= exam.passingMarks ? 'PASS' : 'FAIL',
+        collegeId: exam.collegeId,
+        courseId: record.courseId,
+        batchId: record.batchId,
+        publishedBy: (req as any).user?._id
+      };
+    });
+
+    await syncBulkResults(syncRecords);
+
+    res.status(200).json({ success: true, message: `Marks imported and synchronized for ${records.length} records` });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }
@@ -378,6 +421,7 @@ export const getResults = async (req: Request, res: Response) => {
     const results = await Result.find(query)
       .populate("studentId", "personalInfo.firstName personalInfo.lastName uniqueStudentId")
       .populate("examId", "name code totalMarks")
+      .populate("assignmentId")
       .sort({ createdAt: -1 });
     
     // 4. Calculate Aggregates
