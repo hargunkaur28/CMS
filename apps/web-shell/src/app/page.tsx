@@ -190,11 +190,11 @@ function ParentDashboard() {
     const loadData = async () => {
       try {
         const [profileRes, attendanceRes, resultsRes, timetableRes, feesRes] = await Promise.all([
-          fetchMyStudentProfile(),
-          fetchMyStudentAttendance(),
-          fetchMyStudentResults(),
-          fetchMyStudentTimetable(),
-          fetchMyStudentFees()
+          fetchMyStudentProfile().catch(() => ({ success: false, data: null })),
+          fetchMyStudentAttendance().catch(() => ({ success: false, data: null })),
+          fetchMyStudentResults().catch(() => ({ success: false, data: null })),
+          fetchMyStudentTimetable().catch(() => ({ success: false, data: [] })),
+          fetchMyStudentFees().catch(() => ({ success: false, data: null }))
         ]);
         if (profileRes.success) setParentData(profileRes.data);
         if (profileRes.success) {
@@ -564,12 +564,12 @@ function StudentDashboard() {
   const loadData = async () => {
     try {
       const [profileRes, attendanceRes, resultsRes, scheduleRes, annRes, unreadRes, libraryRes, assignmentsRes] = await Promise.all([
-        fetchMyProfile(),
-        fetchMyAttendance(),
-        fetchMyResults(),
-        fetchMyTodaySchedule(),
-        fetchMyAnnouncements(),
-        fetchUnreadCount(),
+        fetchMyProfile().catch(() => ({ success: false, data: null })),
+        fetchMyAttendance().catch(() => ({ success: false, data: null })),
+        fetchMyResults().catch(() => ({ success: false, data: null })),
+        fetchMyTodaySchedule().catch(() => ({ success: false, data: [] })),
+        fetchMyAnnouncements().catch(() => ({ success: false, data: [] })),
+        fetchUnreadCount().catch(() => ({ success: false, data: { count: 0 } })),
         fetchMyLibraryTransactions({ limit: 3 }).catch(() => ({ success: false, data: [] })),
         fetchMyAssignments().catch(() => ({ success: false, data: [] }))
       ]);
