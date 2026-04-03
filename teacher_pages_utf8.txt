@@ -1,7 +1,0 @@
-﻿D:\cms_new\apps\web-shell\src\app\teacher\attendance\page.tsx
-D:\cms_new\apps\web-shell\src\app\teacher\communication\page.tsx
-D:\cms_new\apps\web-shell\src\app\teacher\marks\page.tsx
-D:\cms_new\apps\web-shell\src\app\teacher\students\page.tsx
-D:\cms_new\apps\web-shell\src\app\teacher\timetable\page.tsx
-D:\cms_new\apps\web-shell\src\app\teacher\uploads\page.tsx
-D:\cms_new\apps\web-shell\src\app\teacher\page.tsx
