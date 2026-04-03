@@ -248,7 +248,7 @@ const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
             <label className="text-sm font-bold text-surface-on-surface-variant uppercase tracking-widest pl-1">Target Courses</label>
-            <div className="bg-surface-container rounded-2xl p-4 border border-outline max-h-[200px] overflow-y-auto space-y-2 custom-scrollbar">
+            <div className="bg-surface-container rounded-2xl p-4 border border-outline max-h-50 overflow-y-auto space-y-2 custom-scrollbar">
               {fetchingData ? (
                 <div className="flex items-center gap-2 py-4 justify-center text-xs text-surface-on-surface-variant">
                   <Loader2 size={16} className="animate-spin" /> Fetching Courses...
@@ -274,7 +274,7 @@ const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }
 
           <div className="space-y-3">
             <label className="text-sm font-bold text-surface-on-surface-variant uppercase tracking-widest pl-1">Academic Subjects</label>
-            <div className="bg-surface-container rounded-2xl p-4 border border-outline max-h-[200px] overflow-y-auto space-y-2 custom-scrollbar">
+            <div className="bg-surface-container rounded-2xl p-4 border border-outline max-h-50 overflow-y-auto space-y-2 custom-scrollbar">
               {fetchingData ? (
                 <div className="flex items-center gap-2 py-4 justify-center text-xs text-surface-on-surface-variant">
                   <Loader2 size={16} className="animate-spin" /> Fetching Subjects...

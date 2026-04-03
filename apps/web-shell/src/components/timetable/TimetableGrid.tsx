@@ -62,12 +62,12 @@ export default function TimetableGrid({
   }, [entries]);
 
   return (
-    <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-4xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[960px] border-collapse">
+        <table className="w-full min-w-240 border-collapse">
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100">
-              <th className="w-[150px] p-4 text-left text-[9px] font-black uppercase tracking-widest text-slate-400 border-r border-slate-100">Time</th>
+              <th className="w-37.5 p-4 text-left text-[9px] font-black uppercase tracking-widest text-slate-400 border-r border-slate-100">Time</th>
               {DAYS.map((day) => (
                 <th key={day} className="p-4 text-center text-[9px] font-black uppercase tracking-widest text-slate-400 border-r border-slate-100 last:border-r-0">
                   {day}
@@ -101,7 +101,7 @@ export default function TimetableGrid({
                           role={onCellClick ? 'button' : undefined}
                           tabIndex={onCellClick ? 0 : -1}
                           onClick={() => onCellClick?.(entry)}
-                          className={cn('group relative min-h-[96px] rounded-2xl border p-3 transition-all duration-200', color.bg, color.border, onCellClick && 'cursor-pointer hover:brightness-95')}
+                          className={cn('group relative min-h-24 rounded-2xl border p-3 transition-all duration-200', color.bg, color.border, onCellClick && 'cursor-pointer hover:brightness-95')}
                         >
                           <div className={cn('absolute left-0 top-0 h-full w-1 rounded-r-full', color.accent)} />
                           <div className="pl-2 pr-6 space-y-1.5">
@@ -147,7 +147,7 @@ export default function TimetableGrid({
                   if (readOnly || !onEmptyCellClick) {
                     return (
                       <td key={`${day}-${slot.start}`} className="p-1.5 border-r border-slate-100 last:border-r-0 align-top">
-                        <div className="w-full min-h-[96px] rounded-2xl border border-dashed border-slate-100 bg-slate-50/40 flex items-center justify-center text-slate-200">
+                        <div className="w-full min-h-24 rounded-2xl border border-dashed border-slate-100 bg-slate-50/40 flex items-center justify-center text-slate-200">
                           <span className="text-[10px] font-black uppercase tracking-widest">—</span>
                         </div>
                       </td>
@@ -160,7 +160,7 @@ export default function TimetableGrid({
                         type="button"
                         onClick={() => onEmptyCellClick?.(day, slot)}
                         className={cn(
-                          'w-full min-h-[96px] rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center text-slate-300 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-500'
+                          'w-full min-h-24 rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 flex items-center justify-center text-slate-300 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-500'
                         )}
                       >
                         <div className="flex flex-col items-center gap-1">

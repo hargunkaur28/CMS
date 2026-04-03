@@ -14,6 +14,7 @@ import {
   Download,
   Upload
 } from 'lucide-react';
+import { fetchStudents } from '@/lib/api/admin';
 
 interface User {
   _id: string;
@@ -48,12 +49,17 @@ export default function UserManagement() {
   const [importing, setImporting] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [viewUser, setViewUser] = useState<User | null>(null);
+  const [colleges, setColleges] = useState<any[]>([]);
+  const [availableStudents, setAvailableStudents] = useState<any[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     role: 'COLLEGE_ADMIN',
-    phone: ''
+    phone: '',
+    collegeId: '',
+    studentIds: [] as string[],
+    relation: 'Guardian',
   });
   const [editFormData, setEditFormData] = useState({
     name: '',
@@ -65,6 +71,10 @@ export default function UserManagement() {
   useEffect(() => {
     fetchUsers();
   }, [searchTerm, roleFilter, statusFilter, page]);
+
+  useEffect(() => {
+    void loadLookupData();
+  }, []);
 
   const fetchUsers = async () => {
     try {
@@ -87,17 +97,51 @@ export default function UserManagement() {
     }
   };
 
+  const loadLookupData = async () => {
+    try {
+      const [collegeRes, studentRes] = await Promise.all([
+        api.get('/super-admin/colleges?limit=1000'),
+        fetchStudents({ page: 1, limit: 1000 }),
+      ]);
+
+      setColleges(Array.isArray(collegeRes.data?.data) ? collegeRes.data.data : []);
+      setAvailableStudents(Array.isArray(studentRes.data) ? studentRes.data : (Array.isArray(studentRes?.data?.data) ? studentRes.data.data : []));
+    } catch (err) {
+      console.error('Failed to load user creation lookups', err);
+    }
+  };
+
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/super-admin/users', formData);
+      const payload: any = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+        phone: formData.phone,
+      };
+
+      if (['STUDENT', 'TEACHER'].includes(formData.role)) {
+        payload.collegeId = formData.collegeId;
+      }
+
+      if (formData.role === 'PARENT') {
+        payload.studentIds = formData.studentIds;
+        payload.relation = formData.relation;
+      }
+
+      await api.post('/super-admin/users', payload);
       setShowCreateModal(false);
       setFormData({
         name: '',
         email: '',
         password: '',
         role: 'COLLEGE_ADMIN',
-        phone: ''
+        phone: '',
+        collegeId: '',
+        studentIds: [],
+        relation: 'Guardian',
       });
       fetchUsers();
     } catch (err) {
@@ -454,7 +498,7 @@ export default function UserManagement() {
               />
               <select
                 value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, role: e.target.value, collegeId: '', studentIds: [], relation: 'Guardian' })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
               >
                 <option value="COLLEGE_ADMIN">College Admin</option>
@@ -462,6 +506,53 @@ export default function UserManagement() {
                 <option value="STUDENT">Student</option>
                 <option value="PARENT">Parent</option>
               </select>
+              {['STUDENT', 'TEACHER'].includes(formData.role) && (
+                <select
+                  value={formData.collegeId}
+                  onChange={(e) => setFormData({ ...formData, collegeId: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  required
+                >
+                  <option value="">Select College</option>
+                  {colleges.map((college) => (
+                    <option key={college._id} value={college._id}>
+                      {college.name} ({college.code})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {formData.role === 'PARENT' && (
+                <>
+                  <select
+                    multiple
+                    value={formData.studentIds}
+                    onChange={(e) => {
+                      const selected = Array.from(e.target.selectedOptions).map((option) => option.value);
+                      setFormData({ ...formData, studentIds: selected });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 min-h-40"
+                    required
+                  >
+                    {availableStudents.map((student) => {
+                      const label = `${student?.personalInfo?.firstName || ''} ${student?.personalInfo?.lastName || ''}`.trim() || student?.personalInfo?.email || student?.uniqueStudentId || 'Student';
+                      return (
+                        <option key={student._id} value={student._id}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <select
+                    value={formData.relation}
+                    onChange={(e) => setFormData({ ...formData, relation: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  >
+                    <option value="Father">Father</option>
+                    <option value="Mother">Mother</option>
+                    <option value="Guardian">Guardian</option>
+                  </select>
+                </>
+              )}
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
                   Create

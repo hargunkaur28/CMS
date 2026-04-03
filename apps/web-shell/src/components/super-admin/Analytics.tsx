@@ -22,6 +22,25 @@ export default function Analytics() {
   const totalStudents = analyticsData?.collegeAnalytics?.reduce((sum: number, c: any) => sum + (c.students || 0), 0) || 0;
   const totalTeachers = analyticsData?.collegeAnalytics?.reduce((sum: number, c: any) => sum + (c.teachers || 0), 0) || 0;
 
+  const handleExport = async () => {
+    try {
+      const response = await api.get('/super-admin/analytics/export?range=' + encodeURIComponent(dateRange), {
+        responseType: 'blob'
+      });
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `analytics-${dateRange}-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to export analytics');
+    }
+  };
+
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
@@ -82,7 +101,7 @@ export default function Analytics() {
             <option value="quarter">Last Quarter</option>
             <option value="year">Last Year</option>
           </select>
-          <button className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition">
+          <button onClick={handleExport} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition">
             <Download size={20} /> Export
           </button>
         </div>

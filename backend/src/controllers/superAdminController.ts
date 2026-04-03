@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import College from '../models/College.js';
 import Student from '../models/Student.js';
 import Faculty from '../models/Faculty.js';
+import Parent from '../models/Parent.js';
 import AuditLog from '../models/AuditLog.js';
 import SystemSettings from '../models/SystemSettings.js';
 import Session from '../models/Session.js';
@@ -376,19 +377,35 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
 
 export const createUser = async (req: AuthRequest, res: Response) => {
   try {
-    const { name, email, password, role, collegeId, phone } = req.body;
+    const { name, email, password, role, collegeId, phone, studentIds, relation } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
+    const normalizedRole = String(role || '').trim().toUpperCase();
+    if (!name || !email || !password || !normalizedRole) {
+      return res.status(400).json({ success: false, message: 'name, email, password and role are required' });
+    }
+
+    if (['STUDENT', 'TEACHER'].includes(normalizedRole) && !collegeId) {
+      return res.status(400).json({ success: false, message: 'collegeId is required for Student and Teacher users' });
+    }
+
+    if (normalizedRole === 'PARENT') {
+      const selectedStudents = Array.isArray(studentIds) ? studentIds.filter(Boolean) : [];
+      if (!selectedStudents.length) {
+        return res.status(400).json({ success: false, message: 'At least one student must be selected for a Parent account' });
+      }
+    }
+
     const user = new User({
       name,
       email,
       password,
-      role,
-      collegeId,
+      role: normalizedRole,
+      collegeId: collegeId || undefined,
       phone,
       authentication: {
         two_factor_enabled: false,
@@ -399,6 +416,17 @@ export const createUser = async (req: AuthRequest, res: Response) => {
     });
 
     await user.save();
+
+    if (normalizedRole === 'PARENT') {
+      const selectedStudents = Array.isArray(studentIds) ? studentIds.filter(Boolean) : [];
+      await Parent.create({
+        userId: user._id,
+        students: selectedStudents,
+        relation: relation || 'Guardian',
+        phone: phone || '',
+        isActive: true,
+      });
+    }
 
     // Log audit
 
@@ -782,6 +810,100 @@ export const getAuditLogs = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const exportAuditLogs = async (req: AuthRequest, res: Response) => {
+  try {
+    const { userId, action, resource_type, search } = req.query;
+
+    const filter: any = {};
+    if (userId) filter.userId = userId;
+    if (action) filter.action = action;
+    if (resource_type) filter.resource_type = resource_type;
+    if (search) {
+      filter.$or = [
+        { resource_type: { $regex: search, $options: 'i' } },
+        { resource_id: { $regex: search, $options: 'i' } },
+        { error_message: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    const logs = await AuditLog.find(filter)
+      .populate('userId', 'name email role')
+      .sort({ timestamp: -1 })
+      .lean();
+
+    const headers = ['Timestamp', 'User', 'Email', 'Role', 'Action', 'Resource Type', 'Resource ID', 'Status', 'Error Message'];
+    const rows = logs.map((log: any) => [
+      escapeCsv(log.timestamp ? new Date(log.timestamp).toISOString() : ''),
+      escapeCsv(log.userId?.name || ''),
+      escapeCsv(log.userId?.email || ''),
+      escapeCsv(log.userId?.role || ''),
+      escapeCsv(log.action || ''),
+      escapeCsv(log.resource_type || ''),
+      escapeCsv(log.resource_id || ''),
+      escapeCsv(log.status || ''),
+      escapeCsv(log.error_message || ''),
+    ]);
+
+    const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="audit-logs-${Date.now()}.csv"`);
+    res.status(200).send(csv);
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const exportAnalytics = async (req: AuthRequest, res: Response) => {
+  try {
+    const colleges = await College.find({ status: 'active' }).sort({ name: 1 }).lean();
+
+    const comparisonRows = await Promise.all(colleges.map(async (college: any) => {
+      const studentCount = await Student.countDocuments({ collegeId: college._id });
+      const teacherCount = await Faculty.countDocuments({ collegeId: college._id });
+      const adminCount = await User.countDocuments({ collegeId: college._id, role: 'COLLEGE_ADMIN' });
+
+      return [
+        escapeCsv(college.name || ''),
+        escapeCsv(String(college.code || '')),
+        String(studentCount),
+        String(teacherCount),
+        String(adminCount),
+        String(studentCount + teacherCount + adminCount),
+      ];
+    }));
+
+    const summaryHeaders = ['Metric', 'Value'];
+    const totalColleges = await College.countDocuments();
+    const totalUsers = await User.countDocuments();
+    const totalStudents = await Student.countDocuments();
+    const totalTeachers = await Faculty.countDocuments();
+    const totalAdmins = await User.countDocuments({ role: 'COLLEGE_ADMIN' });
+
+    const summaryRows = [
+      ['Total Colleges', String(totalColleges)],
+      ['Total Users', String(totalUsers)],
+      ['Total Students', String(totalStudents)],
+      ['Total Teachers', String(totalTeachers)],
+      ['Total College Admins', String(totalAdmins)],
+    ];
+
+    const collegeHeaders = ['College', 'Code', 'Students', 'Teachers', 'Admins', 'Total Users'];
+    const csvSections = [
+      summaryHeaders.join(','),
+      ...summaryRows.map((row) => row.map(escapeCsv).join(',')),
+      '',
+      collegeHeaders.join(','),
+      ...comparisonRows.map((row) => row.join(',')),
+    ];
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="analytics-${Date.now()}.csv"`);
+    res.status(200).send(csvSections.join('\n'));
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const getUserActivityLog = async (req: AuthRequest, res: Response) => {
   try {
     const userActivityId = Array.isArray(req.params.userId) ? req.params.userId[0] : req.params.userId;
@@ -924,7 +1046,9 @@ export default {
   getCollegeAnalyticsComparison,
   getUserAnalytics,
   getAuditLogs,
+  exportAuditLogs,
   getUserActivityLog,
+  exportAnalytics,
   getSystemSettings,
   updateSystemSettings,
   getPublicSystemSettings

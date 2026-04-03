@@ -87,6 +87,27 @@ export default function AuditLogs() {
     });
   };
 
+  const handleExport = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (actionFilter) params.append('action', actionFilter);
+      if (searchTerm) params.append('search', searchTerm);
+
+      const response = await api.get(`/super-admin/audit-logs/export?${params}`, { responseType: 'blob' });
+      const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to export audit logs');
+    }
+  };
+
   if (loading && logs.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -103,7 +124,7 @@ export default function AuditLogs() {
           <h1 className="text-3xl font-bold text-gray-900">Audit Logs</h1>
           <p className="text-gray-600 mt-1">Track all system activities and changes</p>
         </div>
-        <button className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition">
+        <button onClick={handleExport} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition">
           <Download size={20} /> Export
         </button>
       </div>

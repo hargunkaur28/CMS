@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import api from "@/lib/api";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Overview", href: "/admin" },
@@ -57,10 +58,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [router]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Best-effort server logout; always clear local state.
+    } finally {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      router.push('/login');
+    }
   };
 
   if (!authorized) {

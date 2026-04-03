@@ -232,7 +232,7 @@ function AssignmentDetailModal({ assignment, submission, onClose, onOpenSubmit, 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4 md:p-8"
+      className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-100 flex items-center justify-center p-4 md:p-8"
       onClick={onClose}
     >
       <motion.div 
@@ -297,7 +297,7 @@ function AssignmentDetailModal({ assignment, submission, onClose, onOpenSubmit, 
             )}
 
             {submission && (
-              <section className="p-8 bg-slate-900 rounded-[2rem] text-white overflow-hidden relative">
+              <section className="p-8 bg-slate-900 rounded-4xl text-white overflow-hidden relative">
                 <Sparkles className="absolute -right-10 -bottom-10 text-white/5" size={200} />
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
                   <div className="space-y-4">
@@ -426,12 +426,12 @@ function SubmitModal({ assignment, onClose, onSuccess }: any) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[110] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-110 flex items-center justify-center p-4"
     >
       <motion.div 
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden"
+        className="bg-white rounded-4xl w-full max-w-lg shadow-2xl overflow-hidden"
       >
         <div className="p-8 border-b border-slate-100 flex items-center justify-between">
           <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Turn In Work</h3>
@@ -501,9 +501,9 @@ function HistoryModal({ submission, onClose }: any) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-110 flex items-center justify-center p-4"
     >
-      <motion.div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden">
+      <motion.div className="bg-white rounded-4xl w-full max-w-md shadow-2xl overflow-hidden">
         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
           <h3 className="font-bold text-slate-900">Submission History</h3>
           <button onClick={onClose}><X size={20} /></button>
@@ -512,14 +512,14 @@ function HistoryModal({ submission, onClose }: any) {
           <div className="space-y-6">
             {submission.versions.map((v: any, i: number) => (
               <div key={i} className="flex gap-4 relative">
-                {i < submission.versions.length - 1 && <div className="absolute left-4 top-8 bottom--4 w-[2px] bg-slate-100" />}
+                {i < submission.versions.length - 1 && <div className="absolute left-4 top-8 bottom--4 w-0.5 bg-slate-100" />}
                 <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10", i === submission.currentVersionIndex ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-400")}>
                    {submission.versions.length - i}
                 </div>
                 <div className="flex-1 space-y-2">
                   <p className="text-xs font-bold text-slate-900">Version {submission.versions.length - i}</p>
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between">
-                    <span className="text-[10px] font-medium text-slate-600 truncate max-w-[200px]">{v.fileName}</span>
+                    <span className="text-[10px] font-medium text-slate-600 truncate max-w-50">{v.fileName}</span>
                     <a href={v.fileUrl} target="_blank" className="text-indigo-600 font-bold text-[10px] uppercase">View</a>
                   </div>
                   <p className="text-[9px] text-slate-400 font-bold uppercase">{format(new Date(v.submittedAt), "MMM dd, hh:mm a")}</p>

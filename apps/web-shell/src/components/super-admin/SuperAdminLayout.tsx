@@ -4,12 +4,25 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X, ChevronDown, LogOut, Settings } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import api from '@/lib/api';
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeMenu, setActiveMenu] = useState('dashboard');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Continue with client-side logout even if the server request fails.
+    } finally {
+      localStorage.clear();
+      setUserMenuOpen(false);
+      router.push('/login');
+    }
+  };
+
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '📊', href: '/super-admin/dashboard', color: 'from-blue-500 to-blue-600' },
@@ -54,7 +67,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
         </nav>
 
         <div className="border-t border-gray-700 p-3">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition">
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition">
             <LogOut size={20} />
             {sidebarOpen && <span>Logout</span>}
           </button>
@@ -98,11 +111,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                   <Settings size={16} /> Profile Settings
                 </button>
                 <button
-                  onClick={() => {
-                    localStorage.clear();
-                    setUserMenuOpen(false);
-                    router.push('/login');
-                  }}
+                  onClick={handleLogout}
                   className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 text-red-600 border-t border-gray-200"
                 >
                   <LogOut size={16} /> Logout

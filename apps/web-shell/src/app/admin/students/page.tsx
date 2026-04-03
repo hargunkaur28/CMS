@@ -33,9 +33,6 @@ export default function StudentsPage() {
       if (res.success) {
         const items = Array.isArray(res.data) ? res.data : [];
         setBatches(items);
-        if (items.length > 0 && batch === "All Batches") {
-          setBatch(items[0]?.name || "All Batches");
-        }
       }
     } catch (err) {
       console.error(err);

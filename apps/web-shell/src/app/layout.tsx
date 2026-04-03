@@ -103,9 +103,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     };
   }, [globalSettings?.session_timeout, pathname, router]);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    router.push("/login");
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Ignore server logout failures and still clear the local session.
+    } finally {
+      localStorage.clear();
+      router.push('/login');
+    }
   };
 
   const isLoginPage = pathname === "/login";

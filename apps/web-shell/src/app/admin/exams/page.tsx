@@ -4,8 +4,10 @@ import React, { useEffect, useState } from "react";
 import { fetchExams, publishExamResults } from "@/lib/api/admin";
 import ExamManager from "@/components/admin/ExamManager";
 import { Plus, Download, Search, CheckSquare } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function ExamsPage() {
+  const router = useRouter();
   const [exams, setExams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,10 +49,16 @@ export default function ExamsPage() {
         </div>
 
         <div className="flex items-center gap-3">
-           <button className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
+            <button
+             onClick={() => router.push('/exams/results')}
+             className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2"
+            >
               <Download size={14} /> Result Archive
            </button>
-           <button className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-slate-200 transition-all flex items-center gap-2">
+            <button
+             onClick={() => router.push('/exams/create')}
+             className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 shadow-xl shadow-slate-200 transition-all flex items-center gap-2"
+            >
               <Plus size={14} /> New Exam Cycle
            </button>
         </div>

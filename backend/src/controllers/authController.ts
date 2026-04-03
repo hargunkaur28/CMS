@@ -139,3 +139,22 @@ export const getUserProfile = async (req: any, res: Response) => {
     res.status(404).json({ message: 'User not found' });
   }
 };
+
+export const logoutUser = async (req: any, res: Response) => {
+  try {
+    const token = req.token || String(req.headers.authorization || '').split(' ')[1];
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'No active session token found' });
+    }
+
+    await Session.updateOne(
+      { jwt_token: token, is_active: true },
+      { $set: { is_active: false, last_activity: new Date() } }
+    );
+
+    res.status(200).json({ success: true, message: 'Logged out successfully' });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message || 'Failed to logout' });
+  }
+};

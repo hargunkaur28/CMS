@@ -143,13 +143,13 @@ function TeacherCommunicationContent() {
   if (loading) return <div className="animate-pulse space-y-8 p-8">
      <div className="h-10 w-64 bg-slate-200 rounded-lg"></div>
      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 h-[600px] bg-slate-100 rounded-3xl"></div>
-        <div className="h-[600px] bg-slate-100 rounded-3xl"></div>
+          <div className="lg:col-span-2 h-150 bg-slate-100 rounded-3xl"></div>
+            <div className="h-150 bg-slate-100 rounded-3xl"></div>
      </div>
   </div>;
 
   return (
-    <div className="space-y-8 p-8 max-w-[1600px] mx-auto">
+    <div className="space-y-8 p-8 max-w-400 mx-auto">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -185,7 +185,7 @@ function TeacherCommunicationContent() {
                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest">Recent Sent</h3>
                        <RotateCcw size={16} className="text-slate-400" />
                     </div>
-                    <div className="divide-y divide-slate-50 max-h-[500px] overflow-y-auto custom-scrollbar">
+                    <div className="divide-y divide-slate-50 max-h-125 overflow-y-auto custom-scrollbar">
                        {announcements.map((ann: any) => (
                          <div key={ann._id} className="p-5 hover:bg-slate-50 transition-colors">
                             <div className="flex items-center justify-between mb-1">
@@ -211,7 +211,7 @@ function TeacherCommunicationContent() {
         ) : (
            <>
               <div className="lg:col-span-1 space-y-4">
-                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
+                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-150">
                     <div className="p-6 border-b border-slate-100">
                        <h3 className="text-xs font-black text-slate-900 uppercase tracking-widest mb-4">Contacts</h3>
                        <div className="relative">
@@ -253,7 +253,7 @@ function TeacherCommunicationContent() {
               </div>
               
               <div className="lg:col-span-2">
-                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[600px]">
+                 <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-150">
                     {selectedStudent ? (
                        <>
                           <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">

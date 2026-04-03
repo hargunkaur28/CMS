@@ -143,7 +143,7 @@ export default function NotificationBell() {
     <div className="relative">
       {/* Toast Notification Popup */}
       {toast && (
-        <div className="fixed top-20 right-8 z-[100] animate-in slide-in-from-right-8 duration-500">
+        <div className="fixed top-20 right-8 z-100 animate-in slide-in-from-right-8 duration-500">
            <div className="bg-slate-900 text-white p-4 rounded-2xl shadow-2xl border border-slate-700 flex items-start gap-4 min-w-[320px] max-w-md">
               <div className="w-10 h-10 rounded-xl bg-indigo-600/20 flex items-center justify-center shrink-0">
                  <Bell className="text-indigo-400" size={20} />
@@ -178,13 +178,13 @@ export default function NotificationBell() {
       {showDropdown && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
-          <div className="absolute right-0 mt-4 w-80 bg-white rounded-[2rem] border border-slate-100 shadow-ambient z-50 overflow-hidden animate-in zoom-in-95 duration-200">
+          <div className="absolute right-0 mt-4 w-80 bg-white rounded-4xl border border-slate-100 shadow-ambient z-50 overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-slate-50 bg-slate-50/50 flex items-center justify-between">
               <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Notifications</h3>
               <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{unreadCount} New</span>
             </div>
             
-            <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
+            <div className="max-h-100 overflow-y-auto custom-scrollbar">
               {notifications.length > 0 ? (
                 <div className="divide-y divide-slate-50">
                   {notifications.map((n) => (

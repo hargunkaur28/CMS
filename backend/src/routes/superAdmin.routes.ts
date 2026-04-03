@@ -20,7 +20,9 @@ import {
   getCollegeAnalyticsComparison,
   getUserAnalytics,
   getAuditLogs,
+  exportAuditLogs,
   getUserActivityLog,
+  exportAnalytics,
   getSystemSettings,
   updateSystemSettings
 } from '../controllers/superAdminController.js';
@@ -62,11 +64,13 @@ router.post('/users/:id/reset-password', resetUserPassword);
 router.get('/analytics/dashboard', getDashboardAnalytics);
 router.get('/analytics/colleges-comparison', getCollegeAnalyticsComparison);
 router.get('/analytics/users', getUserAnalytics);
+router.get('/analytics/export', exportAnalytics);
 
 // =====================
 // AUDIT LOGS
 // =====================
 router.get('/audit-logs', getAuditLogs);
+router.get('/audit-logs/export', exportAuditLogs);
 router.get('/audit-logs/user/:userId', getUserActivityLog);
 
 // =====================
