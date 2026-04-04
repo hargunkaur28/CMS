@@ -20,9 +20,16 @@ import { createAndEmitNotification, getRolePathPrefix } from "../services/notifi
  */
 export const getAnnouncements = async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?._id;
+    const user = (req as any).user;
     const { targetAudience } = req.query;
-    let query: any = { senderId: userId };
+    let query: any;
+
+    if (["COLLEGE_ADMIN", "SUPER_ADMIN"].includes(user?.role)) {
+      query = { collegeId: user?.collegeId };
+    } else {
+      query = { senderId: user?._id };
+    }
+
     if (targetAudience) query.targetAudience = targetAudience;
 
     const announcements = await Announcement.find(query)
@@ -42,11 +49,14 @@ export const getAnnouncements = async (req: Request, res: Response) => {
 export const createAnnouncement = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { title, content, targetAudience, targetClass, type: annType } = req.body;
+    const { title, content, targetAudience, targetClass, type: annType, body } = req.body;
+    const announcementText = String(content || body || "");
 
     const announcement = new Announcement({
       ...req.body,
+      body: announcementText,
       senderId: user._id,
+      collegeId: user.collegeId,
     });
     await announcement.save();
 
@@ -91,7 +101,7 @@ export const createAnnouncement = async (req: Request, res: Response) => {
           recipients.map(r => ({ userId: r._id, role: r.role })),
           {
             title: `Announcement: ${title}`,
-            message: content.length > 100 ? content.substring(0, 97) + "..." : content,
+            message: announcementText.length > 100 ? announcementText.substring(0, 97) + "..." : announcementText,
             type: annType === "urgent" ? "alert" : "announcement",
             senderUserId: user._id,
             collegeId: user.collegeId,
@@ -624,6 +634,23 @@ export const markNotificationAsRead = async (req: Request, res: Response) => {
       { $set: { isRead: true } }
     );
 
+    res.status(200).json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * PUT /notifications/read-all
+ * Mark all personal notifications as read
+ */
+export const markAllNotificationsAsRead = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?._id;
+    await Notification.updateMany(
+      { recipientUserId: userId, isRead: false },
+      { $set: { isRead: true } }
+    );
     res.status(200).json({ success: true });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

@@ -5,12 +5,26 @@ export interface IUser extends Document {
   name: string;
   email: string;
   password?: string;
-  role: 'SUPER_ADMIN' | 'COLLEGE_ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT';
+  role: 'SUPER_ADMIN' | 'COLLEGE_ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'LIBRARIAN';
   collegeId?: mongoose.Types.ObjectId;
   registrationId?: string;
   isActive: boolean;
   profilePicture?: string;
   phone?: string;
+  mustChangePassword?: boolean;
+  dateOfBirth?: Date;
+  gender?: 'male' | 'female' | 'other';
+  address?: string;
+  enrollmentNumber?: string;
+  course?: string;
+  batch?: string;
+  section?: string;
+  parentName?: string;
+  parentContact?: string;
+  employeeId?: string;
+  department?: string;
+  qualification?: string;
+  joiningDate?: Date;
   authentication: {
     two_factor_enabled: boolean;
     two_factor_method: 'email' | 'sms' | 'authenticator_app';
@@ -30,12 +44,26 @@ const UserSchema: Schema = new Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT', 'PARENT'], required: true },
+  role: { type: String, enum: ['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT', 'PARENT', 'LIBRARIAN'], required: true },
   collegeId: { type: Schema.Types.ObjectId, ref: 'College' },
   registrationId: { type: String, unique: true, sparse: true },
   isActive: { type: Boolean, default: true },
   profilePicture: { type: String },
   phone: { type: String },
+  mustChangePassword: { type: Boolean, default: false },
+  dateOfBirth: { type: Date },
+  gender: { type: String, enum: ['male', 'female', 'other'] },
+  address: { type: String },
+  enrollmentNumber: { type: String },
+  course: { type: String },
+  batch: { type: String },
+  section: { type: String },
+  parentName: { type: String },
+  parentContact: { type: String },
+  employeeId: { type: String },
+  department: { type: String },
+  qualification: { type: String },
+  joiningDate: { type: Date },
   authentication: {
     two_factor_enabled: { type: Boolean, default: false },
     two_factor_method: { type: String, enum: ['email', 'sms', 'authenticator_app'], default: 'email' },

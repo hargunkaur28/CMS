@@ -30,8 +30,8 @@ const uploadCsv = multer({ dest: "uploads/temp/" }); // Direct multer for CSV
 
 // --- Directory & Stats ---
 router.get("/me", protect, getMyStudent);
-router.get("/", getStudents);
-router.get("/stats", getStudentStats);
+router.get("/", protect, getStudents);
+router.get("/stats", protect, getStudentStats);
 router.get("/timetable", protect, timetableController.getStudentTimetable);
 router.get("/timetable/today", protect, timetableController.getStudentTodaySchedule);
 router.get("/me/fees", protect, getMyFees);
@@ -48,14 +48,14 @@ router.post("/messages", protect, communicationController.sendMessage);
 router.put("/messages/:messageId/read", protect, communicationController.markAsRead);
 router.get("/messages/:otherUserId", protect, communicationController.getConversation);
 
-router.get("/:id", getStudentById);
+router.get("/:id", protect, getStudentById);
 
 // --- CRUD ---
-router.post("/", createStudent);
-router.patch("/:id", updateStudent);
+router.post("/", protect, createStudent);
+router.patch("/:id", protect, updateStudent);
 
 // --- Imports & Media ---
-router.post("/import", uploadCsv.single("file"), bulkImportStudents);
+router.post("/import", protect, uploadCsv.single("file"), bulkImportStudents);
 router.post("/:id/photo", uploadPhoto.single("photo"), uploadStudentPhoto);
 router.post("/upload-docs", uploadDocument.array("files", 5), uploadDocs);
 

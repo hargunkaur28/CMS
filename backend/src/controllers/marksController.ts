@@ -20,14 +20,16 @@ export const getAssignedExams = async (req: Request, res: Response) => {
       return res.status(404).json({ success: false, message: 'Faculty profile not found' });
     }
 
-    const assignedSubjectIds = faculty.assignedSubjects.map(a => a.subjectId);
+    const assignedSubjectIds = faculty.assignedSubjects.map((a: any) => a.subjectId).filter(Boolean);
 
     // Filter exams to only those belonging to assigned subjects
-    const exams = await Exam.find({ 
+    const exams = await Exam.find({
       collegeId,
-      subjectId: { $in: assignedSubjectIds },
-      status: 'active' 
-    }).populate('subjectId', 'name code');
+      subjects: { $in: assignedSubjectIds },
+      status: { $in: ['SCHEDULED', 'PUBLISHED'] }
+    })
+      .populate('subjects', 'name code')
+      .sort({ scheduleDate: -1 });
 
     res.status(200).json({ success: true, data: exams });
   } catch (error: any) {

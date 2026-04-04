@@ -16,10 +16,22 @@ import { syncSingleResult, syncBulkResults } from "../services/resultService.js"
  */
 export const createExam = async (req: Request, res: Response) => {
   try {
+    const userRole = (req as any).user?.role;
+    const userCollegeId = (req as any).user?.collegeId;
+    const bodyCollegeId = req.body.collegeId;
+
+    // For college admins, enforce their collegeId
+    const finalCollegeId = userRole === 'COLLEGE_ADMIN' ? userCollegeId : bodyCollegeId;
+
+    if (!finalCollegeId) {
+      return res.status(400).json({ success: false, message: 'collegeId is required' });
+    }
+
     const exam = new Exam({
       ...req.body,
+      collegeId: finalCollegeId,
       status: 'DRAFT',
-      createdBy: (req as any).user?._id // Assuming authMiddleware attaches user
+      createdBy: (req as any).user?._id
     });
     await exam.save();
     res.status(201).json({ success: true, data: exam, message: "Exam created as DRAFT" });
@@ -34,12 +46,18 @@ export const createExam = async (req: Request, res: Response) => {
  */
 export const getExams = async (req: Request, res: Response) => {
   try {
-    const { collegeId, status, courseId } = req.query;
+    const { status, courseId } = req.query;
+    const userRole = (req as any).user?.role;
+    const userCollegeId = (req as any).user?.collegeId;
     const query: any = {};
     
     const isValidObjectId = (id: any) => mongoose.Types.ObjectId.isValid(id);
 
-    if (collegeId && isValidObjectId(collegeId)) query.collegeId = collegeId;
+    // For college admins, enforce their collegeId
+    if (userRole === 'COLLEGE_ADMIN' && userCollegeId) {
+      query.collegeId = userCollegeId;
+    }
+
     if (status && status !== 'undefined') query.status = status;
     if (courseId && isValidObjectId(courseId)) query.courses = courseId;
 
@@ -56,10 +74,20 @@ export const getExams = async (req: Request, res: Response) => {
  */
 export const getExamById = async (req: Request, res: Response) => {
   try {
+    const userRole = (req as any).user?.role;
+    const userCollegeId = (req as any).user?.collegeId;
+    
     const exam = await Exam.findById(req.params.examId)
       .populate("courses", "name code")
       .populate("subjects", "name code");
+    
     if (!exam) return res.status(404).json({ success: false, message: "Exam not found" });
+    
+    // For college admins, verify they own this exam's college
+    if (userRole === 'COLLEGE_ADMIN' && String(exam.collegeId) !== String(userCollegeId)) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+    
     res.status(200).json({ success: true, data: exam });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -72,9 +100,19 @@ export const getExamById = async (req: Request, res: Response) => {
  */
 export const updateExam = async (req: Request, res: Response) => {
   try {
-    const exam = await Exam.findByIdAndUpdate(req.params.examId, req.body, { new: true });
+    const userRole = (req as any).user?.role;
+    const userCollegeId = (req as any).user?.collegeId;
+    
+    const exam = await Exam.findById(req.params.examId);
     if (!exam) return res.status(404).json({ success: false, message: "Exam not found" });
-    res.status(200).json({ success: true, data: exam, message: "Exam updated successfully" });
+    
+    // For college admins, verify they own this exam's college
+    if (userRole === 'COLLEGE_ADMIN' && String(exam.collegeId) !== String(userCollegeId)) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+    
+    const updatedExam = await Exam.findByIdAndUpdate(req.params.examId, req.body, { new: true });
+    res.status(200).json({ success: true, data: updatedExam, message: "Exam updated successfully" });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -86,13 +124,24 @@ export const updateExam = async (req: Request, res: Response) => {
  */
 export const scheduleExam = async (req: Request, res: Response) => {
   try {
-    const exam = await Exam.findByIdAndUpdate(
+    const userRole = (req as any).user?.role;
+    const userCollegeId = (req as any).user?.collegeId;
+    
+    const exam = await Exam.findById(req.params.examId);
+    if (!exam) return res.status(404).json({ success: false, message: "Exam not found" });
+    
+    // For college admins, verify they own this exam's college
+    if (userRole === 'COLLEGE_ADMIN' && String(exam.collegeId) !== String(userCollegeId)) {
+      return res.status(403).json({ success: false, message: "Access denied" });
+    }
+    
+    const scheduledExam = await Exam.findByIdAndUpdate(
       req.params.examId,
       { status: 'SCHEDULED' },
       { new: true }
     );
-    if (!exam) return res.status(404).json({ success: false, message: "Exam not found" });
-    res.status(200).json({ success: true, data: exam, message: "Exam scheduled successfully" });
+    if (!scheduledExam) return res.status(404).json({ success: false, message: "Exam not found" });
+    res.status(200).json({ success: true, data: scheduledExam, message: "Exam scheduled successfully" });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
   }

@@ -81,10 +81,19 @@ export const getMyStudents = async (req: Request, res: Response) => {
  */
 export const getStudentProfile = async (req: Request, res: Response) => {
   try {
-    const { studentId } = req.params;
+    const rawStudentId = req.params.studentId;
+    const studentId = Array.isArray(rawStudentId) ? rawStudentId[0] : rawStudentId;
+    const user = (req as any).user;
 
     // Strict field selection to strip sensitive info
-    const student = await Student.findById(studentId)
+    const query: any = { collegeId: user?.collegeId };
+    if (mongoose.Types.ObjectId.isValid(studentId)) {
+      query.$or = [{ _id: studentId }, { uniqueStudentId: studentId }];
+    } else {
+      query.uniqueStudentId = studentId;
+    }
+
+    const student = await Student.findOne(query)
       .select('personalInfo academicInfo academicHistory parentInfo')
       .populate('userId', 'email name');
 

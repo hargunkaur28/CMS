@@ -33,6 +33,7 @@ export const createLibrarian = async (req: AuthRequest, res: Response) => {
       role: 'LIBRARIAN',
       collegeId,
       isActive: true,
+      mustChangePassword: true,
     });
 
     // Create optional Librarian profile

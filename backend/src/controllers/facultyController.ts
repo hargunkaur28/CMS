@@ -69,7 +69,8 @@ export const createFaculty = async (req: Request, res: Response) => {
       email: personalInfo.email,
       password: "Welcome@Faculty", // Should be changed on first login
       role: "TEACHER",
-      collegeId: finalCollegeId
+      collegeId: finalCollegeId,
+      mustChangePassword: true,
     });
     await user.save();
 

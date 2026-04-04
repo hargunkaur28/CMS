@@ -13,6 +13,8 @@ interface AuthRequest extends Request {
   user?: any;
 }
 
+const PASSWORD_CHANGE_ROLES = new Set(['STUDENT', 'TEACHER', 'PARENT', 'LIBRARIAN']);
+
 // =====================
 // COLLEGE MANAGEMENT
 // =====================
@@ -55,8 +57,50 @@ export const createCollege = async (req: AuthRequest, res: Response) => {
 
     await college.save();
 
+    if (!college.adminId && college.email) {
+      const normalizedEmail = String(college.email).trim().toLowerCase();
+      const existingAdmin = await User.findOne({ email: normalizedEmail });
+
+      if (!existingAdmin) {
+        const createdAdmin = await User.create({
+          name: `${String(college.name || 'College').trim()} Admin`,
+          email: normalizedEmail,
+          password: 'ChangeMe123!',
+          role: 'COLLEGE_ADMIN',
+          collegeId: college._id,
+          phone: college.phone,
+          isActive: true,
+          authentication: {
+            two_factor_enabled: false,
+            two_factor_method: 'email',
+            login_count: 0,
+            failed_login_attempts: 0
+          }
+        });
+
+        college.adminId = createdAdmin._id as any;
+        await college.save();
+      }
+    }
+
     // Log audit
-    await logAudit(req.user?.id || 'unknown', 'CREATE', 'College', college._id.toString());
+    await logAudit(
+      req.user?.id || 'unknown',
+      'CREATE',
+      'College',
+      college._id.toString(),
+      'success',
+      undefined,
+      {
+        summary: 'College created',
+        created: {
+          name: college.name,
+          code: college.code,
+          email: college.email,
+          status: college.status
+        }
+      }
+    );
 
     res.status(201).json({ success: true, data: college, message: 'College created successfully' });
   } catch (error: any) {
@@ -125,34 +169,172 @@ export const updateCollege = async (req: AuthRequest, res: Response) => {
     }
 
     const oldData = college.toObject();
+    const updateData: Record<string, any> = {};
 
-    if (code && code !== college.code) {
-      const existing = await College.findOne({ code });
-      if (existing) {
-        return res.status(400).json({ success: false, message: 'College code already exists' });
+    if (typeof code === 'string') {
+      const trimmedCode = code.trim();
+      if (!trimmedCode) {
+        return res.status(400).json({ success: false, message: 'College code is required' });
       }
-      college.code = code;
+      if (trimmedCode !== college.code) {
+        const existing = await College.findOne({ code: trimmedCode, _id: { $ne: collegeId } });
+        if (existing) {
+          return res.status(400).json({ success: false, message: 'College code already exists' });
+        }
+      }
+      updateData.code = trimmedCode;
     }
 
-    if (name) college.name = name;
-    if (email) college.email = email;
-    if (phone) college.phone = phone;
-    if (website) college.website = website;
-    if (location) college.location = { ...college.location, ...location };
-    if (adminId) college.adminId = adminId;
-    if (subscription) college.subscription = { ...college.subscription, ...subscription };
-    if (settings) college.settings = { ...college.settings, ...settings };
-    if (status) college.status = status;
-    if (typeof is_verified === 'boolean') college.is_verified = is_verified;
+    if (typeof name === 'string') {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        return res.status(400).json({ success: false, message: 'College name is required' });
+      }
+      updateData.name = trimmedName;
+    }
 
-    await college.save();
+    if (typeof email === 'string') {
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail) {
+        return res.status(400).json({ success: false, message: 'College email is required' });
+      }
+      updateData.email = trimmedEmail;
+    }
+
+    if (typeof phone === 'string') {
+      const trimmedPhone = phone.trim();
+      if (!trimmedPhone) {
+        return res.status(400).json({ success: false, message: 'College phone is required' });
+      }
+      updateData.phone = trimmedPhone;
+    }
+
+    if (typeof website === 'string') {
+      updateData.website = website.trim();
+    }
+
+    if (location && typeof location === 'object') {
+      updateData.location = { ...college.location, ...location };
+    }
+
+    if (adminId) {
+      updateData.adminId = adminId;
+    }
+
+    if (subscription && typeof subscription === 'object') {
+      updateData.subscription = { ...college.subscription, ...subscription };
+    }
+
+    if (settings && typeof settings === 'object') {
+      updateData.settings = { ...college.settings, ...settings };
+    }
+
+    if (typeof status === 'string') {
+      const normalizedStatus = status.trim();
+      if (!['active', 'inactive', 'suspended'].includes(normalizedStatus)) {
+        return res.status(400).json({ success: false, message: 'Invalid college status' });
+      }
+      updateData.status = normalizedStatus;
+    }
+
+    if (typeof is_verified === 'boolean') {
+      updateData.is_verified = is_verified;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.json({ success: true, data: college, message: 'No changes to update' });
+    }
+
+    const updatedCollege = await College.findByIdAndUpdate(
+      collegeId,
+      { $set: updateData },
+      { new: true, runValidators: true, context: 'query' }
+    );
+
+    if (!updatedCollege) {
+      return res.status(404).json({ success: false, message: 'College not found' });
+    }
+
+    // Keep linked college admin user in sync when core college contact data changes.
+    const shouldSyncAdminUser = typeof email === 'string' || typeof phone === 'string' || typeof name === 'string' || !!adminId;
+    if (shouldSyncAdminUser) {
+      let resolvedAdminId: any = updateData.adminId || updatedCollege.adminId;
+
+      if (!resolvedAdminId) {
+        const fallbackAdmin = await User.findOne({ collegeId: updatedCollege._id, role: 'COLLEGE_ADMIN' }).select('_id');
+        resolvedAdminId = fallbackAdmin?._id;
+      }
+
+      if (resolvedAdminId) {
+        const adminUser = await User.findOne({ _id: resolvedAdminId, role: 'COLLEGE_ADMIN' });
+        if (adminUser) {
+          if (typeof email === 'string') {
+            const normalizedEmail = email.trim().toLowerCase();
+            if (normalizedEmail && normalizedEmail !== String(adminUser.email || '').toLowerCase()) {
+              const existingUser = await User.findOne({ email: normalizedEmail, _id: { $ne: adminUser._id } });
+              if (existingUser) {
+                return res.status(400).json({ success: false, message: 'College admin email already in use' });
+              }
+              adminUser.email = normalizedEmail;
+            }
+          }
+
+          if (typeof phone === 'string') {
+            adminUser.phone = phone.trim();
+          }
+
+          if (typeof name === 'string' && name.trim()) {
+            adminUser.name = `${name.trim()} Admin`;
+          }
+
+          if (typeof status === 'string') {
+            adminUser.isActive = status.trim() === 'active';
+          }
+
+          await adminUser.save();
+        }
+      } else if (typeof email === 'string' && email.trim()) {
+        const normalizedEmail = email.trim().toLowerCase();
+        const existingUser = await User.findOne({ email: normalizedEmail });
+
+        if (!existingUser) {
+          const createdAdmin = await User.create({
+            name: `${String(name || updatedCollege.name || 'College').trim()} Admin`,
+            email: normalizedEmail,
+            password: 'ChangeMe123!',
+            role: 'COLLEGE_ADMIN',
+            collegeId: updatedCollege._id,
+            phone: typeof phone === 'string' ? phone.trim() : undefined,
+            isActive: typeof status === 'string' ? status.trim() === 'active' : true,
+            authentication: {
+              two_factor_enabled: false,
+              two_factor_method: 'email',
+              login_count: 0,
+              failed_login_attempts: 0
+            }
+          });
+
+          updatedCollege.adminId = createdAdmin._id as any;
+          await updatedCollege.save();
+        }
+      }
+    }
 
     // Log audit
-    const changes = { before: oldData, after: college.toObject() };
-    await logAudit(req.user?.id || 'unknown', 'UPDATE', 'College', college._id.toString(), 'success', undefined, changes);
+    const changes = await summarizeObjectChanges(oldData, updatedCollege.toObject());
+    await logAudit(req.user?.id || 'unknown', 'UPDATE', 'College', updatedCollege._id.toString(), 'success', undefined, changes);
 
-    res.json({ success: true, data: college, message: 'College updated successfully' });
+    res.json({ success: true, data: updatedCollege, message: 'College updated successfully' });
   } catch (error: any) {
+    if (error?.code === 11000) {
+      const duplicateField = Object.keys(error?.keyPattern || {})[0] || 'field';
+      return res.status(400).json({ success: false, message: `${duplicateField} already exists` });
+    }
+
+    if (error?.name === 'ValidationError') {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+
     await logAudit(req.user?.id || 'unknown', 'UPDATE', 'College', (Array.isArray(req.params.id) ? req.params.id[0] : req.params.id), 'failure', error.message);
     res.status(500).json({ success: false, message: error.message });
   }
@@ -167,7 +349,23 @@ export const deleteCollege = async (req: AuthRequest, res: Response) => {
     }
 
     // Log audit
-    await logAudit(req.user?.id || 'unknown', 'DELETE', 'College', collegeId);
+    await logAudit(
+      req.user?.id || 'unknown',
+      'DELETE',
+      'College',
+      collegeId,
+      'success',
+      undefined,
+      {
+        summary: 'College deleted',
+        deleted: {
+          name: college.name,
+          code: college.code,
+          email: college.email,
+          status: college.status
+        }
+      }
+    );
 
     res.json({ success: true, message: 'College deleted successfully' });
   } catch (error: any) {
@@ -377,15 +575,39 @@ export const getUserById = async (req: AuthRequest, res: Response) => {
 
 export const createUser = async (req: AuthRequest, res: Response) => {
   try {
-    const { name, email, password, role, collegeId, phone, studentIds, relation } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      collegeId,
+      phone,
+      profilePicture,
+      dateOfBirth,
+      gender,
+      address,
+      enrollmentNumber,
+      course,
+      batch,
+      section,
+      parentName,
+      parentContact,
+      employeeId,
+      department,
+      qualification,
+      joiningDate,
+      studentIds,
+      relation
+    } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
     const normalizedRole = String(role || '').trim().toUpperCase();
-    if (!name || !email || !password || !normalizedRole) {
+    if (!name || !normalizedEmail || !password || !normalizedRole) {
       return res.status(400).json({ success: false, message: 'name, email, password and role are required' });
     }
 
@@ -402,11 +624,26 @@ export const createUser = async (req: AuthRequest, res: Response) => {
 
     const user = new User({
       name,
-      email,
+      email: normalizedEmail,
       password,
       role: normalizedRole,
       collegeId: collegeId || undefined,
       phone,
+      profilePicture,
+      dateOfBirth,
+      gender,
+      address,
+      enrollmentNumber,
+      course,
+      batch,
+      section,
+      parentName,
+      parentContact,
+      employeeId,
+      department,
+      qualification,
+      joiningDate,
+      mustChangePassword: PASSWORD_CHANGE_ROLES.has(normalizedRole),
       authentication: {
         two_factor_enabled: false,
         two_factor_method: 'email',
@@ -429,8 +666,24 @@ export const createUser = async (req: AuthRequest, res: Response) => {
     }
 
     // Log audit
-
-    await logAudit(req.user?.id || 'unknown', 'CREATE', 'User', user._id.toString());
+    await logAudit(
+      req.user?.id || 'unknown',
+      'CREATE',
+      'User',
+      user._id.toString(),
+      'success',
+      undefined,
+      {
+        summary: 'User account created',
+        created: {
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          collegeId: user.collegeId || null,
+          isActive: user.isActive
+        }
+      }
+    );
     const userResponse = user.toObject();
     delete userResponse.password;
 
@@ -444,7 +697,33 @@ export const createUser = async (req: AuthRequest, res: Response) => {
 export const updateUser = async (req: AuthRequest, res: Response) => {
   try {
     const userId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { name, email, role, phone, isActive } = req.body;
+    const {
+      name,
+      email,
+      role,
+      phone,
+      profilePicture,
+      collegeId,
+      dateOfBirth,
+      gender,
+      address,
+      enrollmentNumber,
+      course,
+      batch,
+      section,
+      parentName,
+      parentContact,
+      employeeId,
+      department,
+      qualification,
+      joiningDate,
+      isActive
+    } = req.body;
+
+    const uploadedProfilePictureUrl = getUploadedFileUrl(req as any);
+    const parsedIsActive = typeof isActive === 'string'
+      ? isActive.toLowerCase() === 'true'
+      : isActive;
 
     const user = await User.findById(userId);
     if (!user) {
@@ -453,23 +732,66 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
 
     const oldData = user.toObject();
 
-    if (email && email !== user.email) {
-      const existing = await User.findOne({ email });
+    if (typeof email === 'string' && email.trim() && email.trim().toLowerCase() !== String(user.email || '').toLowerCase()) {
+      const normalizedEmail = email.trim().toLowerCase();
+      const existing = await User.findOne({ email: normalizedEmail, _id: { $ne: user._id } });
       if (existing) {
         return res.status(400).json({ success: false, message: 'Email already in use' });
       }
-      user.email = email;
+      user.email = normalizedEmail;
     }
 
-    if (name) user.name = name;
-    if (role) user.role = role;
-    if (phone) user.phone = phone;
-    if (typeof isActive === 'boolean') user.isActive = isActive;
+    const normalizedRole = typeof role === 'string' ? role.trim().toUpperCase() : undefined;
+
+    if (typeof name === 'string') user.name = name;
+    if (normalizedRole) user.role = normalizedRole as any;
+    if (typeof phone === 'string') user.phone = phone;
+    if (uploadedProfilePictureUrl) {
+      user.profilePicture = uploadedProfilePictureUrl;
+    } else if (typeof profilePicture === 'string') {
+      const cleanedPicture = profilePicture.trim();
+      if (cleanedPicture.startsWith('data:image/')) {
+        return res.status(400).json({ success: false, message: 'Base64 profile pictures are not allowed. Upload an image file instead.' });
+      }
+      user.profilePicture = cleanedPicture || undefined;
+    }
+    if (typeof collegeId !== 'undefined') user.collegeId = collegeId || undefined;
+    if (typeof dateOfBirth !== 'undefined') user.dateOfBirth = dateOfBirth || undefined;
+    if (typeof gender !== 'undefined') user.gender = gender || undefined;
+    if (typeof address === 'string' || address === null) user.address = address || undefined;
+    if (typeof enrollmentNumber === 'string' || enrollmentNumber === null) user.enrollmentNumber = enrollmentNumber || undefined;
+    if (typeof course === 'string' || course === null) user.course = course || undefined;
+    if (typeof batch === 'string' || batch === null) user.batch = batch || undefined;
+    if (typeof section === 'string' || section === null) user.section = section || undefined;
+    if (typeof parentName === 'string' || parentName === null) user.parentName = parentName || undefined;
+    if (typeof parentContact === 'string' || parentContact === null) user.parentContact = parentContact || undefined;
+    if (typeof employeeId === 'string' || employeeId === null) user.employeeId = employeeId || undefined;
+    if (typeof department === 'string' || department === null) user.department = department || undefined;
+    if (typeof qualification === 'string' || qualification === null) user.qualification = qualification || undefined;
+    if (typeof joiningDate !== 'undefined') user.joiningDate = joiningDate || undefined;
+    if (typeof parsedIsActive === 'boolean') user.isActive = parsedIsActive;
+
+    const effectiveRole = String((normalizedRole || user.role || '')).toUpperCase();
+    if (!PASSWORD_CHANGE_ROLES.has(effectiveRole)) {
+      user.mustChangePassword = false;
+    }
 
     await user.save();
 
+    // If role/status changed, invalidate only the target user's sessions (never the acting admin's session).
+    const requesterId = String(req.user?._id || req.user?.id || '');
+    const targetUserId = String(user._id);
+    const roleChanged = oldData.role !== user.role;
+    const activeChanged = oldData.isActive !== user.isActive;
+    if ((roleChanged || activeChanged) && requesterId && requesterId !== targetUserId) {
+      await Session.updateMany(
+        { userId: user._id, is_active: true },
+        { $set: { is_active: false, last_activity: new Date() } }
+      );
+    }
+
     // Log audit
-    const changes = { before: oldData, after: user.toObject() };
+    const changes = await summarizeObjectChanges(oldData, user.toObject());
     await logAudit(req.user?.id || 'unknown', 'UPDATE', 'User', user._id.toString(), 'success', undefined, changes);
 
     const userResponse = user.toObject();
@@ -492,7 +814,23 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
     }
 
     // Log audit
-    await logAudit(req.user?.id || 'unknown', 'DELETE', 'User', userId);
+    await logAudit(
+      req.user?.id || 'unknown',
+      'DELETE',
+      'User',
+      userId,
+      'success',
+      undefined,
+      {
+        summary: 'User account deleted',
+        deleted: {
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          collegeId: user.collegeId || null
+        }
+      }
+    );
 
     res.json({ success: true, message: 'User deleted successfully' });
   } catch (error: any) {
@@ -513,6 +851,7 @@ export const resetUserPassword = async (req: AuthRequest, res: Response) => {
     }
 
     user.password = newPassword;
+  user.mustChangePassword = PASSWORD_CHANGE_ROLES.has(String(user.role || '').toUpperCase());
     await user.save();
 
     // Log audit
@@ -643,9 +982,17 @@ export const getDashboardAnalytics = async (req: AuthRequest, res: Response) => 
   try {
     const totalColleges = await College.countDocuments();
     const totalUsers = await User.countDocuments();
-    const totalStudents = await Student.countDocuments();
-    const totalTeachers = await Faculty.countDocuments();
-    const totalAdmins = await User.countDocuments({ role: 'COLLEGE_ADMIN' });
+    const usersByRole = await User.aggregate([
+      { $group: { _id: '$role', count: { $sum: 1 } } }
+    ]);
+    const roleMap = usersByRole.reduce((acc: Record<string, number>, current: any) => {
+      acc[String(current._id || '').toUpperCase()] = Number(current.count || 0);
+      return acc;
+    }, {} as Record<string, number>);
+
+    const totalStudents = roleMap.STUDENT || 0;
+    const totalTeachers = roleMap.TEACHER || 0;
+    const totalAdmins = roleMap.COLLEGE_ADMIN || 0;
     const activeColleges = await College.countDocuments({ status: 'active' });
     const activeSessions = await Session.countDocuments({
       is_active: true,
@@ -656,15 +1003,6 @@ export const getDashboardAnalytics = async (req: AuthRequest, res: Response) => 
       {
         $group: {
           _id: '$status',
-          count: { $sum: 1 }
-        }
-      }
-    ]);
-
-    const usersByRole = await User.aggregate([
-      {
-        $group: {
-          _id: '$role',
           count: { $sum: 1 }
         }
       }
@@ -694,23 +1032,7 @@ export const getDashboardAnalytics = async (req: AuthRequest, res: Response) => 
 
 export const getCollegeAnalyticsComparison = async (req: AuthRequest, res: Response) => {
   try {
-    const colleges = await College.find({ status: 'active' }).limit(10);
-
-    const analyticsData = await Promise.all(
-      colleges.map(async (college) => {
-        const studentCount = await Student.countDocuments({ collegeId: college._id });
-        const teacherCount = await Faculty.countDocuments({ collegeId: college._id });
-        const adminCount = await User.countDocuments({ collegeId: college._id, role: 'COLLEGE_ADMIN' });
-
-        return {
-          collegeId: college._id,
-          collegeName: college.name,
-          students: studentCount,
-          teachers: teacherCount,
-          admins: adminCount
-        };
-      })
-    );
+    const analyticsData = await buildCollegeUserMetrics();
 
     res.json({ success: true, data: analyticsData });
   } catch (error: any) {
@@ -734,25 +1056,15 @@ export const getUserAnalytics = async (req: AuthRequest, res: Response) => {
       { $limit: 12 }
     ]);
 
-    const usersByCollege = await User.aggregate([
-      { $match: { role: { $ne: 'SUPER_ADMIN' } } },
-      {
-        $group: {
-          _id: '$collegeId',
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $lookup: {
-          from: 'colleges',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'college'
-        }
-      },
-      { $unwind: '$college' },
-      { $limit: 10 }
-    ]);
+    const collegeMetrics = await buildCollegeUserMetrics();
+    const usersByCollege = collegeMetrics.map((college: any) => ({
+      _id: college.collegeId,
+      count: (college.students || 0) + (college.teachers || 0) + (college.admins || 0),
+      college: {
+        _id: college.collegeId,
+        name: college.collegeName,
+      }
+    }));
 
     res.json({
       success: true,
@@ -780,10 +1092,21 @@ export const getAuditLogs = async (req: AuthRequest, res: Response) => {
     if (action) filter.action = action;
     if (resource_type) filter.resource_type = resource_type;
     if (search) {
+      const searchRegex = { $regex: search, $options: 'i' } as any;
+      const matchingUsers = await User.find({
+        $or: [
+          { name: searchRegex },
+          { email: searchRegex }
+        ]
+      }).select('_id');
+
+      const matchingUserIds = matchingUsers.map((user) => user._id);
       filter.$or = [
-        { resource_type: { $regex: search, $options: 'i' } },
-        { resource_id: { $regex: search, $options: 'i' } },
-        { error_message: { $regex: search, $options: 'i' } }
+        { resource_type: searchRegex },
+        { resource_id: searchRegex },
+        { action: searchRegex },
+        { error_message: searchRegex },
+        { userId: { $in: matchingUserIds } }
       ];
     }
 
@@ -819,10 +1142,21 @@ export const exportAuditLogs = async (req: AuthRequest, res: Response) => {
     if (action) filter.action = action;
     if (resource_type) filter.resource_type = resource_type;
     if (search) {
+      const searchRegex = { $regex: search, $options: 'i' } as any;
+      const matchingUsers = await User.find({
+        $or: [
+          { name: searchRegex },
+          { email: searchRegex }
+        ]
+      }).select('_id');
+
+      const matchingUserIds = matchingUsers.map((user) => user._id);
       filter.$or = [
-        { resource_type: { $regex: search, $options: 'i' } },
-        { resource_id: { $regex: search, $options: 'i' } },
-        { error_message: { $regex: search, $options: 'i' } },
+        { resource_type: searchRegex },
+        { resource_id: searchRegex },
+        { action: searchRegex },
+        { error_message: searchRegex },
+        { userId: { $in: matchingUserIds } },
       ];
     }
 
@@ -831,7 +1165,7 @@ export const exportAuditLogs = async (req: AuthRequest, res: Response) => {
       .sort({ timestamp: -1 })
       .lean();
 
-    const headers = ['Timestamp', 'User', 'Email', 'Role', 'Action', 'Resource Type', 'Resource ID', 'Status', 'Error Message'];
+    const headers = ['Timestamp', 'User', 'Email', 'Role', 'Action', 'Resource Type', 'Resource ID', 'Status', 'Error Message', 'Change Details'];
     const rows = logs.map((log: any) => [
       escapeCsv(log.timestamp ? new Date(log.timestamp).toISOString() : ''),
       escapeCsv(log.userId?.name || ''),
@@ -842,6 +1176,7 @@ export const exportAuditLogs = async (req: AuthRequest, res: Response) => {
       escapeCsv(log.resource_id || ''),
       escapeCsv(log.status || ''),
       escapeCsv(log.error_message || ''),
+      escapeCsv(log.change_details ? JSON.stringify(log.change_details) : ''),
     ]);
 
     const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
@@ -855,29 +1190,32 @@ export const exportAuditLogs = async (req: AuthRequest, res: Response) => {
 
 export const exportAnalytics = async (req: AuthRequest, res: Response) => {
   try {
-    const colleges = await College.find({ status: 'active' }).sort({ name: 1 }).lean();
+    const comparison = await buildCollegeUserMetrics();
+    const collegesById = await College.find({ status: 'active' }).select('name code').lean();
+    const codeMap = new Map(collegesById.map((college: any) => [String(college._id), college.code || '']));
 
-    const comparisonRows = await Promise.all(colleges.map(async (college: any) => {
-      const studentCount = await Student.countDocuments({ collegeId: college._id });
-      const teacherCount = await Faculty.countDocuments({ collegeId: college._id });
-      const adminCount = await User.countDocuments({ collegeId: college._id, role: 'COLLEGE_ADMIN' });
-
-      return [
-        escapeCsv(college.name || ''),
-        escapeCsv(String(college.code || '')),
-        String(studentCount),
-        String(teacherCount),
-        String(adminCount),
-        String(studentCount + teacherCount + adminCount),
-      ];
-    }));
+    const comparisonRows = comparison.map((college: any) => [
+      escapeCsv(college.collegeName || ''),
+      escapeCsv(String(codeMap.get(String(college.collegeId)) || '')),
+      String(college.students || 0),
+      String(college.teachers || 0),
+      String(college.admins || 0),
+      String((college.students || 0) + (college.teachers || 0) + (college.admins || 0)),
+    ]);
 
     const summaryHeaders = ['Metric', 'Value'];
     const totalColleges = await College.countDocuments();
     const totalUsers = await User.countDocuments();
-    const totalStudents = await Student.countDocuments();
-    const totalTeachers = await Faculty.countDocuments();
-    const totalAdmins = await User.countDocuments({ role: 'COLLEGE_ADMIN' });
+    const usersByRole = await User.aggregate([
+      { $group: { _id: '$role', count: { $sum: 1 } } }
+    ]);
+    const roleMap = usersByRole.reduce((acc: Record<string, number>, current: any) => {
+      acc[String(current._id || '').toUpperCase()] = Number(current.count || 0);
+      return acc;
+    }, {} as Record<string, number>);
+    const totalStudents = roleMap.STUDENT || 0;
+    const totalTeachers = roleMap.TEACHER || 0;
+    const totalAdmins = roleMap.COLLEGE_ADMIN || 0;
 
     const summaryRows = [
       ['Total Colleges', String(totalColleges)],
@@ -935,6 +1273,207 @@ export const getUserActivityLog = async (req: AuthRequest, res: Response) => {
 // =====================
 // HELPER FUNCTIONS
 // =====================
+
+async function buildCollegeUserMetrics() {
+  const activeColleges = await College.find({ status: 'active' }).select('_id name').sort({ name: 1 }).lean();
+  if (!activeColleges.length) {
+    return [];
+  }
+
+  const collegeIds = activeColleges.map((college: any) => college._id);
+  const perCollegeRoleCounts = await User.aggregate([
+    {
+      $match: {
+        collegeId: { $in: collegeIds },
+        role: { $in: ['STUDENT', 'TEACHER', 'COLLEGE_ADMIN'] }
+      }
+    },
+    {
+      $group: {
+        _id: {
+          collegeId: '$collegeId',
+          role: '$role'
+        },
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+
+  const keyedCounts = new Map<string, { students: number; teachers: number; admins: number }>();
+  perCollegeRoleCounts.forEach((entry: any) => {
+    const key = String(entry._id.collegeId);
+    const current = keyedCounts.get(key) || { students: 0, teachers: 0, admins: 0 };
+    const role = String(entry._id.role || '').toUpperCase();
+    if (role === 'STUDENT') current.students = Number(entry.count || 0);
+    if (role === 'TEACHER') current.teachers = Number(entry.count || 0);
+    if (role === 'COLLEGE_ADMIN') current.admins = Number(entry.count || 0);
+    keyedCounts.set(key, current);
+  });
+
+  return activeColleges.map((college: any) => {
+    const counts = keyedCounts.get(String(college._id)) || { students: 0, teachers: 0, admins: 0 };
+    return {
+      collegeId: college._id,
+      collegeName: college.name,
+      students: counts.students,
+      teachers: counts.teachers,
+      admins: counts.admins,
+    };
+  });
+}
+
+function getUploadedFileUrl(req: any) {
+  const file = req?.file;
+  if (!file) return '';
+
+  const filePath = String(file.path || file.url || '').trim();
+  if (!filePath) return '';
+
+  if (/^https?:\/\//i.test(filePath)) {
+    return filePath;
+  }
+
+  const normalized = filePath.replace(/\\/g, '/');
+  const cleaned = normalized.startsWith('/') ? normalized.slice(1) : normalized;
+  const host = req.get('host');
+  if (!host) return cleaned;
+  return `${req.protocol || 'http'}://${host}/${cleaned}`;
+}
+
+async function summarizeObjectChanges(beforeObj: any, afterObj: any) {
+  const before = flattenForDiff(beforeObj || {});
+  const after = flattenForDiff(afterObj || {});
+
+  const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
+  const fields: Array<{ field: string; from: any; to: any }> = [];
+
+  for (const key of keys) {
+    if (isExcludedDiffPath(key)) continue;
+
+    const from = normalizeDiffValue(before[key]);
+    const to = normalizeDiffValue(after[key]);
+    if (from === to) continue;
+
+    fields.push({
+      field: beautifyDiffPath(key),
+      from: await resolveHumanValueForPath(key, from),
+      to: await resolveHumanValueForPath(key, to)
+    });
+  }
+
+  return {
+    summary: fields.length ? `${fields.length} field(s) updated` : 'No value changes detected',
+    fields
+  };
+}
+
+function flattenForDiff(value: any, path = '', output: Record<string, any> = {}) {
+  if (value === null || typeof value === 'undefined') {
+    if (path) output[path] = null;
+    return output;
+  }
+
+  if (Array.isArray(value)) {
+    if (path) output[path] = value.map((item) => normalizeDiffValue(item)).join(', ');
+    return output;
+  }
+
+  if (typeof value !== 'object' || value instanceof Date) {
+    if (path) output[path] = value;
+    return output;
+  }
+
+  const entries = Object.entries(value);
+  if (!entries.length && path) {
+    output[path] = '';
+    return output;
+  }
+
+  for (const [key, nestedValue] of entries) {
+    const nextPath = path ? `${path}.${key}` : key;
+    flattenForDiff(nestedValue, nextPath, output);
+  }
+
+  return output;
+}
+
+function isExcludedDiffPath(path: string) {
+  const excludedPathFragments = [
+    'password',
+    'authentication',
+    '__v',
+    'updatedAt',
+    'createdAt',
+    '_id',
+    'tokens',
+    'session',
+    'permissions.role_based',
+    'permissions.custom_permissions'
+  ];
+
+  return excludedPathFragments.some((fragment) => path === fragment || path.startsWith(`${fragment}.`));
+}
+
+function normalizeDiffValue(value: any) {
+  if (value === null || typeof value === 'undefined') return '';
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string') return value.trim();
+  if (typeof value === 'object') {
+    if (value?._id) return String(value._id);
+    if (value?.name) return String(value.name);
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
+function beautifyDiffPath(path: string) {
+  const explicitLabels: Record<string, string> = {
+    'location.city': 'City',
+    'location.state': 'State',
+    'location.country': 'Country',
+    'location.address': 'Address',
+    'subscription.plan': 'Subscription Plan',
+    'subscription.status': 'Subscription Status',
+    'collegeId': 'College',
+    'adminId': 'College Admin',
+    'role': 'Role',
+    'isActive': 'Status'
+  };
+
+  if (explicitLabels[path]) return explicitLabels[path];
+
+  return path
+    .split('.')
+    .map((chunk) => chunk.replace(/_/g, ' '))
+    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(' > ');
+}
+
+async function resolveHumanValueForPath(path: string, value: any) {
+  const stringValue = String(value || '').trim();
+  if (!stringValue) return '-';
+
+  const normalizedPath = path.toLowerCase();
+  if (normalizedPath.includes('collegeid') || normalizedPath === 'adminid') {
+    if (mongoose.Types.ObjectId.isValid(stringValue)) {
+      if (normalizedPath.includes('collegeid')) {
+        const college = await College.findById(stringValue).select('name').lean();
+        if (college?.name) return college.name;
+      }
+
+      if (normalizedPath === 'adminid') {
+        const admin = await User.findById(stringValue).select('name email').lean();
+        if (admin?.name || admin?.email) return `${admin?.name || 'User'}${admin?.email ? ` (${admin.email})` : ''}`;
+      }
+    }
+  }
+
+  if (normalizedPath === 'isactive') {
+    return ['true', '1'].includes(stringValue.toLowerCase()) ? 'active' : 'inactive';
+  }
+
+  return stringValue;
+}
 
 async function logAudit(
   userId: string | undefined,

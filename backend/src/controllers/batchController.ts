@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import Batch from '../models/Batch.js';
+import { verifyCollegeOwnership } from '../middleware/collegeOwnership.js';
 
 // @desc    Create a new batch
 // @route   POST /api/batches
@@ -10,9 +11,12 @@ export const createBatch = async (req: any, res: Response) => {
     console.log('[CREATE_BATCH] User:', { id: req.user?._id, collegeId: req.user?.collegeId, role: req.user?.role });
 
     const { name, courseId, collegeId, startYear, endYear, currentSemester } = req.body;
+    const role = String(req.user?.role || '').toUpperCase();
     
     // Ensure collegeId is provided (either from body or user context)
-    const effectiveCollegeId = collegeId || req.user.collegeId;
+    const effectiveCollegeId = role === 'SUPER_ADMIN'
+      ? (collegeId || req.user.collegeId)
+      : req.user.collegeId;
     
     if (!effectiveCollegeId) {
       console.warn('[CREATE_BATCH] Missing College ID');
@@ -42,7 +46,10 @@ export const createBatch = async (req: any, res: Response) => {
 export const getBatches = async (req: any, res: Response) => {
   try {
     const { collegeId, courseId } = req.query;
-    const effectiveCollegeId = collegeId || req.user.collegeId;
+    const role = String(req.user?.role || '').toUpperCase();
+    const effectiveCollegeId = role === 'SUPER_ADMIN'
+      ? (collegeId || req.user.collegeId)
+      : req.user.collegeId;
     
     const query: any = {};
     if (effectiveCollegeId) query.collegeId = effectiveCollegeId;
@@ -60,8 +67,15 @@ export const getBatches = async (req: any, res: Response) => {
 // @access  Private
 export const getBatchById = async (req: Request, res: Response) => {
   try {
+    const user = (req as any).user;
+    const role = String(user?.role || '').toUpperCase();
+    const scopedCollegeId = role === 'SUPER_ADMIN' ? ((req.query.collegeId as string) || user?.collegeId) : user?.collegeId;
+
     const batch = await Batch.findById(req.params.id).populate('courseId');
     if (!batch) return res.status(404).json({ message: 'Batch not found' });
+    if (!verifyCollegeOwnership(batch, scopedCollegeId)) {
+      return res.status(403).json({ message: 'Forbidden: Batch does not belong to your college' });
+    }
     res.json(batch);
   } catch (error: any) {
     res.status(500).json({ message: error.message });

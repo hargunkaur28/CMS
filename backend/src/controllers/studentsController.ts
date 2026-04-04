@@ -7,10 +7,34 @@ import Department from "../models/Department.js";
 import { generateStudentId } from "../utils/studentIdGenerator.js";
 import { parseStudentCSV } from "../utils/csvImporter.js";
 import Batch from "../models/Batch.js";
+import Course from "../models/Course.js";
 import FeeStructure from "../models/FeeStructure.js";
 import Payment from "../models/Payment.js";
 
 const DEFAULT_STUDENT_PASSWORD = "Student@123";
+
+const parseBatchYears = (batchRaw: string) => {
+  const currentYear = new Date().getFullYear();
+  const matches = String(batchRaw || "").match(/(19|20)\d{2}/g) || [];
+  const years = matches.map((year) => Number(year));
+
+  if (years.length >= 2) {
+    return { startYear: years[0], endYear: years[1] };
+  }
+
+  if (years.length === 1) {
+    return { startYear: years[0], endYear: years[0] + 3 };
+  }
+
+  return { startYear: currentYear, endYear: currentYear + 3 };
+};
+
+const getCourseCode = (courseName: string, collegeId: any) => {
+  const normalized = String(courseName || "GEN").replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 6) || "GEN";
+  const scope = String(collegeId || "COL").slice(-4).toUpperCase();
+  const stamp = Date.now().toString().slice(-6);
+  return `${normalized}-${scope}-${stamp}`;
+};
 
 const ensureStudentUser = async (params: {
   email: string;
@@ -29,6 +53,7 @@ const ensureStudentUser = async (params: {
       role: "STUDENT",
       collegeId: params.collegeId,
       isActive: true,
+      mustChangePassword: true,
     });
     await user.save();
     return user;
@@ -60,34 +85,50 @@ const ensureStudentUser = async (params: {
 export const getStudents = async (req: Request, res: Response) => {
   try {
     const { course, batch, batchId, department, status, search } = req.query;
-    const collegeId = (req as any).user?.collegeId;
-    
-    const query: any = {};
-    if (collegeId) query.collegeId = collegeId;
+    const user = (req as any).user;
+    const role = String(user?.role || '').toUpperCase();
+    const collegeId = user?.collegeId;
 
-    if (course) query["academicInfo.course"] = course;
-    if (batch) query["academicInfo.batch"] = batch;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Not authorized' });
+    }
+
+    if (!collegeId && role !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, message: 'Missing college scope' });
+    }
+    
+    const andFilters: any[] = [];
+    if (collegeId) andFilters.push({ collegeId });
+
+    if (course) andFilters.push({ "academicInfo.course": course });
+    if (batch) andFilters.push({ "academicInfo.batch": batch });
     if (batchId) {
-      // Robust lookup: check both new batchId (ObjectId) and legacy academicInfo.batch (string)
-      // If batchId looks like a valid ObjectId, use it; otherwise just use the batch string match
+      // Support both ObjectId-linked batches and legacy string batch labels.
       if (mongoose.Types.ObjectId.isValid(batchId as string)) {
-        query.$or = [
-          { batchId: batchId },
-          { "academicInfo.batch": { $regex: new RegExp(batchId as string, 'i') } }
-        ];
+        andFilters.push({
+          $or: [
+            { batchId },
+            { "academicInfo.batch": { $regex: new RegExp(batchId as string, "i") } },
+          ],
+        });
       } else {
-        query["academicInfo.batch"] = batchId;
+        andFilters.push({ "academicInfo.batch": batchId });
       }
     }
-    if (department) query["academicInfo.department"] = department;
-    if (status) query["academicInfo.status"] = status;
+    if (department) andFilters.push({ "academicInfo.department": department });
+    if (status) andFilters.push({ "academicInfo.status": status });
     if (search) {
-      query.$or = [
-        { "personalInfo.firstName": { $regex: search, $options: "i" } },
-        { "personalInfo.lastName": { $regex: search, $options: "i" } },
-        { uniqueStudentId: { $regex: search, $options: "i" } },
-      ];
+      andFilters.push({
+        $or: [
+          { "personalInfo.firstName": { $regex: search, $options: "i" } },
+          { "personalInfo.lastName": { $regex: search, $options: "i" } },
+          { "personalInfo.email": { $regex: search, $options: "i" } },
+          { uniqueStudentId: { $regex: search, $options: "i" } },
+        ],
+      });
     }
+
+    const query = andFilters.length > 0 ? { $and: andFilters } : {};
 
     const students = await Student.find(query).populate("academicInfo.department").sort({ createdAt: -1 });
     res.status(200).json({ success: true, data: students, message: "Students fetched successfully" });
@@ -130,7 +171,9 @@ export const getMyStudent = async (req: Request, res: Response) => {
 
     } else if (user.role === 'PARENT') {
       // For parents, look up via parentInfo email (existing approach)
-      student = await Student.findOne({ "parentInfo.email": user.email })
+      const parentQuery: any = { "parentInfo.email": user.email };
+      if (user.collegeId) parentQuery.collegeId = user.collegeId;
+      student = await Student.findOne(parentQuery)
         .populate("academicInfo.department", "name")
         .select("-documents");
     }
@@ -150,7 +193,12 @@ export const createStudent = async (req: Request, res: Response) => {
   try {
     const studentData = req.body;
     studentData.uniqueStudentId = await generateStudentId();
-    studentData.collegeId = (req as any).user.collegeId;
+    const requestedCollegeId = studentData.collegeId;
+    studentData.collegeId = (req as any).user?.collegeId || requestedCollegeId;
+
+    if (!studentData.collegeId) {
+      return res.status(400).json({ success: false, message: "collegeId is required" });
+    }
 
     const first = String(studentData?.personalInfo?.firstName || "").trim();
     const last = String(studentData?.personalInfo?.lastName || "").trim();
@@ -210,6 +258,9 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
 
     const adminUser = (req as any).user;
     const collegeId = adminUser.collegeId;
+    if (!collegeId) {
+      return res.status(400).json({ success: false, message: "College context is required for import" });
+    }
     
     // Fetch departments for lookup
     const departments = await Department.find({ collegeId });
@@ -264,6 +315,37 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
           throw new Error("Critical Failure: Could not resolve or create any department ID.");
         }
 
+        const courseName = String(getVal(["course", "program"]) || "General").trim();
+        let course = await Course.findOne({ name: courseName, collegeId });
+        if (!course) {
+          course = await Course.create({
+            name: courseName,
+            code: getCourseCode(courseName, collegeId),
+            duration: 4,
+            department: deptId,
+            collegeId,
+            totalSeats: 60,
+            description: "Auto-created during student CSV import",
+          });
+        }
+
+        const batchRaw = String(getVal(["batch", "year"]) || "").trim() || `${new Date().getFullYear()}-${new Date().getFullYear() + 3}`;
+        const { startYear, endYear } = parseBatchYears(batchRaw);
+        const batchName = `${courseName} ${startYear}-${endYear}`;
+
+        let batch = await Batch.findOne({ name: batchName, collegeId });
+        if (!batch) {
+          batch = await Batch.create({
+            name: batchName,
+            courseId: course._id,
+            startYear,
+            endYear,
+            collegeId,
+            status: "active",
+            autoCreated: true,
+          });
+        }
+
         // Force a valid Date or fallback
         const dobStr = getVal(["dob", "date of birth", "birthday"]);
         const dob = (dobStr && !isNaN(Date.parse(dobStr))) ? new Date(dobStr) : new Date();
@@ -289,6 +371,7 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
           uniqueStudentId: uniqueId,
           userId: newUser._id,
           collegeId, // IMPORTANT: Link imported student to the current admin's college
+          batchId: batch._id,
           personalInfo: {
             firstName,
             lastName,
@@ -299,8 +382,8 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
             address: getVal(["address", "home address"]) || "N/A"
           },
           academicInfo: {
-            course: getVal(["course", "program"]) || "General",
-            batch: getVal(["batch", "year"]) || new Date().getFullYear().toString(),
+            course: courseName,
+            batch: batchName,
             department: deptId,
             status: "active",
             semester: 1
@@ -335,10 +418,11 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
 export const uploadStudentPhoto = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const collegeId = (req as any).user?.collegeId;
     if (!req.file && (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY)) {
       // If no file and no cloudinary, or just no cloudinary, we can return a dummy
       const student = await Student.findOneAndUpdate(
-        { uniqueStudentId: id },
+        { uniqueStudentId: id, ...(collegeId ? { collegeId } : {}) },
         { "personalInfo.photo": `http://${req.get('host')}/uploads/temp/demo-avatar.png` },
         { new: true }
       );
@@ -349,7 +433,7 @@ export const uploadStudentPhoto = async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ success: false, message: "No photo uploaded" });
 
     const student = await Student.findOneAndUpdate(
-      { uniqueStudentId: id },
+      { uniqueStudentId: id, ...(collegeId ? { collegeId } : {}) },
       { "personalInfo.photo": req.file.path },
       { new: true }
     );
@@ -363,11 +447,15 @@ export const uploadStudentPhoto = async (req: Request, res: Response) => {
 
 export const getStudentStats = async (req: Request, res: Response) => {
   try {
-    const totalStudents = await Student.countDocuments();
-    const activeStudents = await Student.countDocuments({ "academicInfo.status": "active" });
-    const droppedStudents = await Student.countDocuments({ "academicInfo.status": "dropped" });
+    const collegeId = (req as any).user?.collegeId;
+    const scope: any = collegeId ? { collegeId } : {};
+
+    const totalStudents = await Student.countDocuments(scope);
+    const activeStudents = await Student.countDocuments({ ...scope, "academicInfo.status": "active" });
+    const droppedStudents = await Student.countDocuments({ ...scope, "academicInfo.status": "dropped" });
     
     const newThisMonth = await Student.countDocuments({
+      ...scope,
       createdAt: { $gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1) }
     });
 

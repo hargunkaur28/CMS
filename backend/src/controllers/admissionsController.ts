@@ -27,6 +27,7 @@ const ensureStudentUser = async (params: {
       role: "STUDENT",
       collegeId: params.collegeId,
       isActive: true,
+      mustChangePassword: true,
     });
     await user.save();
     return user;

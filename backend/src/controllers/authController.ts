@@ -7,6 +7,7 @@ import Student from '../models/Student.js';
 
 const DEFAULT_STUDENT_PASSWORD = 'Student@123';
 const STUDENT_LOCKOUT_MS = 15 * 1000;
+const PASSWORD_CHANGE_ROLES = new Set(['STUDENT', 'TEACHER', 'PARENT', 'LIBRARIAN']);
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -45,6 +46,7 @@ export const loginUser = async (req: Request, res: Response) => {
           role: 'STUDENT',
           collegeId: student.collegeId,
           isActive: true,
+          mustChangePassword: true,
         });
         await user.save();
 
@@ -96,6 +98,12 @@ export const loginUser = async (req: Request, res: Response) => {
     user.authentication.account_locked_until = undefined;
     user.authentication.last_login = now;
     user.authentication.login_count = (user.authentication.login_count || 0) + 1;
+
+    const normalizedRole = String(user.role || '').toUpperCase();
+    if (!PASSWORD_CHANGE_ROLES.has(normalizedRole) && user.mustChangePassword) {
+      user.mustChangePassword = false;
+    }
+
     await user.save();
 
     const token = generateToken(user._id as any, user.role, `${sessionTimeoutMinutes}m`);
@@ -110,12 +118,16 @@ export const loginUser = async (req: Request, res: Response) => {
       is_active: true
     });
 
+    const shouldForcePasswordChange = PASSWORD_CHANGE_ROLES.has(normalizedRole) && Boolean(user.mustChangePassword);
+
     return res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
       collegeId: user.collegeId,
+      profilePicture: user.profilePicture || '',
+      mustChangePassword: shouldForcePasswordChange,
       token,
       session_timeout: sessionTimeoutMinutes
     });
@@ -128,15 +140,56 @@ export const getUserProfile = async (req: any, res: Response) => {
   const user = await User.findById(req.user._id);
 
   if (user) {
+    const normalizedRole = String(user.role || '').toUpperCase();
+    const shouldForcePasswordChange = PASSWORD_CHANGE_ROLES.has(normalizedRole) && Boolean(user.mustChangePassword);
+
     res.json({
       _id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
       collegeId: user.collegeId,
+      profilePicture: user.profilePicture || '',
+      mustChangePassword: shouldForcePasswordChange,
     });
   } else {
     res.status(404).json({ message: 'User not found' });
+  }
+};
+
+export const changePassword = async (req: any, res: Response) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'currentPassword and newPassword are required' });
+    }
+
+    if (String(newPassword).length < 6) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.user?._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const isCurrentPasswordValid = await user.matchPassword(String(currentPassword));
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+    }
+
+    if (String(currentPassword) === String(newPassword)) {
+      return res.status(400).json({ success: false, message: 'New password must be different from current password' });
+    }
+
+    user.password = String(newPassword);
+    user.mustChangePassword = false;
+    await user.save();
+
+    return res.status(200).json({ success: true, message: 'Password changed successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || 'Failed to change password' });
   }
 };
 

@@ -6,18 +6,28 @@ import Batch from "../models/Batch.js";
 
 export const getAttendanceOverview = async (req: Request, res: Response) => {
   try {
-    const totalRecords = await Attendance.aggregate([
-      { $unwind: "$records" },
-      {
-         $group: {
-            _id: null,
-            totalStudents: { $sum: 1 },
-            present: { $sum: { $cond: [{ $eq: ["$records.status", "Present"] }, 1, 0] } },
-            absent: { $sum: { $cond: [{ $eq: ["$records.status", "Absent"] }, 1, 0] } },
-            leave: { $sum: { $cond: [{ $eq: ["$records.status", "Leave"] }, 1, 0] } }
-         }
+    const userRole = (req as any).user?.role;
+    const userCollegeId = (req as any).user?.collegeId;
+    
+    const matchStage: any = { $unwind: "$records" };
+    const groupStage: any = {
+      $group: {
+        _id: null,
+        totalStudents: { $sum: 1 },
+        present: { $sum: { $cond: [{ $eq: ["$records.status", "Present"] }, 1, 0] } },
+        absent: { $sum: { $cond: [{ $eq: ["$records.status", "Absent"] }, 1, 0] } },
+        leave: { $sum: { $cond: [{ $eq: ["$records.status", "Leave"] }, 1, 0] } }
       }
-    ]);
+    };
+    
+    const pipeline: any[] = [matchStage, groupStage];
+    
+    // For college admins, enforce their collegeId
+    if (userRole === 'COLLEGE_ADMIN' && userCollegeId) {
+      pipeline.unshift({ $match: { collegeId: userCollegeId } });
+    }
+    
+    const totalRecords = await Attendance.aggregate(pipeline);
 
     const stats = totalRecords[0] || { totalStudents: 0, present: 0, absent: 0, leave: 0 };
     const total = stats.totalStudents || 1; // Prevent div/0
@@ -25,7 +35,9 @@ export const getAttendanceOverview = async (req: Request, res: Response) => {
     res.status(200).json({
       success: true,
       data: {
-        totalRecords: await Attendance.countDocuments(),
+        totalRecords: await Attendance.countDocuments(
+          userRole === 'COLLEGE_ADMIN' && userCollegeId ? { collegeId: userCollegeId } : {}
+        ),
         stats: {
            totalStudents: stats.totalStudents,
            presentPercentage: ((stats.present / total) * 100).toFixed(1),
@@ -42,7 +54,15 @@ export const getAttendanceOverview = async (req: Request, res: Response) => {
 export const getAttendanceReports = async (req: Request, res: Response) => {
   try {
     const { batchId, courseId, startDate, endDate } = req.query;
+    const userRole = (req as any).user?.role;
+    const userCollegeId = (req as any).user?.collegeId;
+    
     let query: any = {};
+    
+    // For college admins, enforce their collegeId
+    if (userRole === 'COLLEGE_ADMIN' && userCollegeId) {
+      query.collegeId = userCollegeId;
+    }
     
     if (batchId) query.batchId = batchId;
     if (startDate && endDate) {

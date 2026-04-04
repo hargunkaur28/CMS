@@ -16,6 +16,7 @@ router.use(protect);
 router.use(authorize('TEACHER'));
 
 // --- My Assignments (Filtered) ---
+router.get('/dashboard', teacherController.getTeacherDashboard);
 router.get('/my-batches', teacherController.getMyBatches);
 router.get('/my-subjects', teacherController.getMySubjects);
 router.get('/subjects', teacherController.getAssignedSubjects);

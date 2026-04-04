@@ -20,4 +20,6 @@ const DepartmentSchema: Schema = new Schema(
   { timestamps: true }
 );
 
+DepartmentSchema.index({ collegeId: 1, name: 1 }, { unique: true });
+
 export default mongoose.model<IDepartment>("Department", DepartmentSchema);

@@ -27,6 +27,7 @@ import {
   updateSystemSettings
 } from '../controllers/superAdminController.js';
 import { protect, authorize } from '../middleware/auth.js';
+import { uploadPhoto } from '../utils/cloudinaryUploader.js';
 
 const router = express.Router();
 
@@ -54,7 +55,7 @@ router.get('/users', getAllUsers);
 router.get('/users/export/csv', exportUsersCsv);
 router.post('/users/bulk-import', bulkImportUsers);
 router.get('/users/:id', getUserById);
-router.put('/users/:id', updateUser);
+router.put('/users/:id', uploadPhoto.single('profilePictureFile'), updateUser);
 router.delete('/users/:id', deleteUser);
 router.post('/users/:id/reset-password', resetUserPassword);
 

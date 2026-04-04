@@ -6,6 +6,7 @@ import Batch from '../models/Batch.js';
 import Subject from '../models/Subject.js';
 import User from '../models/User.js';
 import mongoose from 'mongoose';
+import { verifyCollegeOwnership } from '../middleware/collegeOwnership.js';
 
 /**
  * @desc    Assign a teacher to a subject within a batch
@@ -16,6 +17,7 @@ export const assignTeacher = async (req: Request, res: Response) => {
   try {
     const { teacherId, subjectId, batchId } = req.body;
     const adminUser = (req as any).user;
+    const isSuperAdmin = String(adminUser?.role || '').toUpperCase() === 'SUPER_ADMIN';
 
     if (!teacherId || !subjectId || !batchId) {
       return res.status(400).json({ success: false, message: 'teacherId, subjectId, and batchId are required' });
@@ -33,6 +35,21 @@ export const assignTeacher = async (req: Request, res: Response) => {
     }
     if (!subject) return res.status(404).json({ success: false, message: 'Subject not found' });
     if (!batch) return res.status(404).json({ success: false, message: 'Batch not found' });
+    if (!isSuperAdmin) {
+      if (!verifyCollegeOwnership(teacherUser as any, adminUser?.collegeId)) {
+        return res.status(403).json({ success: false, message: 'Forbidden: Teacher does not belong to your college' });
+      }
+      if (!verifyCollegeOwnership(subject as any, adminUser?.collegeId)) {
+        return res.status(403).json({ success: false, message: 'Forbidden: Subject does not belong to your college' });
+      }
+      if (!verifyCollegeOwnership(batch as any, adminUser?.collegeId)) {
+        return res.status(403).json({ success: false, message: 'Forbidden: Batch does not belong to your college' });
+      }
+    } else {
+      if (String(teacherUser.collegeId || '') !== String(batch.collegeId || '') || String(subject.collegeId || '') !== String(batch.collegeId || '')) {
+        return res.status(400).json({ success: false, message: 'Teacher, subject, and batch must belong to the same college' });
+      }
+    }
 
     // Find or create Faculty profile for this teacher
     let faculty = await Faculty.findOne({ userId: teacherId });
@@ -79,6 +96,8 @@ export const assignTeacher = async (req: Request, res: Response) => {
 export const assignStudentToBatch = async (req: Request, res: Response) => {
   try {
     const { studentId, batchId } = req.body;
+    const adminUser = (req as any).user;
+    const isSuperAdmin = String(adminUser?.role || '').toUpperCase() === 'SUPER_ADMIN';
 
     if (!studentId || !batchId) {
       return res.status(400).json({ success: false, message: 'studentId and batchId are required' });
@@ -91,9 +110,22 @@ export const assignStudentToBatch = async (req: Request, res: Response) => {
 
     if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
     if (!batch) return res.status(404).json({ success: false, message: 'Batch not found' });
+    if (!isSuperAdmin) {
+      if (!verifyCollegeOwnership(student as any, adminUser?.collegeId)) {
+        return res.status(403).json({ success: false, message: 'Forbidden: Student does not belong to your college' });
+      }
+      if (!verifyCollegeOwnership(batch as any, adminUser?.collegeId)) {
+        return res.status(403).json({ success: false, message: 'Forbidden: Batch does not belong to your college' });
+      }
+    } else if (String(student.collegeId || '') !== String(batch.collegeId || '')) {
+      return res.status(400).json({ success: false, message: 'Student and batch must belong to the same college' });
+    }
 
     // Update student's top-level batchId
-    await Student.findByIdAndUpdate(studentId, { batchId });
+    await Student.findOneAndUpdate(
+      { _id: studentId, ...(isSuperAdmin ? {} : { collegeId: adminUser?.collegeId }) },
+      { batchId, collegeId: batch.collegeId }
+    );
 
     // Push to batch.students if not already there
     if (!batch.students.map((s: any) => s.toString()).includes(studentId.toString())) {
@@ -119,9 +151,22 @@ export const assignStudentToBatch = async (req: Request, res: Response) => {
 export const removeTeacherAssignment = async (req: Request, res: Response) => {
   try {
     const { teacherId, subjectId, batchId } = req.body;
+    const adminUser = (req as any).user;
+    const isSuperAdmin = String(adminUser?.role || '').toUpperCase() === 'SUPER_ADMIN';
 
-    const faculty = await Faculty.findOne({ userId: teacherId });
+    const faculty = await Faculty.findOne({ userId: teacherId, ...(isSuperAdmin ? {} : { collegeId: adminUser?.collegeId }) });
     if (!faculty) return res.status(404).json({ success: false, message: 'Faculty profile not found' });
+
+    if (subjectId || batchId) {
+      const hasMatchingAssignment = faculty.assignedSubjects.some(
+        (assignment: any) =>
+          (!subjectId || String(assignment.subjectId) === String(subjectId)) &&
+          (!batchId || String(assignment.batchId) === String(batchId))
+      );
+      if (!hasMatchingAssignment) {
+        return res.status(403).json({ success: false, message: 'Forbidden: Assignment does not belong to your college context' });
+      }
+    }
 
     faculty.assignedSubjects = faculty.assignedSubjects.filter(
       (a: any) => !(a.subjectId.toString() === subjectId && a.batchId.toString() === batchId)
@@ -182,6 +227,8 @@ export const getAssignments = async (req: Request, res: Response) => {
 export const bulkAssignStudentsToBatch = async (req: Request, res: Response) => {
   try {
     const { studentIds, batchId } = req.body;
+    const adminUser = (req as any).user;
+    const isSuperAdmin = String(adminUser?.role || '').toUpperCase() === 'SUPER_ADMIN';
 
     if (!Array.isArray(studentIds) || studentIds.length === 0 || !batchId) {
       return res.status(400).json({ success: false, message: 'studentIds array and batchId are required' });
@@ -189,6 +236,17 @@ export const bulkAssignStudentsToBatch = async (req: Request, res: Response) => 
 
     const batch = await Batch.findById(batchId);
     if (!batch) return res.status(404).json({ success: false, message: 'Batch not found' });
+    if (!isSuperAdmin && !verifyCollegeOwnership(batch as any, adminUser?.collegeId)) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Batch does not belong to your college' });
+    }
+
+    const students = await Student.find({
+      _id: { $in: studentIds },
+      ...(isSuperAdmin ? { collegeId: batch.collegeId } : { collegeId: adminUser?.collegeId })
+    }).select('_id');
+    if (students.length !== studentIds.length) {
+      return res.status(403).json({ success: false, message: 'One or more students do not belong to the target college scope' });
+    }
 
     // Explicit check requested by user: fail if any student is already in THAT batch
     const existingStudentIds = new Set(batch.students.map((s: any) => s.toString()));
@@ -200,8 +258,8 @@ export const bulkAssignStudentsToBatch = async (req: Request, res: Response) => 
 
     // Update students' top-level batchId
     await Student.updateMany(
-      { _id: { $in: studentIds } },
-      { $set: { batchId: batchId } }
+      { _id: { $in: studentIds }, ...(isSuperAdmin ? { collegeId: batch.collegeId } : { collegeId: adminUser?.collegeId }) },
+      { $set: { batchId: batchId, collegeId: batch.collegeId } }
     );
 
     batch.students.push(...studentIds);

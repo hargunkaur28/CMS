@@ -4,6 +4,8 @@ export interface IBatch extends Document {
   name: string;
   courseId: mongoose.Types.ObjectId;
   collegeId: mongoose.Types.ObjectId;
+  status?: string;
+  autoCreated?: boolean;
   startYear: number;
   endYear: number;
   currentSemester: number;
@@ -18,6 +20,8 @@ const BatchSchema: Schema = new Schema(
     name: { type: String, required: true },
     courseId: { type: Schema.Types.ObjectId, ref: "Course", required: true },
     collegeId: { type: Schema.Types.ObjectId, ref: "College", required: true },
+    status: { type: String, default: "active" },
+    autoCreated: { type: Boolean, default: false },
     startYear: { type: Number, required: true },
     endYear: { type: Number, required: true },
     currentSemester: { type: Number, default: 1 },
