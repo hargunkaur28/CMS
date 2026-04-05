@@ -14,7 +14,7 @@ export const getAssignedSubjects = async (req: Request, res: Response) => {
     const { batchId } = req.query;
 
     const faculty = await Faculty.findOne({ userId: user._id, collegeId: user.collegeId })
-      .populate('assignedSubjects.subjectId', 'name code creditHours');
+      .populate('assignedSubjects.subjectId', 'name code creditHours courseId');
 
     if (!faculty) {
       return res.status(200).json({ success: true, data: [] });

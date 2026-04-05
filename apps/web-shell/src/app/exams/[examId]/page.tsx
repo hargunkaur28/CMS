@@ -1,6 +1,7 @@
 "use client";
 
 import React, { use, useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useExam } from "@/hooks/useExams";
 import { useMarks } from "@/hooks/useMarks";
 import Link from "next/link";
@@ -22,6 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 
 export default function ExamDetailsPage({ params }: { params: Promise<{ examId: string }> }) {
+  const router = useRouter();
   const { examId } = use(params);
   const { exam, loading, error, fetchExam } = useExam(examId);
   const { publishResults, loading: publishing } = useMarks(examId);
@@ -29,16 +31,24 @@ export default function ExamDetailsPage({ params }: { params: Promise<{ examId: 
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
-    if (savedUser) setUser(JSON.parse(savedUser));
-  }, []);
+    if (savedUser) {
+      const parsedUser = JSON.parse(savedUser);
+      // Redirect PARENT users away from management pages
+      if (parsedUser.role === "PARENT") {
+        router.push("/exams/results");
+        return;
+      }
+      setUser(parsedUser);
+    }
+  }, [router]);
 
   const isStaff = user?.role === 'SUPER_ADMIN' || user?.role === 'COLLEGE_ADMIN' || user?.role === 'TEACHER';
   const isPublished = exam?.status === 'PUBLISHED';
 
   if (loading) return (
-    <div className="h-full min-h-[400px] flex flex-col items-center justify-center p-12">
+    <div className="h-full min-h-100 flex flex-col items-center justify-center p-12">
       <Loader2 className="animate-spin text-indigo-600 mb-4" size={40} />
-      <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Syncing Exam Logic...</p>
+      <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Loading exam details...</p>
     </div>
   );
   
@@ -50,7 +60,7 @@ export default function ExamDetailsPage({ params }: { params: Promise<{ examId: 
         await publishResults();
         await fetchExam();
       } catch (err: any) {
-        alert(err.message);
+        alert(err?.response?.data?.message || "Unable to publish results right now");
       }
     }
   };

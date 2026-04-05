@@ -11,11 +11,13 @@ export interface TimetableCellEntry {
   startTime: string;
   endTime: string;
   subject: string;
+  subjectId?: { _id?: string; name?: string; code?: string };
   teacherId?: { _id?: string; name?: string; email?: string };
   batchId?: { _id?: string; name?: string };
   sectionId?: { _id?: string; name?: string };
   createdBy?: { _id?: string; name?: string };
   room?: string;
+  roomNo?: string;
 }
 
 interface TimetableGridProps {

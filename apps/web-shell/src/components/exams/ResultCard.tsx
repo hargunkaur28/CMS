@@ -2,7 +2,7 @@
 
 import React from "react";
 import Card from "@/components/ui/Card";
-import { Award, CheckCircle2, XCircle, Download } from "lucide-react";
+import { Award, CheckCircle2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ResultCardProps {
@@ -13,7 +13,7 @@ const ResultCard: React.FC<ResultCardProps> = ({ result }) => {
   const isPass = result.status === "PASS";
 
   return (
-    <Card className="p-8 border-none bg-white shadow-ambient rounded-[2rem] overflow-hidden group hover:shadow-xl transition-all duration-500">
+    <Card className="p-8 border-none bg-white shadow-ambient rounded-4xl overflow-hidden group hover:shadow-xl transition-all duration-500">
       <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8">
         <div className="flex gap-4 items-center">
           <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transform group-hover:rotate-6 transition-transform", 
@@ -34,11 +34,6 @@ const ResultCard: React.FC<ResultCardProps> = ({ result }) => {
           </div>
         </div>
         <div className="flex items-center gap-3 w-full md:w-auto">
-          {result.type !== 'ASSIGNMENT' && (
-            <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-indigo-600 transition-all shadow-lg shadow-slate-900/10 active:scale-95">
-              <Download size={16} /> Marksheet
-            </button>
-          )}
           <div className={cn("px-5 py-2.5 rounded-xl text-xs font-black tracking-widest uppercase border shadow-sm",
             isPass ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-rose-50 text-rose-600 border-rose-200'
           )}>

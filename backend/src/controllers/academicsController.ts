@@ -1,10 +1,12 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import Course from "../models/Course.js";
 import Subject from "../models/Subject.js";
 import Batch from "../models/Batch.js";
 import Student from "../models/Student.js";
 import Section from "../models/Section.js";
 import User from "../models/User.js";
+import Department from "../models/Department.js";
 import { verifyCollegeOwnership } from "../middleware/collegeOwnership.js";
 
 const resolveCollegeScope = (req: Request) => {
@@ -28,7 +30,9 @@ export const getCourses = async (req: Request, res: Response) => {
     const query: any = {};
     if (collegeId) query.collegeId = collegeId;
 
-    const courses = await Course.find(query).populate("subjects");
+    const courses = await Course.find(query)
+      .populate("subjects")
+      .populate("department", "name");
     res.status(200).json({ success: true, data: courses });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
@@ -41,14 +45,50 @@ export const createCourse = async (req: Request, res: Response) => {
     
     // Fallback: inherit collegeId from the department if user is Super Admin
     if (!collegeId && req.body.department) {
-      const Department = require("../models/Department.js").default;
       const dept = await Department.findById(req.body.department);
       if (dept) collegeId = dept.collegeId;
     }
 
     if (!collegeId) throw new Error("Missing institutional context (collegeId)");
 
-    const courseData = { ...req.body, collegeId };
+    const duration = Number(req.body.duration);
+    const totalSeatsInput = Number(req.body.totalSeats);
+    const totalSeats = Number.isFinite(totalSeatsInput) && totalSeatsInput > 0 ? totalSeatsInput : 60;
+
+    let departmentId = req.body.department;
+    if (departmentId) {
+      const departmentValue = String(departmentId).trim();
+      if (!mongoose.Types.ObjectId.isValid(departmentValue)) {
+        const departmentRegex = new RegExp(`^${departmentValue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i");
+        let departmentDoc = await Department.findOne({ collegeId, name: departmentRegex });
+
+        if (!departmentDoc && departmentValue) {
+          departmentDoc = await Department.create({
+            collegeId,
+            name: departmentValue,
+            courses: []
+          });
+        }
+
+        departmentId = departmentDoc?._id;
+      }
+    }
+
+    if (!departmentId) {
+      let generalDepartment = await Department.findOne({ collegeId, name: /^General$/i });
+      if (!generalDepartment) {
+        generalDepartment = await Department.create({ collegeId, name: "General", courses: [] });
+      }
+      departmentId = generalDepartment._id;
+    }
+
+    const courseData = {
+      ...req.body,
+      collegeId,
+      duration: Number.isFinite(duration) && duration > 0 ? duration : 1,
+      totalSeats,
+      department: departmentId
+    };
     
     const course = new Course(courseData);
     await course.save();
@@ -287,22 +327,59 @@ export const assignStudentsToSection = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'One or more selected students are already assigned to this section.' });
     }
 
-    const students = await Student.find({ _id: { $in: studentIds }, collegeId: batch.collegeId }).select('_id');
+    const students = await Student.find({ _id: { $in: studentIds }, collegeId: batch.collegeId }).select('_id academicInfo.rollNumber');
     if (students.length !== studentIds.length) {
       return res.status(403).json({ success: false, message: 'One or more students do not belong to your college' });
     }
 
-    await Student.updateMany(
-      { _id: { $in: studentIds }, collegeId: batch.collegeId }, 
-      {
-        $set: {
-          "academicInfo.section": section,
-          "academicInfo.batch": batch.name,
-          "batchId": batch._id,
-          "collegeId": batch.collegeId,
-        }
-      }
+    const existingSectionRolls = await Student.find({
+      collegeId: batch.collegeId,
+      batchId: batch._id,
+      "academicInfo.section": section,
+      "academicInfo.rollNumber": { $exists: true, $ne: "" },
+    }).select("academicInfo.rollNumber");
+
+    const usedRollNumbers = new Set(
+      existingSectionRolls
+        .map((item: any) => String(item?.academicInfo?.rollNumber || "").trim())
+        .filter(Boolean)
     );
+
+    const nextRollNumber = () => {
+      let serial = usedRollNumbers.size + 1;
+      while (true) {
+        const candidate = `${String(section).toUpperCase()}${String(serial).padStart(3, '0')}`;
+        if (!usedRollNumbers.has(candidate)) {
+          usedRollNumbers.add(candidate);
+          return candidate;
+        }
+        serial += 1;
+      }
+    };
+
+    const bulkOps = students.map((student: any) => {
+      const existingRoll = String(student?.academicInfo?.rollNumber || "").trim();
+      const rollToPersist = existingRoll || nextRollNumber();
+
+      return {
+        updateOne: {
+          filter: { _id: student._id, collegeId: batch.collegeId },
+          update: {
+            $set: {
+              "academicInfo.section": section,
+              "academicInfo.batch": batch.name,
+              "academicInfo.rollNumber": rollToPersist,
+              "batchId": batch._id,
+              "collegeId": batch.collegeId,
+            },
+          },
+        },
+      };
+    });
+
+    if (bulkOps.length > 0) {
+      await Student.bulkWrite(bulkOps);
+    }
 
     res.status(200).json({ success: true, message: `Successfully assigned ${studentIds.length} students to Section ${section}` });
   } catch (error: any) {

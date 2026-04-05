@@ -17,6 +17,7 @@ import {
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { getRoleHomePath, getSessionUser, setPortalNotice } from "@/lib/session";
 
 const sidebarItems = [
   { icon: <LayoutDashboard size={20} />, label: "Dashboard", href: "/teacher" },
@@ -33,16 +34,19 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      const parsedUser = JSON.parse(savedUser);
-      if (parsedUser.role !== 'TEACHER') {
-          router.push('/'); // Redirect non-teachers
-      }
-      setLoading(false);
-    } else {
+    const user = getSessionUser();
+    if (!user?.role) {
       router.push('/login');
+      return;
     }
+
+    if (user.role !== 'TEACHER') {
+      setPortalNotice('You do not have access to this page');
+      router.push(getRoleHomePath(user.role));
+      return;
+    }
+
+    setLoading(false);
   }, [router]);
 
   if (loading) return null;

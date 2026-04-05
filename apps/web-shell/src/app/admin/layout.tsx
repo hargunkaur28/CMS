@@ -25,6 +25,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
 import UserAvatar from "@/components/ui/UserAvatar";
+import { getRoleHomePath, getSessionUser, setPortalNotice } from "@/lib/session";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Overview", href: "/admin" },
@@ -59,20 +60,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    if (!token || !user.role) {
+    const user = getSessionUser();
+    if (!token || !user?.role) {
       router.replace("/login");
     } else if (user.role === 'SUPER_ADMIN') {
       router.replace('/super-admin/dashboard');
     } else if ((user.mustChangePassword || user.isFirstLogin) && user.role === 'COLLEGE_ADMIN') {
       router.replace('/change-password');
     } else if (user.role !== 'COLLEGE_ADMIN') {
-      router.replace("/");
+      setPortalNotice('You do not have access to this page');
+      router.replace(getRoleHomePath(user.role));
     } else {
       setCurrentUser(user);
       setAuthorized(true);
     }
-  }, [router]);
+  }, [router, pathname]);
 
   useEffect(() => {
     const syncUser = () => {
@@ -110,11 +112,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
+    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans admin-shell">
       {/* ─── Premium Dark Sidebar ─── */}
       <aside className="w-64 bg-slate-950 text-slate-400 flex flex-col h-full shadow-2xl z-20 relative overflow-hidden group">
         {/* Subtle Background Glow */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-50" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-50" />
         
         <div className="p-8 border-b border-white/5 flex items-center gap-4">
           {currentUser?.branding?.collegeLogo ? (
@@ -185,7 +187,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* ─── Main Content Area ─── */}
       <div className="flex-1 flex flex-col min-w-0 h-full relative overflow-hidden">
         {/* Admin Topbar (Premium Glassmorphism) */}
-        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-10 flex items-center justify-between z-10 shrink-0">
+        <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-10 flex items-center justify-between z-10 shrink-0 admin-topbar">
           <div className="flex items-center gap-4">
             <div className="w-1.5 h-6 bg-indigo-600 rounded-full" />
             <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] opacity-80">
@@ -194,12 +196,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
           
           <div className="flex items-center gap-6">
-             <div className="hidden lg:flex items-center bg-slate-100 px-4 py-2.5 rounded-2xl gap-3 border border-slate-200/50 group">
+             <div className="hidden lg:flex items-center bg-slate-100 px-4 py-2.5 rounded-2xl gap-3 border border-slate-200/50 group admin-search-shell">
                 <Search size={14} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
-                <input type="text" placeholder="STRATEGIC SEARCH..." className="bg-transparent border-none text-[9px] font-black focus:outline-none w-48 tracking-widest" />
+               <input type="text" placeholder="STRATEGIC SEARCH..." className="bg-transparent border-none text-[9px] font-black focus:outline-none w-48 tracking-widest admin-search-input" />
              </div>
 
-             <div className="h-10 w-[1px] bg-slate-200 mx-2" />
+             <div className="h-10 w-px bg-slate-200 mx-2" />
 
              <div className="flex items-center gap-4">
                 <div className="text-right">

@@ -20,6 +20,7 @@ interface MarksEntryTableProps {
 
 export default function MarksEntryTable({ students, onSaveRow, onBulkSubmit, maxMarks }: MarksEntryTableProps) {
   const [entries, setEntries] = useState<Record<string, { marks: string, remarks: string, status: 'idle' | 'saving' | 'saved' | 'error' }>>({});
+  const [savingAll, setSavingAll] = useState(false);
 
   // Sync entries when students prop changes
   React.useEffect(() => {
@@ -60,6 +61,41 @@ export default function MarksEntryTable({ students, onSaveRow, onBulkSubmit, max
       setEntries(prev => ({ ...prev, [studentId]: { ...prev[studentId], status: 'saved' } }));
     } catch (err) {
       setEntries(prev => ({ ...prev, [studentId]: { ...prev[studentId], status: 'error' } }));
+    }
+  };
+
+  const saveAllRows = async () => {
+    const payload = students
+      .map((student) => {
+        const entry = entries[student._id];
+        const marks = Number(entry?.marks);
+        if (!entry || entry.marks === '' || Number.isNaN(marks) || marks > maxMarks) {
+          return null;
+        }
+        return {
+          studentId: student._id,
+          marks,
+          remarks: entry.remarks || '',
+        };
+      })
+      .filter(Boolean) as { studentId: string; marks: number; remarks: string }[];
+
+    if (payload.length === 0) return;
+
+    setSavingAll(true);
+    try {
+      await onBulkSubmit(payload);
+      setEntries((prev) => {
+        const next: any = { ...prev };
+        payload.forEach((row) => {
+          if (next[row.studentId]) {
+            next[row.studentId].status = 'saved';
+          }
+        });
+        return next;
+      });
+    } finally {
+      setSavingAll(false);
     }
   };
 
@@ -158,6 +194,15 @@ export default function MarksEntryTable({ students, onSaveRow, onBulkSubmit, max
           })}
         </tbody>
       </table>
+      <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+        <button
+          onClick={saveAllRows}
+          disabled={savingAll}
+          className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest disabled:opacity-60"
+        >
+          {savingAll ? 'Saving...' : 'Save All'}
+        </button>
+      </div>
     </div>
   );
 }

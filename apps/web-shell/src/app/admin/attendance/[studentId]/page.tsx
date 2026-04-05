@@ -115,13 +115,13 @@ export default function StudentAttendanceDetail() {
           <div>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Roll Number</p>
             <p className="text-sm font-black text-slate-900">
-              {student.academicInfo?.rollNumber || "N/A"}
+              {student.rollNumber || student.academicInfo?.rollNumber || student.studentId || student.uniqueStudentId || "N/A"}
             </p>
           </div>
           <div>
             <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-1">Batch</p>
             <p className="text-sm font-black text-slate-900">
-              {student.academicInfo?.batchName || "N/A"}
+              {student.batchName || student.academicInfo?.batch || student.batchId?.name || "N/A"}
             </p>
           </div>
           <div>

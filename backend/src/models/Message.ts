@@ -23,7 +23,7 @@ const MessageSchema: Schema = new Schema(
     receiverId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     receiverRole: { type: String, enum: ["TEACHER", "STUDENT", "PARENT", "COLLEGE_ADMIN", "SUPER_ADMIN"] },
     senderRole: { type: String, enum: ["TEACHER", "STUDENT", "PARENT", "COLLEGE_ADMIN", "SUPER_ADMIN"], required: true },
-    content: { type: String, required: true },
+    content: { type: String, default: "" },
     conversationId: { type: String, index: true },
     attachmentUrl: { type: String },
     attachmentType: { type: String },

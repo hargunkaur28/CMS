@@ -7,10 +7,88 @@
   --font-inter: 'Inter', sans-serif;
 }
 
+html.theme-dark {
+  --background: #0b1220;
+  --foreground: #e5e7eb;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
   font-family: var(--font-inter);
+}
+
+html.theme-dark body {
+  color-scheme: dark;
+}
+
+html.theme-dark .bg-white {
+  background-color: #0f172a !important;
+}
+
+html.theme-dark .bg-white\/80,
+html.theme-dark .bg-white\/90 {
+  background-color: rgba(15, 23, 42, 0.9) !important;
+}
+
+html.theme-dark .bg-slate-50,
+html.theme-dark .bg-slate-50\/50 {
+  background-color: #0b1220 !important;
+}
+
+html.theme-dark .bg-slate-100 {
+  background-color: #1e293b !important;
+}
+
+html.theme-dark .text-slate-900 {
+  color: #e5e7eb !important;
+}
+
+html.theme-dark .text-slate-700,
+html.theme-dark .text-slate-600,
+html.theme-dark .text-slate-500,
+html.theme-dark .text-slate-400 {
+  color: #cbd5e1 !important;
+}
+
+html.theme-dark .border-slate-100,
+html.theme-dark .border-slate-200,
+html.theme-dark .border-slate-300 {
+  border-color: #334155 !important;
+}
+
+html.theme-dark input,
+html.theme-dark select,
+html.theme-dark textarea {
+  background-color: #111827 !important;
+  color: #e5e7eb !important;
+  border-color: #334155 !important;
+}
+
+html.theme-dark .shadow-ambient {
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+html.theme-dark .admin-shell {
+  background-color: #020617 !important;
+}
+
+html.theme-dark .admin-topbar {
+  background-color: rgba(2, 6, 23, 0.92) !important;
+  border-bottom-color: #334155 !important;
+}
+
+html.theme-dark .admin-search-shell {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+html.theme-dark .admin-search-input {
+  color: #e2e8f0 !important;
+}
+
+html.theme-dark .admin-search-input::placeholder {
+  color: #94a3b8 !important;
 }
 
 @layer utilities {

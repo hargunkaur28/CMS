@@ -12,7 +12,6 @@ router.get("/", libraryController.getBooks);
 // ─── Librarian + Admin: Book CRUD ────────────────────────────────────────────
 router.post(
   "/",
-  authorize("SUPER_ADMIN", "COLLEGE_ADMIN", "LIBRARIAN"),
   libraryController.addBook
 );
 router.put(

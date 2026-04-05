@@ -1,16 +1,20 @@
 "use client";
 
 import React from "react";
-import { MoreHorizontal, Mail, Phone, MapPin, Calendar, Trash2, Edit2 } from "lucide-react";
+import { MoreHorizontal, Mail, Phone, MapPin, Calendar, Trash2, Edit2, Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StudentTableProps {
   students: any[];
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
+  onUpdateEnrollmentId: (id: string, enrollmentId: string) => Promise<void>;
 }
 
-export default function StudentTable({ students, onDelete, onEdit }: StudentTableProps) {
+export default function StudentTable({ students, onDelete, onEdit, onUpdateEnrollmentId }: StudentTableProps) {
+  const [editingEnrollmentId, setEditingEnrollmentId] = React.useState<string | null>(null);
+  const [draftEnrollmentId, setDraftEnrollmentId] = React.useState<string>("");
+
   return (
     <div className="bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-sm">
       <table className="w-full text-left border-collapse">
@@ -19,6 +23,7 @@ export default function StudentTable({ students, onDelete, onEdit }: StudentTabl
             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Student Info</th>
             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Student ID</th>
             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Course & Batch</th>
+            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Parent Details</th>
             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Actions</th>
           </tr>
@@ -46,9 +51,50 @@ export default function StudentTable({ students, onDelete, onEdit }: StudentTabl
                 </div>
               </td>
               <td className="px-6 py-4">
-                 <span className="text-[10px] font-black text-slate-700 font-mono tracking-tighter bg-slate-100 px-2 py-0.5 rounded cursor-copy active:scale-95 transition-transform" onClick={() => navigator.clipboard.writeText(student.uniqueStudentId || student.studentId || '')}>
-                   {student.uniqueStudentId || student.studentId || "N/A"}
-                 </span>
+                {editingEnrollmentId === student.uniqueStudentId ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={draftEnrollmentId}
+                      onChange={(e) => setDraftEnrollmentId(e.target.value)}
+                      className="px-2 py-1 border border-slate-200 rounded text-[10px] font-black font-mono w-44"
+                    />
+                    <button
+                      onClick={async () => {
+                        try {
+                          await onUpdateEnrollmentId(student.uniqueStudentId, draftEnrollmentId);
+                          setEditingEnrollmentId(null);
+                        } catch {
+                          // Keep editor open so admin can correct duplicate/invalid values.
+                        }
+                      }}
+                      className="p-1 rounded bg-emerald-50 text-emerald-600"
+                      title="Confirm"
+                    >
+                      <Check size={12} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingEnrollmentId(null);
+                        setDraftEnrollmentId("");
+                      }}
+                      className="p-1 rounded bg-slate-100 text-slate-500"
+                      title="Cancel"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setEditingEnrollmentId(student.uniqueStudentId);
+                      setDraftEnrollmentId(student.enrollmentId || student.studentId || student.uniqueStudentId || "");
+                    }}
+                    className="text-[10px] font-black text-slate-700 font-mono tracking-tighter bg-slate-100 px-2 py-0.5 rounded active:scale-95 transition-transform"
+                    title="Click to edit enrollment ID"
+                  >
+                    {student.enrollmentId || student.studentId || student.uniqueStudentId || "N/A"}
+                  </button>
+                )}
               </td>
               <td className="px-6 py-4">
                 <div className="space-y-0.5">
@@ -57,6 +103,22 @@ export default function StudentTable({ students, onDelete, onEdit }: StudentTabl
                   </p>
                   <p className="text-[9px] font-medium text-slate-400 uppercase tracking-widest">
                     {student.academicInfo?.batch || "N/A"}
+                  </p>
+                </div>
+              </td>
+              <td className="px-6 py-4">
+                <div className="space-y-1 min-w-56">
+                  <p className="text-[10px] font-bold text-slate-900 uppercase tracking-tight">
+                    {student.parentInfo?.name || "N/A"}
+                  </p>
+                  <p className="text-[9px] font-medium text-slate-500">
+                    {student.parentInfo?.relation || "Guardian"}
+                  </p>
+                  <p className="text-[9px] font-medium text-slate-400">
+                    {student.parentInfo?.phone || "No phone"}
+                  </p>
+                  <p className="text-[9px] font-medium text-slate-400 break-all">
+                    {student.parentInfo?.email || "No email"}
                   </p>
                 </div>
               </td>

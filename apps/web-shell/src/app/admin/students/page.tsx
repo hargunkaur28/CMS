@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { fetchStudents, deleteStudent, bulkImportStudents, updateStudent, fetchBatches } from "@/lib/api/admin";
+import { fetchStudents, deleteStudent, bulkImportStudents, updateStudent, fetchBatches, updateStudentEnrollmentId } from "@/lib/api/admin";
 import { Search, Download, UserPlus, FileUp, Loader2, Sparkles, X, Users, HelpCircle, FileText, CheckCircle } from "lucide-react";
 import StudentTable from "@/components/admin/StudentTable";
 
@@ -79,7 +79,7 @@ export default function StudentsPage() {
 
   const handleExportCSV = () => {
     if (students.length === 0) return;
-    const headers = ["Student ID", "First Name", "Last Name", "Email", "Course", "Batch", "Status"];
+    const headers = ["Student ID", "First Name", "Last Name", "Email", "Course", "Batch", "Status", "Parent Name", "Parent Phone", "Parent Email", "Relation"];
     const rows = students.map(s => [
       s.studentId,
       s.personalInfo?.firstName,
@@ -87,7 +87,11 @@ export default function StudentsPage() {
       s.personalInfo?.email,
       s.academicInfo?.course,
       s.academicInfo?.batch,
-      s.academicInfo?.status
+      s.academicInfo?.status,
+      s.parentInfo?.name,
+      s.parentInfo?.phone,
+      s.parentInfo?.email,
+      s.parentInfo?.relation
     ]);
     
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
@@ -115,6 +119,16 @@ export default function StudentsPage() {
       } catch (err) {
         console.error(err);
       }
+    }
+  };
+
+  const handleUpdateEnrollmentId = async (id: string, enrollmentId: string) => {
+    try {
+      await updateStudentEnrollmentId(id, enrollmentId);
+      await loadStudents();
+    } catch (err: any) {
+      alert(err?.response?.data?.message || "Unable to update enrollment ID");
+      throw err;
     }
   };
 
@@ -218,6 +232,7 @@ export default function StudentsPage() {
           students={students} 
           onDelete={handleDelete}
           onEdit={handleEdit}
+          onUpdateEnrollmentId={handleUpdateEnrollmentId}
         />
       )}
       {isAddModalOpen && (
@@ -467,6 +482,11 @@ function RegisterStudentModal({ onClose, onSuccess }: any) {
                   className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-xs font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-slate-200"
                   onChange={(e) => setFormData({...formData, parentInfo: {...formData.parentInfo, phone: e.target.value}})}
                 />
+                <input 
+                  type="email" placeholder="PARENT EMAIL"
+                  className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-xs font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-slate-200"
+                  onChange={(e) => setFormData({...formData, parentInfo: {...formData.parentInfo, email: e.target.value}})}
+                />
               </div>
             </div>
           </div>
@@ -591,6 +611,51 @@ function EditStudentModal({ student, onClose, onSuccess }: any) {
                     <option value="graduated">GRADUATED</option>
                   </select>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <h3 className="text-[10px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2">
+              <span className="w-4 h-[2px] bg-slate-900 rounded-full" />
+              Parent / Guardian Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Parent Name</label>
+                <input
+                  type="text"
+                  value={formData.parentInfo?.name || ""}
+                  className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-xs font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-slate-900 transition-all"
+                  onChange={(e) => setFormData({ ...formData, parentInfo: { ...formData.parentInfo, name: e.target.value } })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Parent Phone</label>
+                <input
+                  type="text"
+                  value={formData.parentInfo?.phone || ""}
+                  className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-xs font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-slate-900 transition-all"
+                  onChange={(e) => setFormData({ ...formData, parentInfo: { ...formData.parentInfo, phone: e.target.value } })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Parent Email</label>
+                <input
+                  type="email"
+                  value={formData.parentInfo?.email || ""}
+                  className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-xs font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-slate-900 transition-all"
+                  onChange={(e) => setFormData({ ...formData, parentInfo: { ...formData.parentInfo, email: e.target.value } })}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Relation</label>
+                <input
+                  type="text"
+                  value={formData.parentInfo?.relation || "Guardian"}
+                  className="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-xs font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-slate-900 transition-all"
+                  onChange={(e) => setFormData({ ...formData, parentInfo: { ...formData.parentInfo, relation: e.target.value } })}
+                />
               </div>
             </div>
           </div>

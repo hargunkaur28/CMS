@@ -6,7 +6,7 @@ import api from "@/lib/api";
 import { 
   User, Mail, Phone, MapPin, Calendar, Hash, Book, 
   GraduationCap, ClipboardCheck, ArrowLeft, Loader2,
-  Clock, Award, ShieldCheck, Briefcase
+   Clock, Award, ShieldCheck, Briefcase, Download, Send
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import StudentProfileTabs from "@/components/students/StudentProfileTabs";
@@ -18,6 +18,10 @@ export default function StudentProfilePage() {
   const [student, setStudent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("overview");
+   const [conversation, setConversation] = useState<any[]>([]);
+   const [loadingConversation, setLoadingConversation] = useState(false);
+   const [sendingMessage, setSendingMessage] = useState(false);
+   const [newMessage, setNewMessage] = useState("");
 
   useEffect(() => {
     const fetchStudent = async () => {
@@ -33,6 +37,29 @@ export default function StudentProfilePage() {
     };
     if (id) fetchStudent();
   }, [id]);
+
+   useEffect(() => {
+      const loadConversation = async () => {
+         if (activeTab !== "comms" || !student?.userId?._id) return;
+         setLoadingConversation(true);
+         try {
+            const res = await api.get(`/teacher/messages/${student.userId._id}`);
+            setConversation(Array.isArray(res.data?.data) ? res.data.data : []);
+         } catch (err) {
+            setConversation([]);
+         } finally {
+            setLoadingConversation(false);
+         }
+      };
+
+      loadConversation();
+   }, [activeTab, student?.userId?._id]);
+
+   useEffect(() => {
+      if (activeTab === "fees") {
+        setActiveTab("overview");
+      }
+   }, [activeTab]);
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
@@ -58,7 +85,13 @@ export default function StudentProfilePage() {
     </div>
   );
 
-  const fullName = `${student.personalInfo?.firstName || ''} ${student.personalInfo?.lastName || ''}`.trim();
+   const fullName = `${student.personalInfo?.firstName || ''} ${student.personalInfo?.lastName || ''}`.trim();
+   const displayRollNumber =
+      student.academicInfo?.rollNumber ||
+      student.enrollmentId ||
+      student.studentId ||
+      student.uniqueStudentId ||
+      "N/A";
 
   return (
     <div className="space-y-8 pb-20 max-w-7xl mx-auto">
@@ -108,7 +141,7 @@ export default function StudentProfilePage() {
                     <h2 className="text-xl font-black text-slate-900">{fullName}</h2>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                        <Hash size={14} className="text-indigo-500" />
-                       Roll #{student.academicInfo?.rollNumber || "N/A"}
+                       Roll #{displayRollNumber}
                     </p>
                  </div>
 
@@ -158,7 +191,7 @@ export default function StudentProfilePage() {
         <div className="lg:col-span-8 flex flex-col bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
            {/* Tabs Container */}
            <div className="bg-slate-50/50">
-              <StudentProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+              <StudentProfileTabs activeTab={activeTab} setActiveTab={setActiveTab} hideFees />
            </div>
 
            <div className="p-8 flex-1">
@@ -211,7 +244,7 @@ export default function StudentProfilePage() {
                          <InfoBlock label="Current Semester" value={`Semester ${student.academicInfo?.semester || "1"}`} />
                       </div>
                       <div className="space-y-4">
-                         <InfoBlock label="Enrollment ID" value={student.uniqueStudentId || "PENDING"} />
+                         <InfoBlock label="Enrollment ID" value={student.enrollmentId || student.studentId || student.uniqueStudentId || "PENDING"} />
                          <InfoBlock label="Date of Admission" value={student.academicInfo?.enrollmentDate ? new Date(student.academicInfo.enrollmentDate).toLocaleDateString() : "N/A"} />
                          <InfoBlock label="Section" value={student.academicInfo?.section || "A"} />
                       </div>
@@ -219,11 +252,101 @@ export default function StudentProfilePage() {
                 </div>
               )}
 
-              {activeTab === "attendance" && <Placeholder view="Attendance Data Registry" />}
-              {activeTab === "exams" && <Placeholder view="Examination Dossier" />}
-              {activeTab === "fees" && <Placeholder view="Financial Statement" />}
-              {activeTab === "documents" && <Placeholder view="Encrypted Document Store" />}
-              {activeTab === "comms" && <Placeholder view="Communication Logs" />}
+                     {activeTab === "attendance" && <Placeholder view="Attendance records are available in the class attendance module." />}
+                     {activeTab === "exams" && <Placeholder view="Examination details are available in the exams module." />}
+                     {activeTab === "fees" && <Placeholder view="Fee details are available in the finance module." />}
+                     {activeTab === "documents" && (
+                        <div className="space-y-4 animate-in fade-in duration-500">
+                           {Array.isArray(student.documents) && student.documents.length > 0 ? (
+                              <div className="space-y-3">
+                                 {student.documents.map((doc: any, idx: number) => {
+                                    const name = String(doc?.name || `Document ${idx + 1}`);
+                                    const lowerName = name.toLowerCase();
+                                    const docType =
+                                       lowerName.includes('id') ? 'ID Card' :
+                                       lowerName.includes('fee') ? 'Fee Receipt' :
+                                       lowerName.includes('admit') ? 'Admit Card' :
+                                       lowerName.includes('cert') ? 'Certificate' :
+                                       'Document';
+                                    const url = doc?.cloudinaryUrl || doc?.url;
+
+                                    return (
+                                       <div key={String(doc?._id || idx)} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-center justify-between gap-4">
+                                          <div>
+                                             <p className="text-sm font-bold text-slate-900">{name}</p>
+                                             <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">{docType} • {doc?.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : 'Unknown date'}</p>
+                                          </div>
+                                          {url ? (
+                                             <a href={url} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+                                                <Download size={12} /> Download
+                                             </a>
+                                          ) : null}
+                                       </div>
+                                    );
+                                 })}
+                              </div>
+                           ) : (
+                              <div className="p-5 bg-slate-50 border border-slate-100 rounded-2xl text-sm text-slate-600">
+                                 No documents uploaded yet. Please contact your admin to upload your documents
+                              </div>
+                           )}
+                        </div>
+                     )}
+                     {activeTab === "comms" && (
+                        <div className="space-y-4 animate-in fade-in duration-500">
+                           {loadingConversation ? (
+                              <div className="p-5 bg-slate-50 border border-slate-100 rounded-2xl text-sm text-slate-600">Loading communication history...</div>
+                           ) : conversation.length === 0 ? (
+                              <div className="p-5 bg-slate-50 border border-slate-100 rounded-2xl text-sm text-slate-600">No communication history with this student yet</div>
+                           ) : (
+                              <div className="space-y-3 max-h-80 overflow-auto pr-1">
+                                 {conversation.map((msg: any) => {
+                                    const sender = msg?.senderId?.name || 'Unknown sender';
+                                    const created = msg?.createdAt ? new Date(msg.createdAt).toLocaleString() : 'Unknown date';
+                                    return (
+                                       <div key={msg._id} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl">
+                                          <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{created} • {sender}</p>
+                                          <p className="text-sm text-slate-800 mt-1">{msg?.content || ''}</p>
+                                       </div>
+                                    );
+                                 })}
+                              </div>
+                           )}
+
+                           <form
+                              onSubmit={async (e) => {
+                                 e.preventDefault();
+                                 const content = newMessage.trim();
+                                 if (!content || !student?.userId?._id) return;
+                                 setSendingMessage(true);
+                                 try {
+                                    await api.post('/teacher/messages', { receiverId: student.userId._id, content });
+                                    setNewMessage('');
+                                    const res = await api.get(`/teacher/messages/${student.userId._id}`);
+                                    setConversation(Array.isArray(res.data?.data) ? res.data.data : []);
+                                 } finally {
+                                    setSendingMessage(false);
+                                 }
+                              }}
+                              className="flex items-center gap-3"
+                           >
+                              <input
+                                 type="text"
+                                 value={newMessage}
+                                 onChange={(e) => setNewMessage(e.target.value)}
+                                 placeholder="Send Message"
+                                 className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm outline-none"
+                              />
+                              <button
+                                 type="submit"
+                                 disabled={sendingMessage || !newMessage.trim()}
+                                 className="px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest disabled:opacity-60 flex items-center gap-2"
+                              >
+                                 <Send size={14} /> {sendingMessage ? 'Sending...' : 'Send Message'}
+                              </button>
+                           </form>
+                        </div>
+                     )}
 
            </div>
         </div>
@@ -259,11 +382,11 @@ function Placeholder({ view }: { view: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-4 text-center space-y-4 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200 animate-in fade-in duration-700">
        <div className="w-16 h-16 bg-slate-100 text-slate-300 rounded-3xl flex items-center justify-center">
-          <Loader2 size={32} className="animate-spin" />
+          <Clock size={30} />
        </div>
        <div>
-          <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">{view} Initializing</h4>
-          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">This module is part of the next phase of deployment for NgCMS ER-P systems.</p>
+          <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight">Module Info</h4>
+          <p className="text-xs text-slate-500 mt-1 max-w-xs mx-auto">{view}</p>
        </div>
     </div>
   );

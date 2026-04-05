@@ -15,7 +15,7 @@ export default function AcademicsPage() {
   const [showProgramModal, setShowProgramModal] = useState(false);
   const [creatingCourse, setCreatingCourse] = useState(false);
   const [creatingSubject, setCreatingSubject] = useState(false);
-  const [courseForm, setCourseForm] = useState({ name: "", code: "", duration: 4, department: "" });
+  const [courseForm, setCourseForm] = useState({ name: "", code: "", duration: 4, totalSeats: 60, department: "" });
   const [subjectForm, setSubjectForm] = useState({ courseId: "", name: "", code: "", creditHours: 4 });
   const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
 
@@ -59,7 +59,7 @@ export default function AcademicsPage() {
       setCreatingCourse(true);
       await createCourse(courseForm);
       setShowCourseModal(false);
-      setCourseForm({ name: "", code: "", duration: 4, department: "" });
+      setCourseForm({ name: "", code: "", duration: 4, totalSeats: 60, department: "" });
       await loadAcademics();
     } catch (err: any) {
       window.alert(err?.response?.data?.message || "Failed to create course");
@@ -156,6 +156,7 @@ export default function AcademicsPage() {
               <input className="w-full border border-slate-200 rounded-xl px-3 py-2" placeholder="Program Name" value={courseForm.name} onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })} required />
               <input className="w-full border border-slate-200 rounded-xl px-3 py-2" placeholder="Program Code" value={courseForm.code} onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })} required />
               <input type="number" min={1} className="w-full border border-slate-200 rounded-xl px-3 py-2" placeholder="Duration (years)" value={courseForm.duration} onChange={(e) => setCourseForm({ ...courseForm, duration: Number(e.target.value) })} required />
+              <input type="number" min={1} className="w-full border border-slate-200 rounded-xl px-3 py-2" placeholder="Total Seats" value={courseForm.totalSeats} onChange={(e) => setCourseForm({ ...courseForm, totalSeats: Number(e.target.value) })} required />
               <input className="w-full border border-slate-200 rounded-xl px-3 py-2" placeholder="Department" value={courseForm.department} onChange={(e) => setCourseForm({ ...courseForm, department: e.target.value })} />
               <div className="flex justify-end gap-2 pt-2">
                 <button type="button" onClick={() => setShowCourseModal(false)} className="px-4 py-2 rounded-xl border border-slate-200">Cancel</button>
@@ -196,7 +197,7 @@ export default function AcademicsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-5">
               <div className="rounded-xl border border-slate-200 p-3">
                 <p className="text-[10px] uppercase tracking-wider text-slate-500">Department</p>
-                <p className="text-sm font-semibold text-slate-900 break-all">{selectedCourse.department || "-"}</p>
+                <p className="text-sm font-semibold text-slate-900 break-all">{selectedCourse.department?.name || selectedCourse.department || "-"}</p>
               </div>
               <div className="rounded-xl border border-slate-200 p-3">
                 <p className="text-[10px] uppercase tracking-wider text-slate-500">Total Seats</p>

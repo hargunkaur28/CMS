@@ -11,7 +11,8 @@ import {
   ChevronRight,
   TrendingUp,
   TrendingDown,
-  BookOpen
+  BookOpen,
+  Settings
 } from "lucide-react";
 import Link from "next/link";
 import api from "@/lib/api";
@@ -93,13 +94,23 @@ export default function TeacherDashboard() {
           <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase">Portal <span className="text-indigo-600">Overview</span></h1>
           <p className="text-slate-500 mt-2 font-medium">Monitoring academic performance and schedule for Spring Semester 2024.</p>
         </div>
-        
-        {liveClass && (
-           <div className="bg-indigo-600 px-6 py-4 rounded-[2rem] flex items-center gap-4 animate-bounce shadow-xl shadow-indigo-600/20">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-              <span className="text-white text-[10px] font-black uppercase tracking-widest">Live Session In Progress: Period {liveClass.period}</span>
-           </div>
-        )}
+
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link
+            href="/settings"
+            className="px-5 py-3 rounded-2xl border border-slate-200 bg-white text-slate-700 text-[10px] font-black uppercase tracking-widest inline-flex items-center gap-2 hover:bg-slate-100 transition-all"
+          >
+            <Settings size={14} />
+            Account Settings
+          </Link>
+
+          {liveClass && (
+             <div className="bg-indigo-600 px-6 py-4 rounded-[2rem] flex items-center gap-4 animate-bounce shadow-xl shadow-indigo-600/20">
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                <span className="text-white text-[10px] font-black uppercase tracking-widest">Live Session In Progress: Period {liveClass.period}</span>
+             </div>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}

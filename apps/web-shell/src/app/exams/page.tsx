@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useExams } from "@/hooks/useExams";
 import { getExamStats } from "@/lib/api/exams";
 import Link from "next/link";
@@ -19,6 +20,7 @@ import {
 } from "lucide-react";
 
 export default function ExamsDashboard() {
+  const router = useRouter();
   const [collegeId, setCollegeId] = useState<string>("");
   const [user, setUser] = useState<any>(null);
   const { exams, loading, error } = useExams(collegeId);
@@ -30,6 +32,11 @@ export default function ExamsDashboard() {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       const parsedUser = JSON.parse(savedUser);
+      // Redirect PARENT users to results page
+      if (parsedUser.role === "PARENT") {
+        router.push("/exams/results");
+        return;
+      }
       setUser(parsedUser);
       if (parsedUser.collegeId && isValidObjectId(parsedUser.collegeId)) {
         setCollegeId(parsedUser.collegeId);

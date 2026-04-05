@@ -49,7 +49,7 @@ export default function ApplicationsPage() {
         </div>
 
         <div className="flex bg-surface-container-low p-1 rounded-xl shadow-sm border border-outline-variant">
-          {["pending", "under-review", "approved", "rejected"].map((status) => (
+          {["pending", "approved", "rejected"].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -59,7 +59,7 @@ export default function ApplicationsPage() {
                 : "text-on-surface/40 hover:text-on-surface"
               }`}
             >
-              {status.replace("-", " ")}
+              {status}
             </button>
           ))}
         </div>

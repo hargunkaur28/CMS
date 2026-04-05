@@ -9,7 +9,7 @@ export interface ISession extends Document {
   device_info?: string;
   login_timestamp: Date;
   last_activity: Date;
-  expires_at: Date;
+  expires_at?: Date | null;
   is_active: boolean;
 }
 
@@ -22,11 +22,14 @@ const SessionSchema: Schema = new Schema({
   device_info: { type: String },
   login_timestamp: { type: Date, default: Date.now },
   last_activity: { type: Date, default: Date.now },
-  expires_at: { type: Date, required: true },
+  expires_at: { type: Date, default: null },
   is_active: { type: Boolean, default: true }
 }, { timestamps: true });
 
 SessionSchema.index({ userId: 1, is_active: 1 });
-SessionSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
+SessionSchema.index(
+  { expires_at: 1 },
+  { expireAfterSeconds: 0, partialFilterExpression: { expires_at: { $type: 'date' } } }
+);
 
 export default mongoose.model<ISession>('Session', SessionSchema);

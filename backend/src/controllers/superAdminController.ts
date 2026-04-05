@@ -998,7 +998,11 @@ export const getDashboardAnalytics = async (req: AuthRequest, res: Response) => 
     const activeColleges = await College.countDocuments({ status: 'active' });
     const activeSessions = await Session.countDocuments({
       is_active: true,
-      expires_at: { $gt: new Date() }
+      $or: [
+        { expires_at: { $gt: new Date() } },
+        { expires_at: null },
+        { expires_at: { $exists: false } }
+      ]
     });
 
     const collegesByStatus = await College.aggregate([

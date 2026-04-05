@@ -128,6 +128,15 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
     }
     sessionDate.setHours(0, 0, 0, 0);
 
+    const serverToday = new Date();
+    serverToday.setHours(0, 0, 0, 0);
+    if (sessionDate.getTime() !== serverToday.getTime()) {
+      return res.status(400).json({
+        success: false,
+        message: "Attendance can only be marked for today's classes"
+      });
+    }
+
     const existingAttendance = await Attendance.findOne({ 
        classId: batchId, subjectId, date: sessionDate, lecture, section: section || 'General'
     });
@@ -337,6 +346,44 @@ export const getShortageAlerts = async (req: Request, res: Response) => {
     res.status(200).json({ success: true, data: result });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getTeacherSessionHistory = async (req: Request, res: Response) => {
+  try {
+    const teacherId = (req as any).user?._id;
+    const collegeId = (req as any).user?.collegeId;
+    if (!teacherId || !collegeId) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+
+    const sessions = await Attendance.find({ teacherId, collegeId })
+      .populate('subjectId', 'name code')
+      .populate('classId', 'name')
+      .sort({ date: -1, createdAt: -1 })
+      .limit(200);
+
+    const data = sessions.map((session: any) => {
+      const records = Array.isArray(session.records) ? session.records : [];
+      const present = records.filter((r: any) => String(r.status).toLowerCase() === 'present').length;
+      const absent = records.filter((r: any) => String(r.status).toLowerCase() === 'absent').length;
+
+      return {
+        _id: session._id,
+        date: session.date,
+        lecture: session.lecture,
+        section: session.section || 'General',
+        subject: session.subjectId,
+        batch: session.classId,
+        totalPresent: present,
+        totalAbsent: absent,
+        records: session.records,
+      };
+    });
+
+    return res.status(200).json({ success: true, data });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 

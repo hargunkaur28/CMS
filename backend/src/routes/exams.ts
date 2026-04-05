@@ -43,7 +43,7 @@ router.post(
 router.post(
   "/:examId/publish", 
   protect,
-  authorize("SUPER_ADMIN", "COLLEGE_ADMIN"), 
+  authorize("SUPER_ADMIN", "COLLEGE_ADMIN", "TEACHER"), 
   validate(examsValidator.publishResults), 
   examsController.publishResults
 );

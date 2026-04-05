@@ -21,6 +21,7 @@ import studentRoutes from './routes/students.js';
 import departmentRoutes from './routes/departments.js';
 import subjectRoutes from './routes/subjectRoutes.js';
 import examsRoutes from './routes/exams.js';
+import assignmentRoutes from './routes/assignmentRoutes.js';
 import teacherRoutes from './routes/teacher.js';
 import adminRoutes from './routes/admin.routes.js';
 import parentRoutes from './routes/parentRoutes.js';
@@ -30,6 +31,8 @@ import superAdminRoutes from './routes/superAdmin.routes.js';
 import publicSettingsRoutes from './routes/publicSettings.routes.js';
 import timetableRoutes from './routes/timetableRoutes.js';
 import dashboardRoutes from './routes/dashboard.js';
+import feesRoutes from './routes/feesRoutes.js';
+import studentFeeRoutes from './routes/studentFeeRoutes.js';
 
 // Connect to MongoDB
 console.log("[DB] Attempting to connect to MongoDB...");
@@ -46,12 +49,25 @@ initSocket(httpServer);
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+  'http://[::1]:3000',
+  'http://[::1]:3001',
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
 ];
 
+const isAllowedLocalOrigin = (origin: string) => {
+  try {
+    const parsed = new URL(origin);
+    return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '[::1]';
+  } catch {
+    return false;
+  }
+};
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(origin) || isAllowedLocalOrigin(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
@@ -79,6 +95,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/subjects', subjectRoutes);
 app.use('/api/exams', examsRoutes);
+app.use('/api/assignments', assignmentRoutes);
 app.use('/api/teacher', teacherRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/parent', parentRoutes);
@@ -88,6 +105,8 @@ app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/settings', publicSettingsRoutes);
 app.use('/api/timetable', timetableRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/fees', feesRoutes);
+app.use('/api/student', studentFeeRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('AI-Powered College Management System API is running...');

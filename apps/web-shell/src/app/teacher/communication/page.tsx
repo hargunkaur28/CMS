@@ -7,6 +7,7 @@ import { MessageSquare, Bell, Send, User, RotateCcw, Clock } from "lucide-react"
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { useSocket } from "@/components/providers/SocketProvider";
+import { Trash2 } from "lucide-react";
 
 function TeacherCommunicationContent() {
   const [announcements, setAnnouncements] = useState([]);
@@ -16,6 +17,7 @@ function TeacherCommunicationContent() {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'announcements' | 'messages'>('announcements');
+  const [pageMessage, setPageMessage] = useState("");
 
   const [user, setUser] = useState<any>(null);
   const searchParams = useSearchParams();
@@ -122,9 +124,24 @@ function TeacherCommunicationContent() {
     fetchData();
   };
 
+  const handleDeleteAnnouncement = async (announcementId: string) => {
+    const confirmed = window.confirm('Are you sure you want to delete this announcement? This cannot be undone');
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/teacher/announcements/${announcementId}`);
+      setAnnouncements((prev: any[]) => prev.filter((a: any) => a._id !== announcementId));
+      setPageMessage('Announcement deleted successfully');
+    } catch (err: any) {
+      setPageMessage(err?.response?.data?.message || 'Unable to delete announcement right now');
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage || !selectedStudent) return;
+
+    setPageMessage("");
 
     const studentUserId = selectedStudent.userId?._id || selectedStudent.userId;
 
@@ -135,8 +152,8 @@ function TeacherCommunicationContent() {
       });
       setNewMessage("");
       fetchMessages(studentUserId);
-    } catch (err) {
-      alert("Failed to send message");
+    } catch (err: any) {
+      setPageMessage(err?.response?.data?.message || "Unable to send message right now");
     }
   };
 
@@ -150,6 +167,10 @@ function TeacherCommunicationContent() {
 
   return (
     <div className="space-y-8 p-8 max-w-400 mx-auto">
+      {pageMessage ? (
+        <div className="p-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm">{pageMessage}</div>
+      ) : null}
+
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -195,7 +216,18 @@ function TeacherCommunicationContent() {
                                )}>
                                   {ann.priority}
                                </span>
-                               <span className="text-[9px] text-slate-400 font-medium">{new Date(ann.createdAt).toLocaleDateString()}</span>
+                               <div className="flex items-center gap-2">
+                                 <span className="text-[9px] text-slate-400 font-medium">{new Date(ann.createdAt).toLocaleDateString()}</span>
+                                 {(ann?.senderId?._id || ann?.senderId) === (user?._id || user?.id) && (
+                                   <button
+                                     onClick={() => handleDeleteAnnouncement(ann._id)}
+                                     className="p-1 text-slate-400 hover:text-rose-600 rounded"
+                                     title="Delete announcement"
+                                   >
+                                     <Trash2 size={14} />
+                                   </button>
+                                 )}
+                               </div>
                             </div>
                             <h4 className="text-sm font-bold text-slate-900 mb-1">{ann.title}</h4>
                             <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{ann.body}</p>
@@ -332,7 +364,7 @@ function TeacherCommunicationContent() {
 
 export default function CommunicationPage() {
   return (
-    <Suspense fallback={<div className="p-8 animate-pulse text-slate-400 font-black uppercase tracking-widest">Waking Teacher Hub...</div>}>
+    <Suspense fallback={<div className="p-8 animate-pulse text-slate-400 font-black uppercase tracking-widest">Loading teacher communication...</div>}>
       <TeacherCommunicationContent />
     </Suspense>
   );

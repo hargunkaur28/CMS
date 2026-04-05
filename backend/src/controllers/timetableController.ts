@@ -556,10 +556,18 @@ export const getTodaySchedule = async (req: Request, res: Response) => {
 
     const enrichedTimetable = timetable.map((entry: any) => ({
       ...entry.toObject(),
-      isUpcoming: entry.startTime > currentTimeStr
+      isUpcoming: entry.startTime > currentTimeStr,
+      sessionState: entry.endTime <= currentTimeStr ? 'passed' : (entry.startTime > currentTimeStr ? 'upcoming' : 'live')
     }));
 
-    res.status(200).json({ success: true, data: enrichedTimetable });
+    res.status(200).json({
+      success: true,
+      data: enrichedTimetable,
+      meta: {
+        serverDate: now.toISOString().split('T')[0],
+        serverTime: currentTimeStr,
+      }
+    });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

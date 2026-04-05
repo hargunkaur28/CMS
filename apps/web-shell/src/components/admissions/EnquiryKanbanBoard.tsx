@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 interface Enquiry {
   _id: string;
   name: string;
-  courseInterested: string;
+  courseInterest?: { _id?: string; name?: string } | string;
   phone: string;
   email: string;
   source: string;
@@ -20,17 +20,19 @@ interface KanbanBoardProps {
   initialEnquiries: Enquiry[];
   onStatusChange: (id: string, newStatus: string) => Promise<boolean>;
   onNewEnquiryClick?: () => void;
+  onEnquiryClick?: (enquiry: Enquiry) => void;
 }
 
 const COLUMNS = [
-  { id: 'new', title: 'NEW ENQUIRIES', color: 'bg-blue-500' },
-  { id: 'follow-up', title: 'FOLLOW-UP', color: 'bg-amber-400' },
-  { id: 'applied', title: 'APPLIED', color: 'bg-purple-500' },
-  { id: 'admitted', title: 'APPROVED', color: 'bg-amber-500' },
-  { id: 'rejected', title: 'REJECTED', color: 'bg-red-500' }
+  { id: 'New', title: 'New', color: 'bg-blue-500' },
+  { id: 'Contacted', title: 'Contacted', color: 'bg-amber-400' },
+  { id: 'Interested', title: 'Interested', color: 'bg-purple-500' },
+  { id: 'applied', title: 'Applied', color: 'bg-indigo-500' },
+  { id: 'admitted', title: 'Admitted', color: 'bg-emerald-500' },
+  { id: 'NotInterested', title: 'Not Interested', color: 'bg-rose-500' }
 ];
 
-export default function EnquiryKanbanBoard({ initialEnquiries, onStatusChange, onNewEnquiryClick }: KanbanBoardProps) {
+export default function EnquiryKanbanBoard({ initialEnquiries, onStatusChange, onNewEnquiryClick, onEnquiryClick }: KanbanBoardProps) {
   const [enquiries, setEnquiries] = useState<Enquiry[]>(initialEnquiries);
   const [draggedId, setDraggedId] = useState<string | null>(null);
 
@@ -119,6 +121,7 @@ export default function EnquiryKanbanBoard({ initialEnquiries, onStatusChange, o
                     onDragEnd={() => setDraggedId(null)}
                     whileHover={{ y: -4 }}
                     className={`p-4 rounded-xl border border-slate-200 shadow-sm cursor-grab active:cursor-grabbing group transition-all bg-white hover:border-indigo-300 ${draggedId === enquiry._id ? 'opacity-50' : 'opacity-100'}`}
+                    onClick={() => onEnquiryClick?.(enquiry)}
                   >
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex items-center space-x-2">
@@ -133,7 +136,7 @@ export default function EnquiryKanbanBoard({ initialEnquiries, onStatusChange, o
                     <div className="space-y-2 text-xs text-slate-500">
                       <div className="flex items-center space-x-2">
                         <BookOpen className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="truncate">{enquiry.courseInterested || 'Inquiry'}</span>
+                        <span className="truncate">{typeof enquiry.courseInterest === 'string' ? enquiry.courseInterest : enquiry.courseInterest?.name || 'Course inquiry'}</span>
                       </div>
                       
                       {enquiry.studentId ? (

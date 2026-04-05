@@ -1,185 +1,303 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import Card from '@/components/ui/Card';
-import { 
-  FileText, 
-  Download, 
-  Search, 
-  Filter, 
-  BookOpen, 
-  Clock, 
-  User,
-  ExternalLink,
-  ChevronRight
-} from 'lucide-react';
-import { fetchMyMaterials } from '@/lib/api/student';
-import { cn } from '@/lib/utils';
-import Link from 'next/link';
+import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { BookOpen, ChevronRight, FileText, Loader2, Search, User, Download, Link2 } from "lucide-react";
+import Card from "@/components/ui/Card";
+import { cn } from "@/lib/utils";
+import { fetchMyMaterials, fetchMyProfile, fetchMyTimetable } from "@/lib/api/student";
 
 const resolveFileUrl = (rawUrl?: string) => {
-  if (!rawUrl) return '#';
+  if (!rawUrl) return "#";
   if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
-  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api';
-  const apiRoot = base.replace(/\/api\/?$/, '');
-  return `${apiRoot}${rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`}`;
+  const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5005/api";
+  const apiRoot = base.replace(/\/api\/?$/, "");
+  return `${apiRoot}${rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`}`;
+};
+
+const normalizeTimetableEntries = (data: any): any[] => {
+  if (!data) return [];
+  if (Array.isArray(data)) {
+    return data.map((entry) => ({
+      ...entry,
+      day: entry.day || entry.dayOfWeek,
+    }));
+  }
+
+  return Object.entries(data).flatMap(([day, groupedSlots]: any) => {
+    const values = groupedSlots && typeof groupedSlots === "object" ? Object.values(groupedSlots) : [];
+    return values.flat().map((entry: any) => ({
+      ...entry,
+      day: entry.day || day || entry.dayOfWeek,
+    }));
+  });
 };
 
 export default function StudentMaterialsPage() {
+  const [profile, setProfile] = useState<any>(null);
   const [materials, setMaterials] = useState<any[]>([]);
+  const [timetable, setTimetable] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+
+  const visibleMaterials = useMemo(
+    () => materials.filter((item) => String(item?.type || "").toLowerCase() !== "assignment"),
+    [materials]
+  );
 
   useEffect(() => {
     async function loadData() {
       try {
-        const res = await fetchMyMaterials();
-        if (res.success) {
-          setMaterials(res.data);
-        }
-      } catch (err) {
-        console.error("Failed to load materials", err);
+        const [profileRes, materialsRes, timetableRes] = await Promise.all([
+          fetchMyProfile().catch(() => ({ success: false, data: null })),
+          fetchMyMaterials().catch(() => ({ success: false, data: [] })),
+          fetchMyTimetable().catch(() => ({ success: false, data: [] })),
+        ]);
+
+        if (profileRes?.success) setProfile(profileRes.data);
+        if (materialsRes?.success) setMaterials(Array.isArray(materialsRes.data) ? materialsRes.data : []);
+        if (timetableRes?.success) setTimetable(normalizeTimetableEntries(timetableRes.data));
       } finally {
         setLoading(false);
       }
     }
+
     loadData();
   }, []);
 
-  const filteredMaterials = materials.filter(m => {
-    const matchesSearch = m.title.toLowerCase().includes(search.toLowerCase()) || 
-                          m.subjectId?.name.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === 'all' || m.type.toLowerCase() === filter.toLowerCase();
-    return matchesSearch && matchesFilter;
-  });
+  const studentName = profile?.personalInfo?.name || `${profile?.personalInfo?.firstName || ""} ${profile?.personalInfo?.lastName || ""}`.trim() || "Student";
+  const batchLabel = profile?.academicInfo?.batch || profile?.batchId?.name || "Not Assigned";
+  const sectionLabel = profile?.academicInfo?.section || profile?.sectionId?.name || "Not Assigned";
+
+  const subjectGroups = useMemo(() => {
+    const map = new Map<string, any>();
+
+    const getSubjectKey = (entry: any, materialItem?: any) => {
+      const subjectId = entry?.subjectId?._id || entry?.subjectId || materialItem?.subjectId?._id || materialItem?.subjectId;
+      if (subjectId) return String(subjectId);
+
+      const code = String(entry?.subjectId?.code || materialItem?.subjectId?.code || "").trim().toUpperCase();
+      const name = String(entry?.subjectId?.name || entry?.subject || materialItem?.subjectId?.name || materialItem?.subject || "General")
+        .trim()
+        .toUpperCase();
+      return `${code}::${name}`;
+    };
+
+    const upsertSubject = (entry: any, materialItem?: any) => {
+      const subjectId = getSubjectKey(entry, materialItem);
+      const subjectName = entry?.subjectId?.name || entry?.subject || materialItem?.subjectId?.name || materialItem?.subject || "General";
+      const subjectCode = entry?.subjectId?.code || materialItem?.subjectId?.code || "GEN";
+      const teacherName = entry?.teacherId?.name || materialItem?.teacherId?.name || "Faculty";
+
+      if (!map.has(String(subjectId))) {
+        map.set(String(subjectId), {
+          subjectId: String(subjectId),
+          subjectName,
+          subjectCode,
+          teacherName,
+          timetableEntries: [],
+          materials: [],
+        });
+      }
+
+      const group = map.get(String(subjectId));
+      if (entry) group.timetableEntries.push(entry);
+      if (materialItem) group.materials.push(materialItem);
+      if (teacherName && group.teacherName === "Faculty") group.teacherName = teacherName;
+      if (subjectCode && group.subjectCode === "GEN") group.subjectCode = subjectCode;
+      if (subjectName && group.subjectName === "General") group.subjectName = subjectName;
+    };
+
+    timetable.forEach((entry) => upsertSubject(entry));
+    visibleMaterials.forEach((item) => upsertSubject(item, item));
+
+    return Array.from(map.values()).sort((a, b) => a.subjectName.localeCompare(b.subjectName));
+  }, [visibleMaterials, timetable]);
+
+  const filteredGroups = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return subjectGroups;
+
+    return subjectGroups.filter((group) => {
+      const haystack = [group.subjectName, group.subjectCode, group.teacherName, ...group.materials.map((materialItem: any) => materialItem.title), ...group.materials.map((materialItem: any) => materialItem.description || "")]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [search, subjectGroups]);
 
   if (loading) {
     return (
       <div className="h-[60vh] flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <Loader2 size={28} className="animate-spin text-indigo-500" />
       </div>
     );
   }
 
+  const totalMaterials = subjectGroups.reduce((count, group) => count + group.materials.length, 0);
+
   return (
-    <div className="max-w-7xl mx-auto w-full space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-1000 pb-20">
-      {/* Strategic Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="max-w-7xl mx-auto w-full space-y-8 pb-16 animate-in fade-in slide-in-from-bottom-6 duration-1000">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
           <nav className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">
-            <Link href="/" className="hover:text-indigo-600 transition-colors">Portal</Link>
+            <Link href="/" className="hover:text-indigo-600 transition-colors">Dashboard</Link>
             <ChevronRight size={10} className="text-slate-300" />
-            <span className="text-slate-900">Academic Hub</span>
+            <span className="text-slate-900">Subjects & Materials</span>
           </nav>
-          <h1 className="text-4xl font-black text-slate-900 tracking-tight uppercase leading-none">
-            Learning <span className="text-indigo-600">Materials</span>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tight leading-none">
+            Subjects <span className="text-indigo-600">& Materials</span>
           </h1>
-          <p className="text-sm font-medium text-slate-500 mt-4 max-w-md leading-relaxed">
-            Access curated lecture notes, assignments, and reference documents shared by your faculty.
+          <p className="text-sm font-medium text-slate-500 mt-4 max-w-xl leading-relaxed">
+            View the subjects assigned to your batch and section along with all files, notes, and links shared by your teachers.
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input 
-              type="text" 
-              placeholder="Search materials..." 
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-xs font-bold focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all outline-none"
-            />
+        <div className="grid grid-cols-2 gap-3 w-full lg:w-auto">
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Student</p>
+            <p className="text-sm font-bold text-slate-900 truncate">{studentName}</p>
           </div>
-          <div className="flex items-center gap-2 bg-white border border-slate-100 p-1.5 rounded-2xl w-full sm:w-auto">
-            {['all', 'Material', 'Assignment', 'Reference'].map((t) => (
-              <button
-                key={t}
-                onClick={() => setFilter(t)}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-                  filter === t ? "bg-slate-900 text-white shadow-lg shadow-slate-900/20" : "text-slate-400 hover:text-slate-900 hover:bg-slate-50"
-                )}
-              >
-                {t}
-              </button>
-            ))}
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Batch / Section</p>
+            <p className="text-sm font-bold text-slate-900 truncate">{batchLabel} / {sectionLabel}</p>
           </div>
         </div>
       </div>
 
-      {/* Materials Grid */}
-      {filteredMaterials.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredMaterials.map((m, i) => (
-            <MaterialCard key={i} material={m} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <MiniStat label="Subjects" value={subjectGroups.length} icon={<BookOpen size={18} />} />
+        <MiniStat label="Materials" value={totalMaterials} icon={<FileText size={18} />} />
+        <MiniStat label="Batch" value={batchLabel === "Not Assigned" ? 0 : 1} icon={<User size={18} />} suffix={batchLabel === "Not Assigned" ? "Not Assigned" : batchLabel} />
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="relative w-full md:max-w-md">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+          <input
+            type="text"
+            placeholder="Search subject, code, teacher, or material..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-indigo-600/20 focus:border-indigo-600 transition-all outline-none shadow-sm"
+          />
+        </div>
+        <div className="text-sm font-semibold text-slate-500">
+          {filteredGroups.length} subject{filteredGroups.length === 1 ? "" : "s"} shown
+        </div>
+      </div>
+
+      {filteredGroups.length > 0 ? (
+        <div className="space-y-6">
+          {filteredGroups.map((group) => (
+            <SubjectSection key={group.subjectId} group={group} />
           ))}
         </div>
       ) : (
-        <div className="py-32 text-center bg-white rounded-[2.5rem] border border-dashed border-slate-200">
+        <div className="py-24 text-center bg-white rounded-[2.5rem] border border-dashed border-slate-200 shadow-sm">
           <BookOpen size={48} className="mx-auto text-slate-200 mb-6" />
-          <h3 className="text-lg font-black text-slate-900 uppercase">No Resources Found</h3>
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-2">Try adjusting your filters or search query.</p>
+          <h3 className="text-lg font-black text-slate-900">Nothing here yet</h3>
+          <p className="text-sm font-medium text-slate-500 mt-2 max-w-md mx-auto">
+            Your teacher hasn't uploaded anything yet for your batch and section.
+          </p>
         </div>
       )}
     </div>
   );
 }
 
-function MaterialCard({ material }: { material: any }) {
+function MiniStat({ label, value, icon, suffix }: { label: string; value: number; icon: React.ReactNode; suffix?: string }) {
   return (
-    <Card className="group bg-white border border-slate-100 rounded-[2.5rem] p-8 hover:shadow-2xl hover:shadow-indigo-600/10 transition-all duration-500 flex flex-col h-full">
-       <div className="flex justify-between items-start mb-6">
-          <div className={cn(
-             "w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 duration-500",
-             material.type === 'Assignment' ? "bg-rose-50 text-rose-600" :
-             material.type === 'Reference' ? "bg-amber-50 text-amber-600" : "bg-indigo-50 text-indigo-600"
-          )}>
-             <FileText size={24} />
-          </div>
-          <span className={cn(
-             "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
-             material.type === 'Assignment' ? "bg-rose-50 text-rose-600 border-rose-100" :
-             material.type === 'Reference' ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-indigo-50 text-indigo-600 border-indigo-100"
-          )}>
-             {material.type}
-          </span>
-       </div>
+    <Card className="p-5 border border-slate-100 bg-white shadow-sm rounded-3xl flex items-center gap-4">
+      <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">{icon}</div>
+      <div>
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+        <p className="text-2xl font-black text-slate-900 leading-none mt-1">{value}</p>
+        {suffix ? <p className="text-[10px] font-semibold text-slate-500 mt-1">{suffix}</p> : null}
+      </div>
+    </Card>
+  );
+}
 
-       <div className="flex-1 space-y-4">
-          <div>
-             <h4 className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-1">{material.subjectId?.name || 'General'}</h4>
-             <h3 className="text-xl font-black text-slate-900 tracking-tight leading-tight group-hover:text-indigo-600 transition-colors uppercase">{material.title}</h3>
+function SubjectSection({ group }: { group: any }) {
+  return (
+    <Card className="p-6 md:p-8 border border-slate-100 bg-white shadow-sm rounded-4xl">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+        <div>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Subject</p>
+          <h2 className="text-2xl font-black text-slate-900 tracking-tight">{group.subjectName}</h2>
+          <p className="text-sm font-semibold text-slate-500 mt-2">Code: {group.subjectCode} • Teacher: {group.teacherName}</p>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-right">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Materials</p>
+          <p className="text-xl font-black text-slate-900">{group.materials.length}</p>
+        </div>
+      </div>
+
+      {group.materials.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {group.materials.map((material: any) => (
+            <MaterialItem key={material._id} material={material} />
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/50 px-5 py-8 text-center text-slate-500 font-medium">
+          No materials uploaded yet for this subject.
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function MaterialItem({ material }: { material: any }) {
+  const fileUrl = resolveFileUrl(material.fileUrl);
+  const isExternal = /^https?:\/\//i.test(material.fileUrl || "");
+  const canOpen = fileUrl && fileUrl !== "#";
+
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-5 hover:shadow-lg hover:shadow-indigo-600/5 transition-all">
+      <div className="flex items-start gap-4">
+        <div className={cn(
+          "w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 border",
+          material.type === "Assignment" ? "bg-rose-50 text-rose-600 border-rose-100" : material.type === "Reference" ? "bg-amber-50 text-amber-600 border-amber-100" : "bg-indigo-50 text-indigo-600 border-indigo-100"
+        )}>
+          <FileText size={22} />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 leading-tight">{material.title}</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{material.type}</p>
+            </div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              {material.createdAt ? new Date(material.createdAt).toLocaleDateString() : "Recently uploaded"}
+            </span>
           </div>
-          <p className="text-sm font-medium text-slate-500 line-clamp-2 leading-relaxed">
-             {material.description || 'No description provided.'}
+
+          <p className="text-sm text-slate-600 mt-3 leading-relaxed">
+            {material.description || "Your teacher has shared a resource for this subject."}
           </p>
 
-          <div className="flex flex-wrap gap-4 pt-4 border-t border-slate-50">
-             <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <User size={14} className="text-slate-300" />
-                <span>Prof. {material.teacherId?.name || 'Faculty'}</span>
-             </div>
-             <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <Clock size={14} className="text-slate-300" />
-                <span>{material?.createdAt ? new Date(material.createdAt).toLocaleDateString() : 'N/A'}</span>
-             </div>
+          <div className="flex flex-wrap items-center gap-3 mt-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <span className="inline-flex items-center gap-1.5"><User size={12} /> {material.teacherId?.name || "Faculty"}</span>
+            <span className="inline-flex items-center gap-1.5"><Download size={12} /> {isExternal ? "Open resource" : "Download file"}</span>
           </div>
-       </div>
 
-       <div className="mt-8 flex items-center gap-3">
-           <a 
-             href={resolveFileUrl(material.fileUrl)} 
-             target="_blank" 
-             rel="noopener noreferrer"
-             className="flex-1 bg-slate-900 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10"
-          >
-             Download <Download size={14} />
-          </a>
-          <button className="w-14 h-14 border border-slate-100 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-900 transition-all">
-             <ExternalLink size={18} />
-          </button>
-       </div>
-    </Card>
+          <div className="mt-4 flex items-center gap-3">
+            <a
+              href={fileUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={!canOpen}
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900 text-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all"
+            >
+              {isExternal ? <Link2 size={14} /> : <Download size={14} />}
+              {isExternal ? "Open Link" : "Download"}
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

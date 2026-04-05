@@ -94,8 +94,10 @@ export const getStudentProfile = async (req: Request, res: Response) => {
     }
 
     const student = await Student.findOne(query)
-      .select('personalInfo academicInfo academicHistory parentInfo')
-      .populate('userId', 'email name');
+      .select('personalInfo academicInfo academicHistory parentInfo documents uniqueStudentId enrollmentId studentId batchId')
+      .populate('userId', 'email name')
+      .populate('batchId', 'name startYear endYear status')
+      .populate('academicInfo.department', 'name');
 
     if (!student) {
       return res.status(404).json({ success: false, message: 'Student not found' });

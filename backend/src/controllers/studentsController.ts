@@ -3,15 +3,21 @@ import { Request, Response } from "express";
 import mongoose from "mongoose";
 import Student from "../models/Student.js";
 import User from "../models/User.js";
+import Parent from "../models/Parent.js";
 import Department from "../models/Department.js";
 import { generateStudentId } from "../utils/studentIdGenerator.js";
+import { generateEnrollmentId, normalizeEnrollmentId } from "../utils/enrollmentId.js";
 import { parseStudentCSV } from "../utils/csvImporter.js";
 import Batch from "../models/Batch.js";
 import Course from "../models/Course.js";
 import FeeStructure from "../models/FeeStructure.js";
 import Payment from "../models/Payment.js";
+import { calculateStudentFee } from "../services/feeService.js";
 
 const DEFAULT_STUDENT_PASSWORD = "Student@123";
+const DEFAULT_PARENT_PASSWORD = "Parent@123";
+
+const escapeRegexLiteral = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const parseBatchYears = (batchRaw: string) => {
   const currentYear = new Date().getFullYear();
@@ -42,12 +48,14 @@ const ensureStudentUser = async (params: {
   collegeId: any;
 }) => {
   const email = String(params.email || "").trim().toLowerCase();
-  if (!email) throw new Error("Student email is required");
+  if (!email) {
+    throw new Error("Student email is required");
+  }
 
   let user = await User.findOne({ email });
   if (!user) {
     user = new User({
-      name: params.fullName,
+      name: params.fullName || email.split("@")[0],
       email,
       password: DEFAULT_STUDENT_PASSWORD,
       role: "STUDENT",
@@ -59,9 +67,8 @@ const ensureStudentUser = async (params: {
     return user;
   }
 
-  // Keep legacy users compatible with student login flow.
   let changed = false;
-  if (user.role !== "STUDENT") {
+  if (String(user.role || "").toUpperCase() !== "STUDENT") {
     user.role = "STUDENT";
     changed = true;
   }
@@ -77,7 +84,102 @@ const ensureStudentUser = async (params: {
     user.name = params.fullName;
     changed = true;
   }
-  if (changed) await user.save();
+
+  if (changed) {
+    await user.save();
+  }
+
+  return user;
+};
+
+const normalizeParentRelation = (value: string) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'father') return 'Father';
+  if (normalized === 'mother') return 'Mother';
+  return 'Guardian';
+};
+
+const ensureParentAccountAndLink = async (params: {
+  email?: string;
+  name?: string;
+  phone?: string;
+  relation?: string;
+  studentId: any;
+  collegeId: any;
+}) => {
+  const email = String(params.email || '').trim().toLowerCase();
+  if (!email) return null;
+
+  let user = await User.findOne({ email });
+  if (!user) {
+    user = new User({
+      name: String(params.name || 'Parent').trim() || 'Parent',
+      email,
+      password: DEFAULT_PARENT_PASSWORD,
+      role: 'PARENT',
+      collegeId: params.collegeId,
+      isActive: true,
+      mustChangePassword: true,
+    });
+    await user.save();
+  } else {
+    let changed = false;
+    if (String(user.role || '').toUpperCase() !== 'PARENT') {
+      user.role = 'PARENT';
+      changed = true;
+    }
+    if (!user.collegeId && params.collegeId) {
+      user.collegeId = params.collegeId;
+      changed = true;
+    }
+    if (!user.isActive) {
+      user.isActive = true;
+      changed = true;
+    }
+    if (params.name && user.name !== params.name) {
+      user.name = String(params.name).trim();
+      changed = true;
+    }
+    if (changed) await user.save();
+  }
+
+  let parentRecord = await Parent.findOne({ userId: user._id });
+  if (!parentRecord) {
+    parentRecord = await Parent.create({
+      userId: user._id,
+      students: [params.studentId],
+      relation: normalizeParentRelation(String(params.relation || 'Guardian')),
+      phone: String(params.phone || '0000000000').trim(),
+      isActive: true,
+    });
+  } else {
+    const existingStudents = new Set(parentRecord.students.map((id) => String(id)));
+    if (!existingStudents.has(String(params.studentId))) {
+      parentRecord.students.push(params.studentId as any);
+    }
+
+    let changed = false;
+    const normalizedRelation = normalizeParentRelation(String(params.relation || parentRecord.relation || 'Guardian'));
+    if (parentRecord.relation !== normalizedRelation) {
+      parentRecord.relation = normalizedRelation;
+      changed = true;
+    }
+
+    const nextPhone = String(params.phone || parentRecord.phone || '0000000000').trim();
+    if (parentRecord.phone !== nextPhone) {
+      parentRecord.phone = nextPhone;
+      changed = true;
+    }
+
+    if (!parentRecord.isActive) {
+      parentRecord.isActive = true;
+      changed = true;
+    }
+
+    if (changed || !existingStudents.has(String(params.studentId))) {
+      await parentRecord.save();
+    }
+  }
 
   return user;
 };
@@ -167,14 +269,17 @@ export const getMyStudent = async (req: Request, res: Response) => {
 
       student = await Student.findOne(query)
         .populate("academicInfo.department", "name")
+        .populate({ path: "batchId", select: "name courseId startYear endYear", populate: { path: "courseId", select: "name code" } })
         .select("-documents"); // Exclude heavy documents array from dashboard payload
 
     } else if (user.role === 'PARENT') {
-      // For parents, look up via parentInfo email (existing approach)
-      const parentQuery: any = { "parentInfo.email": user.email };
+      // For parents, look up via parentInfo email (case-insensitive to handle legacy casing).
+      const parentEmail = String(user.email || '').trim();
+      const parentQuery: any = { "parentInfo.email": new RegExp(`^${escapeRegexLiteral(parentEmail)}$`, 'i') };
       if (user.collegeId) parentQuery.collegeId = user.collegeId;
       student = await Student.findOne(parentQuery)
         .populate("academicInfo.department", "name")
+        .populate({ path: "batchId", select: "name courseId startYear endYear", populate: { path: "courseId", select: "name code" } })
         .select("-documents");
     }
 
@@ -200,12 +305,36 @@ export const createStudent = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "collegeId is required" });
     }
 
+    const enrollmentId = await generateEnrollmentId(String(studentData.collegeId), new Date());
+    studentData.enrollmentId = enrollmentId;
+    studentData.studentId = enrollmentId;
+
+    studentData.personalInfo = studentData.personalInfo || {};
+    studentData.parentInfo = studentData.parentInfo || {};
+    studentData.academicInfo = studentData.academicInfo || {};
+
     const first = String(studentData?.personalInfo?.firstName || "").trim();
     const last = String(studentData?.personalInfo?.lastName || "").trim();
     const email = String(studentData?.personalInfo?.email || "").trim().toLowerCase();
     if (!email || !first) {
       return res.status(400).json({ success: false, message: "Student first name and email are required" });
     }
+
+    // Backfill required fields so manual registration survives sparse forms.
+    const fallbackPhone = String(studentData?.personalInfo?.phone || studentData?.parentInfo?.phone || "0000000000").trim();
+    const fallbackAddress = String(studentData?.personalInfo?.address || "Not Provided").trim();
+    const fallbackParentEmail = String(studentData?.parentInfo?.email || email).trim().toLowerCase();
+
+    studentData.personalInfo.firstName = first;
+    studentData.personalInfo.lastName = last;
+    studentData.personalInfo.email = email;
+    studentData.personalInfo.phone = fallbackPhone;
+    studentData.personalInfo.address = fallbackAddress;
+
+    studentData.parentInfo.name = String(studentData?.parentInfo?.name || `${first} ${last}`.trim() || "Guardian").trim();
+    studentData.parentInfo.phone = String(studentData?.parentInfo?.phone || fallbackPhone).trim();
+    studentData.parentInfo.email = fallbackParentEmail;
+    studentData.parentInfo.relation = String(studentData?.parentInfo?.relation || "Guardian").trim();
 
     // Create or re-use a corresponding User account for the student.
     const newUser = await ensureStudentUser({
@@ -215,9 +344,17 @@ export const createStudent = async (req: Request, res: Response) => {
     });
     
     studentData.userId = newUser._id;
-    studentData.personalInfo.email = email;
     const student = new Student(studentData);
     await student.save();
+
+    await ensureParentAccountAndLink({
+      email: studentData?.parentInfo?.email,
+      name: studentData?.parentInfo?.name,
+      phone: studentData?.parentInfo?.phone,
+      relation: studentData?.parentInfo?.relation,
+      studentId: student._id,
+      collegeId: studentData.collegeId,
+    });
     
     res.status(201).json({ success: true, data: student, message: "Student enrolled successfully" });
   } catch (error: any) {
@@ -242,9 +379,112 @@ export const updateStudent = async (req: Request, res: Response) => {
       }
     }
 
+    await ensureParentAccountAndLink({
+      email: student?.parentInfo?.email,
+      name: student?.parentInfo?.name,
+      phone: student?.parentInfo?.phone,
+      relation: student?.parentInfo?.relation,
+      studentId: student._id,
+      collegeId,
+    });
+
     res.status(200).json({ success: true, data: student, message: "Student profile updated" });
   } catch (error: any) {
     res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const updateStudentEnrollmentId = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const collegeId = (req as any).user?.collegeId;
+    const enrollmentId = normalizeEnrollmentId(String(req.body?.enrollmentId || ""));
+
+    if (!enrollmentId) {
+      return res.status(400).json({ success: false, message: "Please provide a valid enrollment ID" });
+    }
+
+    const duplicate = await Student.findOne({
+      collegeId,
+      enrollmentId,
+      uniqueStudentId: { $ne: id }
+    }).select("_id");
+
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: "This enrollment ID is already taken. Please choose a different one"
+      });
+    }
+
+    const student = await Student.findOneAndUpdate(
+      { uniqueStudentId: id, collegeId },
+      { enrollmentId, studentId: enrollmentId },
+      { new: true }
+    );
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    return res.status(200).json({ success: true, data: student, message: "Enrollment ID updated successfully" });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+export const updateStudentRollNumber = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const collegeId = (req as any).user?.collegeId;
+    const rollNumber = String(req.body?.rollNumber || "").trim().toUpperCase();
+
+    if (!rollNumber) {
+      return res.status(400).json({ success: false, message: "Please provide a valid roll number" });
+    }
+
+    const targetStudent = await Student.findOne({ uniqueStudentId: id, collegeId }).select("_id batchId academicInfo.batch academicInfo.section");
+    if (!targetStudent) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    const duplicateQuery: any = {
+      collegeId,
+      "academicInfo.rollNumber": rollNumber,
+      uniqueStudentId: { $ne: id },
+    };
+
+    if (targetStudent.batchId) {
+      duplicateQuery.batchId = targetStudent.batchId;
+    } else if (targetStudent.academicInfo?.batch) {
+      duplicateQuery["academicInfo.batch"] = targetStudent.academicInfo.batch;
+    }
+
+    if (targetStudent.academicInfo?.section) {
+      duplicateQuery["academicInfo.section"] = targetStudent.academicInfo.section;
+    }
+
+    const duplicate = await Student.findOne(duplicateQuery).select("_id");
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: "This roll number is already in use for the same batch/section",
+      });
+    }
+
+    const student = await Student.findOneAndUpdate(
+      { uniqueStudentId: id, collegeId },
+      { $set: { "academicInfo.rollNumber": rollNumber } },
+      { new: true }
+    );
+
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    return res.status(200).json({ success: true, data: student, message: "Roll number updated successfully" });
+  } catch (error: any) {
+    return res.status(400).json({ success: false, message: error.message });
   }
 };
 
@@ -268,6 +508,7 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
     for (const row of rawData) {
       try {
         const uniqueId = await generateStudentId();
+        const enrollmentId = await generateEnrollmentId(String(collegeId), new Date());
         
         // Helper to find value regardless of case/spaces in header
         const getVal = (keys: string[]) => {
@@ -367,8 +608,15 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
         });
 
         // Map CSV row to Student Schema with fallbacks
+        const parentEmail = String(getVal(["parentEmail", "parent email"]) || normalizedEmail).trim().toLowerCase();
+        const parentName = String(getVal(["parentName", "guardian", "father name"]) || `${firstName} ${lastName}`).trim();
+        const parentPhone = String(getVal(["parentPhone", "parent contact"]) || getVal(["phone", "mobile", "contact"]) || "0000000000").trim();
+        const parentRelation = String(getVal(["relation", "relationship"]) || "Guardian").trim();
+
         const student = new Student({
           uniqueStudentId: uniqueId,
+          enrollmentId,
+          studentId: enrollmentId,
           userId: newUser._id,
           collegeId, // IMPORTANT: Link imported student to the current admin's college
           batchId: batch._id,
@@ -389,14 +637,24 @@ export const bulkImportStudents = async (req: Request, res: Response) => {
             semester: 1
           },
           parentInfo: {
-            name: getVal(["parentName", "guardian", "father name"]) || "N/A",
-            phone: getVal(["parentPhone", "parent contact"]) || "0000000000",
-            email: getVal(["parentEmail", "parent email"]) || "parent@example.com",
-            relation: getVal(["relation", "relationship"]) || "Guardian"
+            name: parentName || "N/A",
+            phone: parentPhone || "0000000000",
+            email: parentEmail,
+            relation: parentRelation || "Guardian"
           },
           documents: []
         });
         await student.save();
+
+        await ensureParentAccountAndLink({
+          email: parentEmail,
+          name: parentName,
+          phone: parentPhone,
+          relation: parentRelation,
+          studentId: student._id,
+          collegeId,
+        });
+
         importedStudents.push(student);
       } catch (err: any) {
         console.error(`IMPORT ROW ERROR (Row ${importedStudents.length + errors.length + 1}):`, err.message);

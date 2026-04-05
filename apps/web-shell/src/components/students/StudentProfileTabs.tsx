@@ -6,6 +6,7 @@ import { User, Layers, Calendar, FileText, CreditCard, MessageSquare, ClipboardC
 interface StudentProfileTabsProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  hideFees?: boolean;
 }
 
 const tabs = [
@@ -18,10 +19,12 @@ const tabs = [
   { id: "comms", label: "Communication", icon: <MessageSquare size={16} /> },
 ];
 
-export default function StudentProfileTabs({ activeTab, setActiveTab }: StudentProfileTabsProps) {
+export default function StudentProfileTabs({ activeTab, setActiveTab, hideFees = false }: StudentProfileTabsProps) {
+  const visibleTabs = hideFees ? tabs.filter((tab) => tab.id !== "fees") : tabs;
+
   return (
     <div className="flex border-b border-slate-100 gap-1 overflow-x-auto no-scrollbar scroll-smooth px-4">
-      {tabs.map((tab) => (
+      {visibleTabs.map((tab) => (
         <button
           key={tab.id}
           onClick={() => setActiveTab(tab.id)}

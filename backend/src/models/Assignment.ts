@@ -5,6 +5,7 @@ export interface IAssignment extends Document {
   description: string;
   subjectId: mongoose.Types.ObjectId;
   batchId: mongoose.Types.ObjectId;
+  sectionId?: mongoose.Types.ObjectId;
   teacherId: mongoose.Types.ObjectId;
   collegeId: mongoose.Types.ObjectId;
   dueDate: Date;
@@ -22,6 +23,7 @@ const AssignmentSchema: Schema = new Schema({
   description: { type: String, required: true },
   subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
   batchId: { type: Schema.Types.ObjectId, ref: 'Batch', required: true },
+  sectionId: { type: Schema.Types.ObjectId, ref: 'Section' },
   teacherId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   collegeId: { type: Schema.Types.ObjectId, ref: 'College', required: true },
   dueDate: { type: Date, required: true },
@@ -34,6 +36,7 @@ const AssignmentSchema: Schema = new Schema({
 
 // Optimize for common queries
 AssignmentSchema.index({ batchId: 1, subjectId: 1 });
+AssignmentSchema.index({ batchId: 1, sectionId: 1, subjectId: 1 });
 AssignmentSchema.index({ teacherId: 1 });
 AssignmentSchema.index({ collegeId: 1 });
 

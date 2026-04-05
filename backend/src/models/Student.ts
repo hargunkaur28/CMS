@@ -3,9 +3,12 @@ import mongoose, { Schema, Document } from "mongoose";
 
 export interface IStudent extends Document {
   uniqueStudentId: string;
+  enrollmentId?: string;
   userId: mongoose.Types.ObjectId;
   collegeId?: mongoose.Types.ObjectId;
   batchId?: mongoose.Types.ObjectId;  // Top-level for efficient querying
+  category?: "GEN" | "SC" | "ST" | "OBC";
+  scholarshipId?: mongoose.Types.ObjectId;
   studentId?: string; // Compatibility alias
   personalInfo: {
     firstName: string;
@@ -46,9 +49,12 @@ export interface IStudent extends Document {
 const StudentSchema: Schema = new Schema(
   {
     uniqueStudentId: { type: String, required: true, unique: true },
+    enrollmentId: { type: String, unique: true, sparse: true, index: true },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     collegeId: { type: Schema.Types.ObjectId, ref: "College", index: true },
     batchId: { type: Schema.Types.ObjectId, ref: "Batch", index: true },
+    category: { type: String, enum: ["GEN", "SC", "ST", "OBC"], default: "GEN" },
+    scholarshipId: { type: Schema.Types.ObjectId, ref: "Scholarship", index: true },
     studentId: { type: String }, // Virtual alias possible but field is safer for population
     personalInfo: {
       firstName: { type: String, required: true },
@@ -96,6 +102,9 @@ StudentSchema.pre('save', function(next) {
   }
   if (student.uniqueStudentId) {
     student.studentId = student.uniqueStudentId;
+  }
+  if (student.enrollmentId) {
+    student.studentId = student.enrollmentId;
   }
   next();
 });

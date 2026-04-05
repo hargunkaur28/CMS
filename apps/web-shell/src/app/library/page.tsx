@@ -27,6 +27,8 @@ export default function LibraryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
   const [userRole, setUserRole] = useState<string>("");
+  const [notice, setNotice] = useState("");
+  const canAddBooks = ['LIBRARIAN', 'COLLEGE_ADMIN', 'SUPER_ADMIN', 'ADMIN'].includes(String(userRole || '').toUpperCase());
 
   const loadBooks = async () => {
     setLoading(true);
@@ -63,19 +65,24 @@ export default function LibraryPage() {
 
   const handleReserve = async (bookId: string) => {
     if (userRole !== "STUDENT") return;
+    setNotice("");
     try {
       const res = await reserveBook(bookId);
       if (res.success) {
-        alert("Book reserved successfully! You can pick it up from the library.");
+        setNotice("Book reserved successfully. You can pick it up from the library.");
         loadBooks();
       }
     } catch (err: any) {
-      alert(err.response?.data?.message || "Failed to reserve book");
+      setNotice(err.response?.data?.message || "Unable to reserve the book right now.");
     }
   };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 max-w-7xl mx-auto w-full">
+      {notice ? (
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">{notice}</div>
+      ) : null}
+
       {/* My Activity Section */}
       {myTransactions.length > 0 && (
         <section className="animate-in slide-in-from-top-4 duration-700">
@@ -146,9 +153,11 @@ export default function LibraryPage() {
               className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-600/10 focus:border-indigo-600/50 shadow-sm transition-all"
             />
           </div>
-          <button className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">
-            <Plus size={20} />
-          </button>
+          {canAddBooks && (
+            <button className="p-3 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10">
+              <Plus size={20} />
+            </button>
+          )}
         </div>
       </header>
 
@@ -187,7 +196,7 @@ export default function LibraryPage() {
           ))}
         </div>
       ) : (
-        <Card className="py-24 text-center bg-white border border-dashed border-slate-200 rounded-[2rem] shadow-sm">
+        <Card className="py-24 text-center bg-white border border-dashed border-slate-200 rounded-4xl shadow-sm">
           <BookIcon size={48} className="text-slate-200 mx-auto mb-4" />
           <p className="text-lg font-bold text-slate-400 uppercase tracking-widest">No matching titles</p>
           <p className="text-sm text-slate-300 mt-2">Try adjusting your search filters or category.</p>

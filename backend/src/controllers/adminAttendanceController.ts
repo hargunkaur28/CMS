@@ -193,6 +193,10 @@ export const getStudentAttendanceDetail = async (req: Request, res: Response) =>
       return res.status(404).json({ success: false, message: "Student not found" });
     }
 
+    const batchDoc = student.batchId ? await Batch.findById(student.batchId).select("name") : null;
+    const batchName = student.academicInfo?.batch || batchDoc?.name || "";
+    const rollNumber = student.academicInfo?.rollNumber || student.studentId || student.uniqueStudentId || "";
+
     // Calculate attendance stats for this student
     const stats = await Attendance.aggregate([
       { $unwind: "$records" },
@@ -256,6 +260,9 @@ export const getStudentAttendanceDetail = async (req: Request, res: Response) =>
     const studentData = {
       personalInfo: student.personalInfo,
       academicInfo: student.academicInfo,
+      batchId: student.batchId,
+      batchName,
+      rollNumber,
       studentId: student.studentId || student.uniqueStudentId,
       ...attendanceStats
     };

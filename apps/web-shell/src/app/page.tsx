@@ -31,7 +31,9 @@ import { fetchMyAnnouncements, fetchUnreadCount } from "@/lib/api/communication"
 import { fetchMyStudentProfile, fetchMyStudentAttendance, fetchMyStudentResults, fetchMyStudentTimetable, fetchMyStudentFees } from "@/lib/api/parent";
 import { useSocket } from "@/components/providers/SocketProvider";
 import { fetchTodayTimetable as fetchTeacherTimetable, fetchTeacherDashboardStats } from "@/lib/api/teacher";
+import { getExams } from "@/lib/api/exams";
 import { cn } from "@/lib/utils";
+import { getSessionUser } from "@/lib/session";
 
 import { useRouter } from "next/navigation";
 
@@ -40,8 +42,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   React.useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("user") || "{}");
-    const userRole = user.role;
+    const userRole = getSessionUser()?.role;
     setRole(userRole);
     
     // Strategic Redirection to Specialized Portals
@@ -99,7 +100,7 @@ function AdminDashboard() {
                  <ArrowUpRight className="text-white" size={24} />
               </div>
               <h2 className="text-2xl font-black tracking-tighter uppercase leading-none mb-4">Academic Assignments</h2>
-              <p className="text-xs font-medium text-slate-400 max-w-[15rem] mb-8 leading-relaxed">
+              <p className="text-xs font-medium text-slate-400 max-w-60 mb-8 leading-relaxed">
                  Configure teacher subject-batch mappings and student academic flows.
               </p>
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-indigo-400">
@@ -252,6 +253,7 @@ function ParentDashboard() {
   const currentChild = children[selectedChildIndex];
   const attendance = currentChild?.attendance || [];
   const results = currentChild?.results || [];
+  const dueBalance = Number(fees?.due_amount ?? fees?.summary?.balance ?? 0);
 
   const attPct = currentChild?.stats?.attendancePct || 0;
   const childCgpa = currentChild?.stats?.cgpa || 0;
@@ -319,17 +321,17 @@ function ParentDashboard() {
             />
             <KPICard 
               title="Financial Status" 
-              value={`₹${fees?.summary?.balance || 0}`} 
-              trend={fees?.summary?.balance <= 0 ? "All Clear" : "Pending"} 
-              trendUp={fees?.summary?.balance <= 0} 
+              value={`₹${dueBalance}`} 
+              trend={dueBalance <= 0 ? "All Clear" : "Pending"} 
+              trendUp={dueBalance <= 0} 
               subtitle="Pending Dues" 
               icon={<CreditCard size={20} />} 
-              color={fees?.summary?.balance <= 0 ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-rose-50 text-rose-600 border border-rose-100"} 
+              color={dueBalance <= 0 ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-rose-50 text-rose-600 border border-rose-100"} 
             />
           </div>
 
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="text-xl font-bold text-slate-900">Recent Attendance</h3>
@@ -380,9 +382,6 @@ function ParentDashboard() {
                       <p className="text-sm font-bold text-slate-900">{result.examId?.name}</p>
                       <p className="text-xs text-slate-400 font-medium">Percentage: {result.percentage.toFixed(1)}% | CGPA: {result.cgpa.toFixed(2)}</p>
                     </div>
-                    <button className="p-2 text-slate-400 hover:text-indigo-600 transition-colors">
-                      <Download size={18} />
-                    </button>
                   </div>
                 )) : (
                   <div className="text-center py-12">
@@ -392,10 +391,43 @@ function ParentDashboard() {
                 )}
               </div>
             </Card>
+
+            <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-slate-900">Today's Schedule</h2>
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Calendar size={16} />
+                </div>
+              </div>
+              <div className="space-y-6">
+                {childSchedule.length > 0 ? childSchedule.map((slot: any, i: number) => (
+                  <div key={i} className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center font-bold text-xs uppercase border border-indigo-100">
+                      <Clock size={16} />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-slate-900">{slot.subjectId?.name || slot.subject || "Class"}</p>
+                      <p className="text-xs text-slate-400 font-medium">{slot.startTime} • {slot.teacherId?.name || 'Teacher'} • Room {slot.room || slot.roomNo || 'TBD'}</p>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="py-12 text-center opacity-40">
+                    <Clock size={32} className="mx-auto mb-4 text-slate-300" />
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No classes today</p>
+                  </div>
+                )}
+              </div>
+              <Link 
+                href="/student/timetable" 
+                className="w-full mt-8 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/10 flex items-center justify-center"
+              >
+                View Full Timetable
+              </Link>
+            </Card>
           </div>
         </>
       ) : (
-        <Card className="p-24 text-center bg-white border border-dashed border-slate-200 rounded-[2rem]">
+        <Card className="p-24 text-center bg-white border border-dashed border-slate-200 rounded-4xl">
            <Baby size={48} className="mx-auto text-slate-200 mb-4" />
            <p className="text-lg font-bold text-slate-400 uppercase tracking-widest">No Children Linked</p>
            <p className="text-sm text-slate-400 mt-2">Please contact the college administration to link your child's profile.</p>
@@ -559,25 +591,33 @@ function StudentDashboard() {
   const [unreadCount, setUnreadCount] = React.useState(0);
   const [libraryTx, setLibraryTx] = React.useState<any[]>([]);
   const [assignments, setAssignments] = React.useState<any[]>([]);
+  const [upcomingTests, setUpcomingTests] = React.useState<any[]>([]);
   const [loading, setLoading] = React.useState(true);
+  const [portalNotice, setPortalNotice] = React.useState<string | null>(null);
 
   const loadData = async () => {
     try {
-      const [profileRes, attendanceRes, resultsRes, scheduleRes, annRes, unreadRes, libraryRes, assignmentsRes] = await Promise.all([
-        fetchMyProfile().catch(() => ({ success: false, data: null })),
+      const profileRes = await fetchMyProfile().catch(() => ({ success: false, data: null }));
+      const courseId = profileRes?.success
+        ? profileRes.data?.batchId?.courseId?._id || profileRes.data?.batchId?.courseId || profileRes.data?.academicInfo?.courseId || null
+        : null;
+
+      const [attendanceRes, resultsRes, scheduleRes, annRes, unreadRes, libraryRes, assignmentsRes, testsRes] = await Promise.all([
         fetchMyAttendance().catch(() => ({ success: false, data: null })),
         fetchMyResults().catch(() => ({ success: false, data: null })),
         fetchMyTodaySchedule().catch(() => ({ success: false, data: [] })),
         fetchMyAnnouncements().catch(() => ({ success: false, data: [] })),
         fetchUnreadCount().catch(() => ({ success: false, data: { count: 0 } })),
         fetchMyLibraryTransactions({ limit: 3 }).catch(() => ({ success: false, data: [] })),
-        fetchMyAssignments().catch(() => ({ success: false, data: [] }))
+        fetchMyAssignments().catch(() => ({ success: false, data: [] })),
+        getExams(courseId ? { courseId } : {}).catch(() => ({ success: false, data: [] }))
       ]);
       if (profileRes.success) {
         setProfile(profileRes.data);
         localStorage.setItem("student_profile", JSON.stringify({
           _id: profileRes.data._id,
-          batchId: profileRes.data.academicInfo?.batchId || profileRes.data.batchId
+          batchId: profileRes.data.academicInfo?.batchId || profileRes.data.batchId,
+          courseId: profileRes.data.batchId?.courseId?._id || profileRes.data.batchId?.courseId || profileRes.data.academicInfo?.courseId || null
         }));
       }
       if (attendanceRes.success) setAttendanceData(attendanceRes.data);
@@ -587,6 +627,15 @@ function StudentDashboard() {
       if (unreadRes.success) setUnreadCount(unreadRes.data.count);
       if (libraryRes?.success) setLibraryTx(libraryRes.data);
       if (assignmentsRes?.success) setAssignments(assignmentsRes.data);
+      if (testsRes?.success) {
+        const examRows = Array.isArray(testsRes.data) ? testsRes.data : [];
+        setUpcomingTests(
+          examRows.filter((exam: any) => {
+            const status = String(exam?.status || exam?.derivedStatus || "").toUpperCase();
+            return status === "SCHEDULED" || status === "PUBLISHED";
+          })
+        );
+      }
 
     } catch (err) {
       console.error("Failed to load student dashboard data", err);
@@ -597,6 +646,10 @@ function StudentDashboard() {
 
   React.useEffect(() => {
     loadData();
+    setPortalNotice(localStorage.getItem('portal_notice'));
+    if (localStorage.getItem('portal_notice')) {
+      localStorage.removeItem('portal_notice');
+    }
 
     if (socket) {
       socket.on("attendanceUpdated", loadData);
@@ -626,9 +679,16 @@ function StudentDashboard() {
   const subjectWise = attendanceData?.subjectWise || attendanceData?.data?.subjectWise || [];
   const cgpa = resultsData?.overallCgpa || resultsData?.data?.overallCgpa || 0;
   const lastPercent = resultsData?.latestPercentage || resultsData?.data?.latestPercentage || 0;
+  const rollNumber = profile?.academicInfo?.rollNumber || profile?.studentId || profile?.uniqueStudentId || 'Not Assigned';
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {portalNotice && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm font-semibold">
+          {portalNotice}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
@@ -643,7 +703,7 @@ function StudentDashboard() {
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Roll Number</p>
-              <p className="text-sm font-bold text-slate-900">{profile?.academicInfo?.rollNumber || 'N/A'}</p>
+              <p className="text-sm font-bold text-slate-900">{rollNumber}</p>
             </div>
             <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-bold text-xl shadow-lg border border-slate-800">
               {profile?.personalInfo?.firstName?.[0]}
@@ -685,7 +745,7 @@ function StudentDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
           {/* Announcements Banner */}
-          {announcements.length > 0 && (
+          {unreadCount > 0 && (
             <Card className="p-6 bg-indigo-600 text-white rounded-3xl shadow-xl shadow-indigo-600/20 border-none overflow-hidden relative group">
               <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-1000" />
               <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -695,7 +755,7 @@ function StudentDashboard() {
                   </div>
                   <div>
                     <h3 className="text-lg font-black uppercase tracking-tight">Active Announcements</h3>
-                    <p className="text-xs text-indigo-100 font-medium">You have {announcements.length} new messages from your teachers.</p>
+                    <p className="text-xs text-indigo-100 font-medium">You have {unreadCount} unread announcement{unreadCount === 1 ? '' : 's'} from your batch or section.</p>
                   </div>
                 </div>
                 <Link 
@@ -773,6 +833,73 @@ function StudentDashboard() {
             </Card>
           )}
 
+          <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl animate-in zoom-in-95 duration-700 delay-150">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900 font-display">Upcoming Tests</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Scheduled assessments for your course</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center shadow-sm border border-emerald-100">
+                <ClipboardCheck size={20} className="text-emerald-600" />
+              </div>
+            </div>
+
+            {upcomingTests.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {upcomingTests.slice(0, 4).map((exam: any) => {
+                  const examDate = exam.scheduleDate ? new Date(exam.scheduleDate) : null;
+                  const examStatus = String(exam.status || exam.derivedStatus || "SCHEDULED").toUpperCase();
+                  return (
+                    <Link
+                      key={exam._id}
+                      href={`/exams/${exam._id}`}
+                      className="p-5 border border-slate-100 rounded-2xl bg-slate-50 flex flex-col group hover:bg-white hover:shadow-ambient hover:-translate-y-1 transition-all duration-300"
+                    >
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Test</p>
+                          <h3 className="text-sm font-bold text-slate-900 leading-tight group-hover:text-indigo-600">{exam.name}</h3>
+                        </div>
+                        <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg border bg-emerald-50 text-emerald-600 border-emerald-100">
+                          {examStatus}
+                        </span>
+                      </div>
+                      <p className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-4 truncate">
+                        {exam.examType || 'INTERNAL'} • {exam.code || 'TEST'}
+                      </p>
+                      <div className="mt-auto flex items-center justify-between pt-4 border-t border-slate-200/60">
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400">
+                          <Calendar size={12} />
+                          {examDate ? examDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : 'TBD'}
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 group-hover:text-indigo-800">View Test</span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-slate-500">
+                No upcoming tests are scheduled yet.
+              </div>
+            )}
+          </Card>
+
+          {assignments.length === 0 && (
+            <Card className="p-8 border border-dashed border-slate-200 bg-white shadow-sm rounded-3xl">
+              <div className="flex items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900 font-display uppercase tracking-tight">Assignments</h2>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">No assignments yet</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center shadow-sm border border-slate-100">
+                  <Book size={20} className="text-slate-400" />
+                </div>
+              </div>
+              <p className="text-sm text-slate-500">Your teacher has not posted any assignments for your batch yet.</p>
+            </Card>
+          )}
+
           <Card className="p-8 border border-slate-100 bg-white shadow-ambient rounded-3xl">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-xl font-bold text-slate-900">Registered Subjects</h2>
@@ -825,10 +952,9 @@ function StudentDashboard() {
                   </div>
                 );
               }) : (
-                <>
-                  <SubjectMiniCard name="Advanced Algorithms" code="CS601" icon={<Book size={18} />} color="text-indigo-600" />
-                  <SubjectMiniCard name="Database Systems" code="CS602" icon={<Book size={18} />} color="text-emerald-600" />
-                </>
+                <div className="md:col-span-2 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center text-slate-500 font-medium">
+                  No subject-wise attendance has been published yet.
+                </div>
               )}
             </div>
           </Card>
@@ -848,14 +974,14 @@ function StudentDashboard() {
                   key={i} 
                   month="TOD" 
                   day={slot.startTime} 
-                  title={slot.subjectId?.name || "Class"} 
-                  sub={`${slot.room || 'TBD'} | Period ${slot.period}`} 
+                  title={slot.subjectId?.name || slot.subject || "Class"} 
+                  sub={`${slot.teacherId?.name || 'Teacher'} • Room ${slot.room || slot.roomNo || 'TBD'}`} 
                   color={slot.isUpcoming ? "bg-indigo-50 text-indigo-600" : "bg-emerald-50 text-emerald-600"} 
                 />
               )) : (
                 <div className="py-12 text-center opacity-40">
                   <Clock size={32} className="mx-auto mb-4 text-slate-300" />
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No Sessions Logged Today</p>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">No classes today</p>
                 </div>
               )}
             </div>

@@ -46,6 +46,14 @@ export const getBooks = async (req: Request, res: Response) => {
  */
 export const addBook = async (req: AuthRequest, res: Response) => {
   try {
+    const normalizedRole = String(req.user?.role || '').toUpperCase();
+    if (!['LIBRARIAN', 'COLLEGE_ADMIN', 'SUPER_ADMIN', 'ADMIN'].includes(normalizedRole)) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to add library resources'
+      });
+    }
+
     let collegeId = req.user?.collegeId || req.body.collegeId;
     if (!collegeId) {
       const college = await mongoose.model('College').findOne();

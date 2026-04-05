@@ -26,6 +26,7 @@ interface FacultyOption {
   _id: string;
   userId?: { _id: string; name?: string; email?: string };
   personalInfo?: { name?: string; email?: string };
+  assignedSubjects?: { subjectId?: string | { _id?: string; name?: string; code?: string } }[];
 }
 
 type Toast = { type: "success" | "error"; text: string } | null;
@@ -629,7 +630,7 @@ export default function BatchManagementPage() {
             </div>
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-white rounded-3xl border border-dashed border-slate-200 min-h-[400px]">
+          <div className="flex-1 flex items-center justify-center bg-white rounded-3xl border border-dashed border-slate-200 min-h-100">
             <div className="text-center space-y-3">
               <div className="w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto">
                 <Layers size={28} className="text-slate-300" />
@@ -847,7 +848,7 @@ export default function BatchManagementPage() {
               <button 
                 onClick={handleBulkAssign}
                 disabled={submitting || selectedStudentIds.size === 0}
-                className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
+                className="flex-2 py-3 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-indigo-200"
               >
                 {submitting ? <Loader2 size={14} className="animate-spin" /> : <Layers size={14} />}
                 Assign {selectedStudentIds.size} Students
@@ -992,7 +993,7 @@ export default function BatchManagementPage() {
               <button 
                 onClick={handleBulkAssignToBatch}
                 disabled={submitting || selectedStudentIds.size === 0}
-                className="flex-[2] py-3 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
+                className="flex-2 py-3 bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
               >
                 {submitting ? <Loader2 size={14} className="animate-spin" /> : <Users size={14} />}
                 Assign {selectedStudentIds.size} Students
@@ -1068,7 +1069,7 @@ export default function BatchManagementPage() {
               <button
                 onClick={handleAssignTeacherToSection}
                 disabled={submitting}
-                className="flex-[2] py-3 bg-violet-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-violet-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-2 py-3 bg-violet-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-violet-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {submitting ? <Loader2 size={14} className="animate-spin" /> : <GraduationCap size={14} />}
                 Save Teacher

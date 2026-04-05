@@ -8,9 +8,12 @@ interface StatusBadgeProps {
 const statusConfig: Record<string, { label: string; classes: string }> = {
   // Enquiry Statuses
   new: { label: "New", classes: "bg-surface-container-high text-on-surface border-outline-variant" },
-  "follow-up": { label: "Follow-up", classes: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
+  New: { label: "New", classes: "bg-surface-container-high text-on-surface border-outline-variant" },
+  Contacted: { label: "Contacted", classes: "bg-amber-500/10 text-amber-500 border-amber-500/20" },
+  Interested: { label: "Interested", classes: "bg-indigo-500/10 text-indigo-600 border-indigo-500/20" },
   applied: { label: "Applied", classes: "bg-black/10 text-black border-black/20" },
   admitted: { label: "Admitted", classes: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" },
+  NotInterested: { label: "Not Interested", classes: "bg-rose-500/10 text-rose-500 border-rose-500/20" },
   rejected: { label: "Rejected", classes: "bg-red-500/10 text-red-500 border-red-500/20" },
   // Application Statuses
   pending: { label: "Pending", classes: "bg-surface-container-high text-on-surface/60 border-outline-variant" },

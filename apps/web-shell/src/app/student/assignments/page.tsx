@@ -99,7 +99,7 @@ export default function StudentAssignmentsPage() {
   };
 
   if (loading) {
-    return <div className="h-[60vh] flex items-center justify-center animate-pulse text-slate-400 font-black tracking-widest">LOADING ASSIGNMENTS...</div>;
+    return <div className="h-[60vh] flex items-center justify-center animate-pulse text-slate-400 font-black tracking-widest">Loading assignments...</div>;
   }
 
   return (
@@ -134,8 +134,8 @@ export default function StudentAssignmentsPage() {
           {filteredAssignments.length === 0 ? (
             <Card className="py-24 text-center border-dashed border-slate-200">
               <FileText size={48} className="text-slate-200 mx-auto mb-4" />
-              <p className="text-lg font-bold text-slate-400 uppercase tracking-widest">No assignments found</p>
-              <p className="text-sm text-slate-300 mt-2">Check different tabs or stay tuned for updates from your teachers.</p>
+              <p className="text-lg font-bold text-slate-400 uppercase tracking-widest">No assignments yet</p>
+              <p className="text-sm text-slate-500 mt-2">Your teacher has not posted any assignments for your batch yet.</p>
             </Card>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 font-geist">

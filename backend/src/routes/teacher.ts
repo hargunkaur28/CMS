@@ -30,6 +30,7 @@ router.get('/timetable/today', timetableController.getTodaySchedule);
 // --- Attendance ---
 router.post('/attendance/mark', attendanceController.markBulkAttendance);
 router.get('/attendance', attendanceController.getAttendance);
+router.get('/attendance/history', attendanceController.getTeacherSessionHistory);
 router.get('/attendance/report/monthly', attendanceController.getMonthlyReport);
 router.get('/attendance/shortage', attendanceController.getShortageAlerts);
 router.get('/attendance/:classId', attendanceController.getClassAttendance);
@@ -37,6 +38,7 @@ router.get('/attendance/:classId', attendanceController.getClassAttendance);
 // --- Marks ---
 router.get('/marks/exams', marksController.getAssignedExams);
 router.post('/marks/enter', marksController.enterMarks);
+router.post('/marks/bulk', marksController.bulkEnterMarks);
 router.get('/marks/:examId', marksController.getMarksByExam);
 router.put('/marks/:markId', marksController.editMarks);
 
@@ -52,6 +54,7 @@ router.get('/students/:studentId', teacherStudentController.getStudentProfile);
 // --- Communication ---
 router.post('/announcements', communicationController.createAnnouncement);
 router.get('/announcements', communicationController.getAnnouncements);
+router.delete('/announcements/:id', communicationController.deleteAnnouncement);
 router.get('/messages', communicationController.getMessages);
 router.post('/messages', communicationController.sendMessage);
 router.get('/messages/:otherUserId', communicationController.getConversation);

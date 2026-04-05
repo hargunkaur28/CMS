@@ -16,8 +16,8 @@ export default function CreateExamPage() {
     if (savedUser) {
       const user = JSON.parse(savedUser);
       // Role check
-      if (user.role !== 'SUPER_ADMIN' && user.role !== 'COLLEGE_ADMIN') {
-        router.push("/exams");
+      if (user.role !== 'SUPER_ADMIN' && user.role !== 'COLLEGE_ADMIN' && user.role !== 'TEACHER') {
+        router.push("/exams/results");
         return;
       }
       const id = user.collegeId;

@@ -16,7 +16,9 @@ import {
 import {
   getStudents,
   getStudentById,
+  createStudent,
   updateStudent,
+  updateStudentEnrollmentId,
   softDeleteStudent,
   bulkImportStudents,
   updateStudentStatus,
@@ -69,9 +71,18 @@ import {
 import {
   getFeeStructures,
   createFeeStructure,
+  updateFeeStructure,
+  deleteFeeStructure,
+  getScholarships,
+  createScholarship,
+  updateScholarship,
+  deleteScholarship,
+  getFeeAdjustments,
+  createFeeAdjustment,
   getPayments,
   recordPayment,
-  getFinancialSummary
+  getFinancialSummary,
+  getStudentFeeLedger
 } from "../controllers/feeController.js";
 import {
   getAnnouncements,
@@ -156,7 +167,9 @@ router.get("/admissions/reports", getAdmissionsReport);
 // Module 2: SIS (Student Information System)
 router.get("/students", getStudents);
 router.get("/students/:id", getStudentById);
+router.post("/students", createStudent);
 router.put("/students/:id", updateStudent);
+router.put("/students/:id/enrollment-id", updateStudentEnrollmentId);
 router.delete("/students/:id", softDeleteStudent);
 router.post("/students/bulk-import", uploadCsv.single("file"), bulkImportStudents);
 router.put("/students/:id/status", updateStudentStatus);
@@ -211,9 +224,18 @@ router.get("/exams/reports/analysis", generateExamAnalysis);
 // Module 7: Fee Management
 router.get("/fees/structures", getFeeStructures);
 router.post("/fees/structures", createFeeStructure);
+router.put("/fees/structures/:id", updateFeeStructure);
+router.delete("/fees/structures/:id", deleteFeeStructure);
+router.get("/fees/scholarships", getScholarships);
+router.post("/fees/scholarships", createScholarship);
+router.put("/fees/scholarships/:id", updateScholarship);
+router.delete("/fees/scholarships/:id", deleteScholarship);
+router.get("/fees/adjustments", getFeeAdjustments);
+router.post("/fees/adjustments", createFeeAdjustment);
 router.get("/fees/payments", getPayments);
 router.post("/fees/payments", recordPayment);
 router.get("/fees/summary", getFinancialSummary);
+router.get("/fees/ledger", getStudentFeeLedger);
 
 // Module 8: Communication
 router.get("/communication/announcements", getAnnouncements);

@@ -19,18 +19,59 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
+  const resolveSocketBaseUrl = () => {
+    const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+    if (configuredUrl) {
+      return configuredUrl.replace(/\/api\/?$/, "");
+    }
+
+    return "http://localhost:5005";
+  };
+
+  const canReachBackend = async (socketBaseUrl: string) => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 2500);
+      const response = await fetch(`${socketBaseUrl}/api/settings/public`, {
+        method: "GET",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      window.clearTimeout(timeoutId);
+      return response.ok;
+    } catch {
+      return false;
+    }
+  };
+
   useEffect(() => {
+    let socketInstance: Socket | null = null;
+
+    const bootstrapSocket = async () => {
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     const token = localStorage.getItem("token");
 
     if (!token || !user._id) return;
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5005/api";
-    const socketUrl = apiUrl.replace(/\/api$/, "");
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      setIsConnected(false);
+      return;
+    }
+
+    const socketUrl = resolveSocketBaseUrl();
+    const backendReady = await canReachBackend(socketUrl);
+    if (!backendReady) {
+      setIsConnected(false);
+      return;
+    }
     
-    const socketInstance = io(socketUrl, {
+    socketInstance = io(socketUrl, {
       auth: { token },
-      transports: ["websocket"]
+      transports: ["websocket", "polling"],
+      reconnectionAttempts: 2,
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 5000,
+      timeout: 4000,
     });
 
     socketInstance.on("connect", () => {
@@ -64,10 +105,19 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       setIsConnected(false);
     });
 
+    socketInstance.on("connect_error", () => {
+      setIsConnected(false);
+    });
+
     setSocket(socketInstance);
+    };
+
+    bootstrapSocket();
 
     return () => {
-      socketInstance.disconnect();
+      if (socketInstance) {
+        socketInstance.disconnect();
+      }
     };
   }, []);
 

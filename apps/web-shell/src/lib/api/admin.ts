@@ -1,7 +1,45 @@
 import api from "@/lib/api";
+import axios from "axios";
 
 // All endpoints in this file are prefixed with /admin as per the backend mount
 const BASE = "/admin";
+
+const getAdminApiCandidates = () => {
+  const candidates = new Set<string>();
+
+  const configured = String(process.env.NEXT_PUBLIC_API_URL || "").trim();
+  if (configured) candidates.add(configured.replace(/\/$/, ""));
+
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname || "localhost";
+    candidates.add(`http://${host}:5005/api`);
+  }
+
+  candidates.add("http://localhost:5005/api");
+  candidates.add("http://127.0.0.1:5005/api");
+
+  return Array.from(candidates);
+};
+
+const adminGetWithFallback = async (path: string, params: any = {}) => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  let lastError: any = null;
+
+  for (const base of getAdminApiCandidates()) {
+    try {
+      const response = await axios.get(`${base}${path}`, {
+        params,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        timeout: 10000,
+      });
+      return response.data;
+    } catch (error: any) {
+      lastError = error;
+    }
+  }
+
+  throw lastError;
+};
 
 // --- Admissions ---
 export const fetchEnquiries = async () => {
@@ -52,6 +90,11 @@ export const fetchStudentById = async (id: string) => {
 
 export const updateStudent = async (id: string, data: any) => {
   const response = await api.put(`${BASE}/students/${id}`, data);
+  return response.data;
+};
+
+export const updateStudentEnrollmentId = async (id: string, enrollmentId: string) => {
+  const response = await api.put(`${BASE}/students/${id}/enrollment-id`, { enrollmentId });
   return response.data;
 };
 
@@ -225,8 +268,48 @@ export const createFeeStructure = async (data: any) => {
   return response.data;
 };
 
+export const updateFeeStructure = async (id: string, data: any) => {
+  const response = await api.put(`${BASE}/fees/structures/${id}`, data);
+  return response.data;
+};
+
+export const deleteFeeStructure = async (id: string) => {
+  const response = await api.delete(`${BASE}/fees/structures/${id}`);
+  return response.data;
+};
+
 export const fetchPayments = async (filters: any = {}) => {
   const response = await api.get(`${BASE}/fees/payments`, { params: filters });
+  return response.data;
+};
+
+export const fetchScholarships = async () => {
+  const response = await api.get(`${BASE}/fees/scholarships`);
+  return response.data;
+};
+
+export const createScholarship = async (data: any) => {
+  const response = await api.post(`${BASE}/fees/scholarships`, data);
+  return response.data;
+};
+
+export const updateScholarship = async (id: string, data: any) => {
+  const response = await api.put(`${BASE}/fees/scholarships/${id}`, data);
+  return response.data;
+};
+
+export const deleteScholarship = async (id: string) => {
+  const response = await api.delete(`${BASE}/fees/scholarships/${id}`);
+  return response.data;
+};
+
+export const fetchFeeAdjustments = async (filters: any = {}) => {
+  const response = await api.get(`${BASE}/fees/adjustments`, { params: filters });
+  return response.data;
+};
+
+export const createFeeAdjustment = async (data: any) => {
+  const response = await api.post(`${BASE}/fees/adjustments`, data);
   return response.data;
 };
 
@@ -237,6 +320,11 @@ export const recordPayment = async (data: any) => {
 
 export const fetchFinancialSummary = async () => {
   const response = await api.get(`${BASE}/fees/summary`);
+  return response.data;
+};
+
+export const fetchStudentFeeLedger = async (filters: any = {}) => {
+  const response = await api.get(`${BASE}/fees/ledger`, { params: filters });
   return response.data;
 };
 
@@ -298,13 +386,21 @@ export const fetchNaacStats = async () => {
 
 // --- General Dashboard Stats ---
 export const fetchDashboardStats = async () => {
-  const response = await api.get(`${BASE}/stats`, { params: { _ts: Date.now() } });
-  return response.data;
+  try {
+    return await adminGetWithFallback(`${BASE}/stats`, { _ts: Date.now() });
+  } catch {
+    const response = await api.get(`${BASE}/stats`, { params: { _ts: Date.now() } });
+    return response.data;
+  }
 };
 
 export const fetchEnrollmentActivity = async () => {
-  const response = await api.get(`/dashboard/enrollment-activity`, { params: { _ts: Date.now() } });
-  return response.data;
+  try {
+    return await adminGetWithFallback(`${BASE}/dashboard/enrollment-activity`, { _ts: Date.now() });
+  } catch {
+    const response = await api.get(`${BASE}/dashboard/enrollment-activity`, { params: { _ts: Date.now() } });
+    return response.data;
+  }
 };
 
 // --- Academic Assignments ---

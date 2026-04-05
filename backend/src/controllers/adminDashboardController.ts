@@ -28,9 +28,22 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       status: "Active" 
     });
     
+    const collegeStudents = await Student.find({ collegeId }).select("_id").lean();
+    const collegeStudentIds = collegeStudents.map((s: any) => s._id);
+
     const totalRevenue = await Payment.aggregate([
-      { $match: { collegeId, status: "COMPLETED" } },
-      { $group: { _id: null, total: { $sum: "$amount" } } }
+      {
+        $match: {
+          studentId: { $in: collegeStudentIds },
+          status: { $in: ["Paid", "paid", "COMPLETED"] },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: { $ifNull: ["$amountPaid", "$amount"] } },
+        },
+      },
     ]);
 
     // Average attendance for the current month

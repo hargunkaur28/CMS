@@ -13,8 +13,14 @@ interface CourseManagerProps {
 export default function CourseManager({ courses, onCreateCourse, onCreateSubject, onViewProgramDetails }: CourseManagerProps) {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-      {courses.map((course) => (
-        <div key={course._id} className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative">
+         {courses.map((course) => {
+            const departmentLabel =
+               typeof course.department === "string"
+                  ? course.department
+                  : course.department?.name || "-";
+
+            return (
+            <div key={course._id} className="bg-white border border-slate-200 rounded-[2.5rem] p-8 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative">
            <div className="absolute top-0 right-0 p-8">
               <button className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400 hover:text-slate-900 transition-colors">
                  <Settings2 size={18} />
@@ -38,7 +44,7 @@ export default function CourseManager({ courses, onCreateCourse, onCreateSubject
            <div className="grid grid-cols-3 gap-4 mb-8">
               <MiniIndicator icon={<Layers size={14} />} label="Subjects" value={course.subjects?.length || 0} />
               <MiniIndicator icon={<Users size={14} />} label="Total Seats" value={course.totalSeats} />
-              <MiniIndicator icon={<Clock size={14} />} label="Dept" value={course.department} />
+              <MiniIndicator icon={<Clock size={14} />} label="Dept" value={departmentLabel} />
            </div>
 
            <div className="space-y-4">
@@ -77,7 +83,7 @@ export default function CourseManager({ courses, onCreateCourse, onCreateSubject
               Program Details <ExternalLink size={14} />
            </button>
         </div>
-      ))}
+         )})}
 
       {/* Add New Course Placeholder */}
       <div 

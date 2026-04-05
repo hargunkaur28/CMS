@@ -22,19 +22,23 @@ export default function NotificationBell() {
     loadNotifData();
   }, []);
 
-  const isAuthenticated = typeof window !== "undefined" && !!localStorage.getItem("token");
-
   const loadNotifData = async () => {
-    if (!isAuthenticated) return;
-    try {
-      const [countRes, listRes] = await Promise.all([
-        fetchNotifUnreadCount(),
-        fetchNotifications()
-      ]);
-      if (countRes.success) setUnreadCount(countRes.data.count);
-      if (listRes.success) setNotifications(listRes.data);
-    } catch (err) {
-      console.error("Failed to load notifications", err);
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    if (!token) return;
+
+    const [countRes, listRes] = await Promise.allSettled([
+      fetchNotifUnreadCount(),
+      fetchNotifications()
+    ]);
+
+    if (countRes.status === "fulfilled" && countRes.value?.success) {
+      setUnreadCount(Number(countRes.value.data?.count || 0));
+    } else {
+      setUnreadCount(0);
+    }
+
+    if (listRes.status === "fulfilled" && listRes.value?.success) {
+      setNotifications(listRes.value.data || []);
     }
   };
 
@@ -91,6 +95,8 @@ export default function NotificationBell() {
         const prefix = user?.role === 'TEACHER' ? '/teacher' : (user?.role?.includes('ADMIN') ? '/admin' : '');
         targetUrl = `${prefix}/communication?tab=announcements`;
         console.log("[NOTIF_DEBUG] Rewritten URL (Legacy Announcement):", targetUrl);
+      } else if (targetUrl === '/academics/materials' && user?.role === 'TEACHER') {
+        targetUrl = '/teacher/uploads';
       }
 
       // Ensure we have user data for correct role-based pathing
@@ -122,7 +128,7 @@ export default function NotificationBell() {
         router.push(`${prefix}/communication?tab=announcements`);
         setShowDropdown(false);
       } else if (notif.metadata?.type === 'material') {
-        router.push('/academics/materials');
+        router.push(user?.role === 'TEACHER' ? '/teacher/uploads' : '/academics/materials');
         setShowDropdown(false);
       }
     } catch (error) {

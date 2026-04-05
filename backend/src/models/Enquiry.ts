@@ -7,7 +7,7 @@ export interface IEnquiry extends Document {
   email: string;
   courseInterest: mongoose.Types.ObjectId;
   source: 'walkin' | 'online' | 'referral' | 'other';
-  status: 'New' | 'Contacted' | 'Interested' | 'NotInterested' | 'applied';
+  status: 'New' | 'Contacted' | 'Interested' | 'NotInterested' | 'applied' | 'admitted';
   notes: {
     content: string;
     createdAt: Date;
@@ -29,7 +29,7 @@ const EnquirySchema: Schema = new Schema(
     },
     status: {
       type: String,
-      enum: ["New", "Contacted", "Interested", "NotInterested", "applied"],
+      enum: ["New", "Contacted", "Interested", "NotInterested", "applied", "admitted"],
       default: "New",
     },
     notes: [

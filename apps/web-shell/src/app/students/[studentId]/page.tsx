@@ -15,7 +15,8 @@ import {
   BookOpen, 
   User, 
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Download
 } from "lucide-react";
 
 export default function StudentProfile() {
@@ -87,7 +88,7 @@ export default function StudentProfile() {
               {personalInfo.firstName} {personalInfo.lastName}
             </h1>
             <div className="flex flex-wrap items-center gap-6 mt-4 text-xs font-bold text-slate-600 uppercase tracking-widest bg-slate-50 w-fit px-4 py-2 rounded-xl border border-slate-100">
-              <span className="flex items-center gap-2"><User size={16} className="text-indigo-500" /> ID: {student.uniqueStudentId}</span>
+              <span className="flex items-center gap-2"><User size={16} className="text-indigo-500" /> Enrollment: {student.enrollmentId || student.studentId || student.uniqueStudentId}</span>
               <span className="flex items-center gap-2"><BookOpen size={16} className="text-indigo-500" /> {academicInfo.course}</span>
               <span className="flex items-center gap-2"><Calendar size={16} className="text-indigo-500" /> Batch: {academicInfo.batch || 'TBA'}</span>
             </div>
@@ -185,10 +186,40 @@ export default function StudentProfile() {
               )}
               {activeTab === "documents" && (
                 <div className="animate-in fade-in duration-500 space-y-4">
-                  <section className="bg-slate-50 rounded-2xl border border-slate-100 p-5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Document Vault</p>
-                    <p className="text-sm font-semibold text-slate-700 mt-2">Uploaded student documents are indexed and verified through admissions and student records.</p>
-                  </section>
+                  {Array.isArray(student.documents) && student.documents.length > 0 ? (
+                    <div className="space-y-3">
+                      {student.documents.map((doc: any, idx: number) => {
+                        const name = String(doc?.name || `Document ${idx + 1}`);
+                        const lowerName = name.toLowerCase();
+                        const docType =
+                          lowerName.includes('id') ? 'ID Card' :
+                          lowerName.includes('fee') ? 'Fee Receipt' :
+                          lowerName.includes('admit') ? 'Admit Card' :
+                          lowerName.includes('cert') ? 'Certificate' :
+                          'Document';
+                        const url = doc?.cloudinaryUrl || doc?.url;
+
+                        return (
+                          <section key={String(doc?._id || idx)} className="bg-slate-50 rounded-2xl border border-slate-100 p-5 flex items-center justify-between gap-4">
+                            <div>
+                              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{docType}</p>
+                              <p className="text-sm font-semibold text-slate-700 mt-1">{name}</p>
+                              <p className="text-xs text-slate-500 mt-1">{doc?.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString() : 'Unknown date'}</p>
+                            </div>
+                            {url ? (
+                              <a href={url} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold flex items-center gap-2">
+                                <Download size={14} /> Download
+                              </a>
+                            ) : null}
+                          </section>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <section className="bg-slate-50 rounded-2xl border border-slate-100 p-5">
+                      <p className="text-sm font-semibold text-slate-700">No documents uploaded yet. Please contact your admin to upload your documents</p>
+                    </section>
+                  )}
                 </div>
               )}
               {activeTab === "comms" && (

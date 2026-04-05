@@ -13,7 +13,6 @@ import {
   CreditCard, 
   Library, 
   Home, 
-  Briefcase, 
   BarChart3, 
   Sparkles, 
   FileCheck, 
@@ -27,7 +26,9 @@ import {
   GraduationCap,
   ClipboardCheck,
   Upload,
-  MessageSquare
+  MessageSquare,
+  Moon,
+  Sun
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
@@ -36,6 +37,7 @@ import { SocketProvider } from "@/components/providers/SocketProvider";
 import NotificationBell from "@/components/layout/NotificationBell";
 import api from "@/lib/api";
 import UserAvatar from "../components/ui/UserAvatar";
+import { consumePortalNotice, getRoleHomePath, getSessionUser, isAccessAllowed, normalizeRole, setPortalNotice } from "@/lib/session";
 
 const PASSWORD_CHANGE_ROLES = ['TEACHER', 'PARENT', 'STUDENT', 'LIBRARIAN', 'COLLEGE_ADMIN'];
 
@@ -47,20 +49,44 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [globalSettings, setGlobalSettings] = useState<any>(null);
   const [backendOnline, setBackendOnline] = useState(true);
   const [backendChecked, setBackendChecked] = useState(false);
+  const [portalNotice, setPortalNoticeState] = useState<string | null>(null);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const storedTheme = localStorage.getItem("portal_theme");
+    const systemPrefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const initialTheme = storedTheme === "dark" || storedTheme === "light"
+      ? (storedTheme as "light" | "dark")
+      : (systemPrefersDark ? "dark" : "light");
+    setTheme(initialTheme);
+    document.documentElement.classList.toggle("theme-dark", initialTheme === "dark");
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("portal_theme", nextTheme);
+    document.documentElement.classList.toggle("theme-dark", nextTheme === "dark");
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
     const isLoginPage = pathname === "/login";
     const isChangePasswordPage = pathname === "/change-password";
     const isAuthPage = isLoginPage || isChangePasswordPage;
-    const parsedUser = savedUser ? JSON.parse(savedUser) : null;
-    const role = String(parsedUser?.role || '').toUpperCase();
+    const sessionUser = getSessionUser();
+    const role = normalizeRole(sessionUser?.role);
 
-    const normalizedRole = String(parsedUser?.role || "").toUpperCase();
+    const normalizedRole = role;
     const shouldForcePasswordChange =
-      (Boolean(parsedUser?.mustChangePassword) && PASSWORD_CHANGE_ROLES.includes(normalizedRole)) ||
-      (normalizedRole === 'COLLEGE_ADMIN' && Boolean(parsedUser?.isFirstLogin));
+      (Boolean(sessionUser?.mustChangePassword) && PASSWORD_CHANGE_ROLES.includes(normalizedRole)) ||
+      (normalizedRole === 'COLLEGE_ADMIN' && Boolean(sessionUser?.isFirstLogin));
+
+    if (token && !isAuthPage && !isAccessAllowed(role, pathname)) {
+      setPortalNotice('You do not have access to this page');
+      router.replace(getRoleHomePath(role));
+      return;
+    }
 
     if (!token && !isLoginPage && !isChangePasswordPage) {
       router.push("/login");
@@ -76,9 +102,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    if (parsedUser) {
-      setUser(parsedUser);
+    if (sessionUser) {
+      setUser(sessionUser);
+    } else {
+      const savedUser = localStorage.getItem('user');
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+      }
     }
+
+    setPortalNoticeState(consumePortalNotice());
     setLoading(false);
   }, [pathname, router]);
 
@@ -117,7 +150,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
     const intervalId = window.setInterval(() => {
       checkBackendConnectivity();
-    }, 15000);
+    }, 60000);
 
     return () => {
       window.clearInterval(intervalId);
@@ -167,9 +200,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isChangePasswordPage = pathname === "/change-password";
   const isAuthPage = isLoginPage || isChangePasswordPage;
   const showBackendBanner = !isAuthPage && backendChecked && !backendOnline;
-
-  // Temporary permissions mock based on old UI
-  const canSee = (label: string) => true; 
+  const showAccessBanner = !isAuthPage && Boolean(portalNotice);
+  const themeToggleTopClass = showBackendBanner && showAccessBanner
+    ? "top-28"
+    : showBackendBanner || showAccessBanner
+      ? "top-16"
+      : "top-24";
 
   const roleLabel: Record<string, string> = {
     SUPER_ADMIN:   'Super Admin',
@@ -198,7 +234,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`bg-slate-50 text-slate-900 ${!isAuthPage ? "h-screen flex" : ""} ${showBackendBanner ? "pt-12" : ""}`}>
         <SocketProvider>
           {showBackendBanner && (
-            <div className="fixed inset-x-0 top-0 z-[100] flex items-center justify-between gap-3 bg-rose-600 px-4 py-2 text-white shadow-lg">
+            <div className="fixed inset-x-0 top-0 z-100 flex items-center justify-between gap-3 bg-rose-600 px-4 py-2 text-white shadow-lg">
               <div className="flex items-center gap-2 text-sm">
                 <AlertCircle size={16} />
                 <span>Backend API is unreachable at http://localhost:5005. Start backend from the backend folder using npm run dev.</span>
@@ -212,6 +248,27 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </button>
             </div>
           )}
+
+          {showAccessBanner && (
+            <div className={`fixed inset-x-0 ${showBackendBanner ? 'top-12' : 'top-0'} z-95 flex items-center justify-center bg-amber-50 border-b border-amber-200 px-4 py-2 text-amber-800 text-sm font-semibold shadow-sm`}>
+              {portalNotice}
+            </div>
+          )}
+
+          {!isAuthPage ? (
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className={cn(
+                "fixed right-4 z-120 w-10 h-10 rounded-xl bg-white/90 border border-slate-200 text-slate-700 shadow-lg hover:bg-white transition-all flex items-center justify-center",
+                themeToggleTopClass
+              )}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            >
+              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+          ) : null}
 
           {loading ? (
             <div className="h-screen w-full flex items-center justify-center bg-slate-50">
@@ -265,6 +322,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     label="Subjects & Materials" 
                     href={user?.role === 'TEACHER' ? "/teacher/uploads" : ['SUPER_ADMIN', 'COLLEGE_ADMIN'].includes(user?.role) ? "/admin/academics" : "/academics/materials"} 
                     active={pathname.startsWith("/academics") || pathname.startsWith("/admin/academics") || pathname === "/teacher/uploads"} 
+                    roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT']}
+                    currentUserRole={user?.role}
                   />
                   
                   <NavItem 
@@ -311,7 +370,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     />
                   )}
                   
-                  {(user?.role === 'STUDENT' || user?.role === 'PARENT') && (
+                  {user?.role === 'STUDENT' && (
                     <NavItem 
                       icon={<MessageSquare size={18} />} 
                       label="Communication" 
@@ -342,18 +401,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   />
                   
                   <NavItem 
-                    icon={<Briefcase size={18} />} 
-                    label="Placement" 
-                    href="/placement" 
-                    active={pathname.startsWith("/placement")} 
-                  />
-                  
-                  <NavItem 
                     icon={<Settings size={18} />} 
                     label="Settings" 
                     href="/settings" 
                     active={pathname.startsWith("/settings")} 
-                    roles={['SUPER_ADMIN', 'COLLEGE_ADMIN']}
+                    roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT', 'PARENT']}
                     currentUserRole={user?.role}
                   />
 

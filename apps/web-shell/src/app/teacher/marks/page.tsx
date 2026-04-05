@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import MarksEntryTable from "@/components/teacher/MarksEntryTable";
 import api from "@/lib/api";
+import Link from "next/link";
 import { 
   FileSpreadsheet, 
   Filter, 
@@ -31,6 +32,9 @@ export default function MarksPage() {
   const [fetchingStudents, setFetchingStudents] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  const selectedSubjectData: any = subjects.find((sub: any) => sub._id === selectedSubject);
+  const selectedCourseId = selectedSubjectData?.courseId?._id || selectedSubjectData?.courseId || null;
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -104,21 +108,51 @@ export default function MarksPage() {
       setError("Please select Subject, Batch, and Exam before entering marks");
       return;
     }
+    if (!selectedCourseId) {
+      setError("Please select a subject before saving marks");
+      return;
+    }
     
     try {
       await api.post('/teacher/marks/enter', {
         examId: selectedExam._id,
         studentId,
         subjectId: selectedSubject,
+        courseId: selectedCourseId,
         batchId: selectedBatch,
         marksObtained,
         maxMarks: selectedExam.totalMarks || 100,
         remarks
       });
       setError("");
+      setSuccess("Marks saved successfully");
     } catch (err: any) {
       const msg = err.response?.data?.message || "Failed to save marks";
       setError(msg);
+      throw err;
+    }
+  };
+
+  const handleSaveAll = async (rows: { studentId: string; marks: number; remarks: string }[]) => {
+    if (!selectedExam || !selectedSubject || !selectedBatch || !selectedCourseId) {
+      setError("Please select a subject before saving marks");
+      throw new Error("Missing selections");
+    }
+
+    try {
+      setSuccess("");
+      setError("");
+      await api.post('/teacher/marks/bulk', {
+        examId: selectedExam._id,
+        subjectId: selectedSubject,
+        courseId: selectedCourseId,
+        batchId: selectedBatch,
+        maxMarks: selectedExam.totalMarks || selectedExam.maxMarks || 100,
+        entries: rows,
+      });
+      setSuccess("All marks saved successfully");
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to save all marks");
       throw err;
     }
   };
@@ -127,11 +161,11 @@ export default function MarksPage() {
     <div className="animate-pulse space-y-8 p-8">
       <div className="h-10 w-64 bg-slate-200 rounded-2xl"></div>
       <div className="grid grid-cols-3 gap-6">
-         <div className="h-32 bg-slate-100 rounded-[2rem]"></div>
-         <div className="h-32 bg-slate-100 rounded-[2rem]"></div>
-         <div className="h-32 bg-slate-100 rounded-[2rem]"></div>
+         <div className="h-32 bg-slate-100 rounded-4xl"></div>
+         <div className="h-32 bg-slate-100 rounded-4xl"></div>
+         <div className="h-32 bg-slate-100 rounded-4xl"></div>
       </div>
-      <div className="h-[500px] bg-slate-50 rounded-[2.5rem]"></div>
+      <div className="h-125 bg-slate-50 rounded-4xl"></div>
     </div>
   );
 
@@ -203,7 +237,7 @@ export default function MarksPage() {
       </div>
 
       {error && (
-        <div className="p-4 bg-red-50 border border-red-100 text-red-700 rounded-[2rem] flex items-center gap-4 shadow-sm animate-in fade-in slide-in-from-top-2">
+        <div className="p-4 bg-red-50 border border-red-100 text-red-700 rounded-4xl flex items-center gap-4 shadow-sm animate-in fade-in slide-in-from-top-2">
            <div className="bg-red-500 text-white p-1.5 rounded-full">
              <AlertCircle size={16} />
            </div>
@@ -211,27 +245,36 @@ export default function MarksPage() {
         </div>
       )}
 
+      {success && (
+        <div className="p-4 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-4xl flex items-center gap-4 shadow-sm animate-in fade-in slide-in-from-top-2">
+          <div className="bg-emerald-500 text-white p-1.5 rounded-full">
+            <CheckCircle2 size={16} />
+          </div>
+          <p className="text-sm font-black tracking-tight">{success}</p>
+        </div>
+      )}
+
       {selectedExam && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-in fade-in zoom-in-95 duration-300">
-           <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm group hover:shadow-md transition-all">
+           <div className="bg-white p-6 rounded-4xl border border-slate-200 shadow-sm group hover:shadow-md transition-all">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Assessment Type</span>
-              <p className="text-lg font-black text-slate-900 mt-2 uppercase flex items-center gap-2">
+              <div className="text-lg font-black text-slate-900 mt-2 uppercase flex items-center gap-2">
                 <div className="w-1.5 h-6 bg-slate-900 rounded-full"></div>
                 {selectedExam.examType || selectedExam.type}
-              </p>
+              </div>
            </div>
-           <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm group hover:shadow-md transition-all">
+           <div className="bg-white p-6 rounded-4xl border border-slate-200 shadow-sm group hover:shadow-md transition-all">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Max Score</span>
               <p className="text-3xl font-black text-slate-900 mt-2">{selectedExam.totalMarks || selectedExam.maxMarks || 100}</p>
            </div>
-           <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm group hover:shadow-md transition-all">
+           <div className="bg-white p-6 rounded-4xl border border-slate-200 shadow-sm group hover:shadow-md transition-all">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Portal Status</span>
-              <p className="flex items-center gap-3 text-lg font-black text-emerald-600 mt-2 tracking-tighter uppercase italic">
-                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-                 OPEN FOR ENTRY
-              </p>
+              <div className="flex items-center gap-3 text-lg font-black text-emerald-600 mt-2 tracking-tighter uppercase italic">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                OPEN FOR ENTRY
+              </div>
            </div>
-           <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm group hover:shadow-md transition-all">
+           <div className="bg-white p-6 rounded-4xl border border-slate-200 shadow-sm group hover:shadow-md transition-all">
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Class Strength</span>
               <p className="text-3xl font-black text-slate-900 mt-2">{students.length}</p>
            </div>
@@ -241,10 +284,19 @@ export default function MarksPage() {
       {/* Entry Table Section */}
       <div className="relative">
         {fetchingStudents && (
-          <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-[2.5rem]">
+          <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-10 flex items-center justify-center rounded-4xl">
             <Loader2 className="w-8 h-8 animate-spin text-slate-900" />
           </div>
         )}
+
+        <div className="mb-4 flex justify-end">
+          <Link
+            href="/exams/create"
+            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-xs font-black uppercase tracking-widest text-white shadow-sm hover:bg-slate-800 transition-all"
+          >
+            Create Class Assessment
+          </Link>
+        </div>
         
         {selectedBatch ? (
           <div className="space-y-4">
@@ -257,13 +309,13 @@ export default function MarksPage() {
              <MarksEntryTable 
                students={students} 
                onSaveRow={handleSaveRow} 
-               onBulkSubmit={async () => {}} 
+               onBulkSubmit={handleSaveAll} 
                maxMarks={selectedExam?.totalMarks || selectedExam?.maxMarks || 100}
              />
           </div>
         ) : (
-          <div className="bg-white h-[400px] rounded-[2.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center p-12 space-y-6">
-             <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center text-slate-200">
+          <div className="bg-white h-100 rounded-4xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center p-12 space-y-6">
+             <div className="w-20 h-20 bg-slate-50 rounded-4xl flex items-center justify-center text-slate-200">
                 <Filter size={40} />
              </div>
              <div className="max-w-xs">

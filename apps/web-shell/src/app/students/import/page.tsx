@@ -13,6 +13,7 @@ export default function StudentImportPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
+  const [message, setMessage] = useState("");
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) {
@@ -37,14 +38,19 @@ export default function StudentImportPage() {
   const handleImport = async () => {
     if (!file) return;
     setLoading(true);
+    setMessage("");
     try {
       const formData = new FormData();
       formData.append("file", file);
       const res = await bulkImportStudents(formData);
-      if (res.success) setResult(res.data);
-      else alert(res.message);
+      if (res.success) {
+        setResult(res.data);
+        setMessage("Student import completed successfully.");
+      } else {
+        setMessage(res.message || "Unable to import students right now.");
+      }
     } catch (err) {
-      alert("Failed to import students");
+      setMessage("Unable to import students right now.");
     } finally {
       setLoading(false);
     }
@@ -52,6 +58,10 @@ export default function StudentImportPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {message ? (
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">{message}</div>
+      ) : null}
+
       <header>
         <Link 
           href="/students" 

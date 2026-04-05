@@ -7,6 +7,7 @@ import Timetable from "../models/Timetable.js";
 import FeeStructure from "../models/FeeStructure.js";
 import Payment from "../models/Payment.js";
 import Batch from "../models/Batch.js";
+import { calculateStudentFee } from "../services/feeService.js";
 
 /**
  * Get the parent profile and linked student(s)
@@ -200,67 +201,9 @@ export const getMyStudentFees = async (req: Request, res: Response) => {
     const parent = await Parent.findOne({ userId: user._id });
     if (!parent || !parent.students.length) throw new Error("No linked students");
 
-    const studentId = parent.students[0];
-    const student = await Student.findById(studentId);
-    if (!student) throw new Error("Student profile not found");
-
-    let batchId = student.batchId;
-    const collegeId = student.collegeId;
-
-    // FALLBACK: Lookup by name
-    if (!batchId && student.academicInfo?.batch) {
-       console.log(`[PARENT FEE FALLBACK] Resolving batch for student ${studentId} via name: ${student.academicInfo.batch}`);
-       const resolvedBatch = await Batch.findOne({ name: student.academicInfo.batch, collegeId });
-       if (resolvedBatch) batchId = resolvedBatch._id;
-    }
-
-    if (!batchId) {
-      return res.status(400).json({ success: false, message: "Student is not assigned to a valid batch" });
-    }
-
-    // Correct Flow: student -> batchId -> courseId -> FeeStructure
-    const batch = await Batch.findById(batchId);
-    if (!batch || !batch.courseId) {
-      console.error(`[ERROR] Invalid batch-course mapping for student ${studentId}. batchId: ${batchId}`);
-      return res.status(400).json({ success: false, message: "Invalid batch-course mapping" });
-    }
-
-    const courseId = batch.courseId;
-
-    console.log(`[DEBUG] Parent Fee Fetch: student=${studentId}, batch=${batchId}, course=${courseId}`);
-
-    
-    // 1. Get Fee Structures for the student's course
-    const structures = await FeeStructure.find({ 
-      courseId
-    });
-
-
-    // 2. Get Payment History
-    const payments = await Payment.find({ studentId })
-      .populate("feeStructureId")
-      .sort({ createdAt: -1 });
-
-    const totalPaid = payments.reduce((acc, p) => acc + (p.status === 'Paid' ? p.amountPaid : 0), 0);
-    
-    // Calculate total dues from structures
-    const totalDues = structures.reduce((acc, s) => {
-      const structAmount = s.components.reduce((sum, comp) => sum + comp.amount, 0);
-      return acc + structAmount;
-    }, 0);
-
-    res.status(200).json({ 
-      success: true, 
-      data: { 
-        structures, 
-        payments,
-        summary: {
-          totalDues,
-          totalPaid,
-          balance: totalDues - totalPaid
-        }
-      } 
-    });
+    const studentId = String(parent.students[0]);
+    const data = await calculateStudentFee(studentId, String(user.collegeId || ""));
+    res.status(200).json({ success: true, data });
 
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });

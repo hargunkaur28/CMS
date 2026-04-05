@@ -63,9 +63,9 @@ export default function MarksEntryPage({ params }: { params: Promise<{ examId: s
 
   if (examLoading || studentsLoading) {
     return (
-      <div className="h-full min-h-[400px] flex flex-col items-center justify-center p-12">
+      <div className="h-full min-h-100 flex flex-col items-center justify-center p-12">
         <Loader2 className="animate-spin text-indigo-600 mb-4" size={40} />
-        <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Initializing Grading Neural-Link...</p>
+        <p className="text-xs font-black text-slate-400 uppercase tracking-widest animate-pulse">Loading marks workspace...</p>
       </div>
     );
   }
@@ -92,7 +92,7 @@ export default function MarksEntryPage({ params }: { params: Promise<{ examId: s
             <ChevronLeft size={20} />
           </Link>
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 tracking-tight tracking-tighter">Grading Station</h1>
+            <h1 className="text-3xl font-bold text-slate-900 tracking-tighter">Grading Station</h1>
             <p className="text-sm text-slate-500 mt-1 font-medium">Processing: <span className="text-indigo-600 font-bold uppercase">{exam.name}</span></p>
           </div>
         </div>

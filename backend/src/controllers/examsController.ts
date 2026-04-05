@@ -392,8 +392,13 @@ export const publishResults = async (req: Request, res: Response) => {
   session.startTransaction();
   try {
     const { examId } = req.params;
+    const user = (req as any).user;
     const exam = await Exam.findById(examId).session(session);
     if (!exam) throw new Error("Exam not found");
+
+    if (String(user?.role || '').toUpperCase() === 'TEACHER' && String(exam.createdBy || '') !== String(user?._id || '')) {
+      throw new Error('You can only publish results for exams created by you');
+    }
 
     // 1. Get all marks for this exam and populate subjects
     const allMarks = await Marks.find({ examId })

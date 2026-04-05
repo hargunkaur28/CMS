@@ -123,6 +123,31 @@ export const createAnnouncement = async (req: Request, res: Response) => {
 };
 
 /**
+ * DELETE /teacher/announcements/:id
+ * Deletes an announcement created by the current teacher
+ */
+export const deleteAnnouncement = async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params;
+
+    const announcement = await Announcement.findById(id);
+    if (!announcement) {
+      return res.status(404).json({ success: false, message: 'Announcement not found' });
+    }
+
+    if (String(announcement.senderId) !== String(user?._id)) {
+      return res.status(403).json({ success: false, message: 'You can only delete announcements you created' });
+    }
+
+    await Announcement.deleteOne({ _id: id });
+    return res.status(200).json({ success: true, message: 'Announcement deleted successfully' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
  * GET /students/announcements  (Student context)
  * Returns all announcements (for the student's batch or broadcast)
  */
@@ -408,8 +433,9 @@ export const sendMessage = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const { receiverId, content, attachmentUrl, attachmentType, attachmentName } = req.body;
+    const normalizedContent = String(content || '').trim();
 
-    if (!receiverId || (!content && !attachmentUrl)) {
+    if (!receiverId || (!normalizedContent && !attachmentUrl)) {
       return res.status(400).json({ success: false, message: "receiverId and at least one of content/attachment are required" });
     }
 
@@ -425,7 +451,7 @@ export const sendMessage = async (req: Request, res: Response) => {
       receiverId,
       receiverRole: receiver.role,
       senderRole: user.role,
-      content: String(content || '').trim(),
+      content: normalizedContent,
       conversationId,
       attachmentUrl,
       attachmentType,
@@ -455,11 +481,12 @@ export const sendMessage = async (req: Request, res: Response) => {
       // For message notifications, we want to open the sender's conversation
       // If student is recipient, they see teacher's ID. If teacher is recipient, they see student's ID.
       const idParamName = recipient.role === 'TEACHER' ? 'studentUserId' : 'teacherId';
+      const preview = normalizedContent || `Attachment: ${attachmentName || 'file'}`;
 
       // Create persistent notification for the bell icon
       await createAndEmitNotification({
         title: `New Message from ${user.name}`,
-        message: content.length > 50 ? content.substring(0, 47) + "..." : content,
+        message: preview.length > 50 ? preview.substring(0, 47) + "..." : preview,
         type: "personal",
         recipientUserId: receiverId,
         senderUserId: user._id,
@@ -486,8 +513,9 @@ export const parentSendMessage = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const { receiverId, content, attachmentUrl, attachmentType, attachmentName } = req.body;
+    const normalizedContent = String(content || '').trim();
 
-    if (!receiverId || (!content && !attachmentUrl)) {
+    if (!receiverId || (!normalizedContent && !attachmentUrl)) {
       return res.status(400).json({ success: false, message: "receiverId and at least one of content/attachment are required" });
     }
 
@@ -503,7 +531,7 @@ export const parentSendMessage = async (req: Request, res: Response) => {
       receiverId,
       receiverRole: receiver.role,
       senderRole: "PARENT",
-      content: String(content || '').trim(),
+      content: normalizedContent,
       conversationId,
       attachmentUrl,
       attachmentType,
@@ -529,11 +557,12 @@ export const parentSendMessage = async (req: Request, res: Response) => {
       const recipient = message.receiverId as any;
       const prefix = getRolePathPrefix(recipient.role);
       const idParamName = recipient.role === 'TEACHER' ? 'studentUserId' : 'teacherId';
+      const preview = normalizedContent || `Attachment: ${attachmentName || 'file'}`;
 
       // Create persistent notification for the bell icon
       await createAndEmitNotification({
         title: `New Message from Parent`,
-        message: content.length > 50 ? content.substring(0, 47) + "..." : content,
+        message: preview.length > 50 ? preview.substring(0, 47) + "..." : preview,
         type: "personal",
         recipientUserId: receiverId,
         senderUserId: user._id,

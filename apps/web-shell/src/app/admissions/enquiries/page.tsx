@@ -10,6 +10,7 @@ export default function EnquiriesPage() {
   const [enquiries, setEnquiries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showEnquiryForm, setShowEnquiryForm] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     fetchEnquiries();
@@ -30,18 +31,23 @@ export default function EnquiriesPage() {
     try {
       const res = await updateEnquiryStatus(id, newStatus, "Status updated from Kanban Board");
       if (res.success) {
+        setMessage("Enquiry status updated successfully.");
         fetchEnquiries();
         return true;
       }
       return false;
     } catch (err) {
-      alert("Failed to update status");
+      setMessage("Unable to update the status right now.");
       return false;
     }
   };
 
   return (
     <div className="space-y-8 h-full flex flex-col">
+      {message ? (
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">{message}</div>
+      ) : null}
+
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Admissions Management</h1>
@@ -82,7 +88,7 @@ export default function EnquiriesPage() {
       )}
 
       {showEnquiryForm && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-6 bg-slate-900/50 backdrop-blur-sm">
           <EnquiryForm onSuccess={fetchEnquiries} onClose={() => setShowEnquiryForm(false)} />
         </div>
       )}

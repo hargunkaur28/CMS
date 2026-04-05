@@ -4,13 +4,22 @@ import generateToken from '../utils/generateToken.js';
 import SystemSettings from '../models/SystemSettings.js';
 import Session from '../models/Session.js';
 import Student from '../models/Student.js';
+import Parent from '../models/Parent.js';
 
 const DEFAULT_STUDENT_PASSWORD = 'Student@123';
+const DEFAULT_PARENT_PASSWORD = 'Parent@123';
 const STUDENT_LOCKOUT_MS = 15 * 1000;
 const PASSWORD_CHANGE_ROLES = new Set(['STUDENT', 'TEACHER', 'PARENT', 'LIBRARIAN']);
 const STRONG_PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const normalizeParentRelation = (value: string) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'father') return 'Father';
+  if (normalized === 'mother') return 'Mother';
+  return 'Guardian';
+};
 
 export const loginUser = async (req: Request, res: Response) => {
   const { identifier, password } = req.body;
@@ -25,35 +34,95 @@ export const loginUser = async (req: Request, res: Response) => {
     const studentMaxFailedAttempts = Math.min(5, Math.max(3, configuredAttempts));
     const sessionTimeoutMinutes = settings?.session_timeout || 30;
     const normalizedIdentifier = String(identifier).trim();
+    const normalizedEmail = normalizedIdentifier.toLowerCase();
     const emailRegex = new RegExp(`^${escapeRegExp(normalizedIdentifier)}$`, 'i');
+    const exactEmailRegex = new RegExp(`^${escapeRegExp(normalizedEmail)}$`, 'i');
 
-    let user = await User.findOne({
-      $or: [
-        { email: emailRegex },
-        { registrationId: normalizedIdentifier }
-      ]
-    });
+    let user: any = null;
 
-    // Legacy fallback: bootstrap a missing login user from student profile email.
-    if (!user) {
-      const normalizedEmail = normalizedIdentifier.toLowerCase();
-      const student = await Student.findOne({ 'personalInfo.email': new RegExp(`^${escapeRegExp(normalizedEmail)}$`, 'i') });
-      if (student) {
-        const fullName = `${student.personalInfo?.firstName || ''} ${student.personalInfo?.lastName || ''}`.trim() || normalizedIdentifier;
-        user = new User({
+    // If the identifier is a student's personal email, force student-context login.
+    const matchedStudent = await Student.findOne({ 'personalInfo.email': exactEmailRegex })
+      .select('_id userId collegeId personalInfo uniqueStudentId enrollmentId')
+      .lean();
+
+    if (matchedStudent?._id) {
+      if (matchedStudent.userId) {
+        const linkedStudentUser = await User.findById(matchedStudent.userId);
+        if (linkedStudentUser && String(linkedStudentUser.role || '').toUpperCase() === 'STUDENT') {
+          user = linkedStudentUser;
+        }
+      }
+
+      if (!user) {
+        const fullName = `${(matchedStudent as any)?.personalInfo?.firstName || ''} ${(matchedStudent as any)?.personalInfo?.lastName || ''}`.trim() || normalizedIdentifier;
+        let loginEmail = normalizedEmail;
+        const existingEmailOwner = await User.findOne({ email: exactEmailRegex }).select('_id');
+        if (existingEmailOwner) {
+          loginEmail = `student.${String((matchedStudent as any)._id)}@ngcms.local`;
+        }
+
+        const registrationId = String((matchedStudent as any).enrollmentId || (matchedStudent as any).uniqueStudentId || '').trim() || undefined;
+        const studentUser = new User({
           name: fullName,
-          email: normalizedEmail,
+          email: loginEmail,
           password: DEFAULT_STUDENT_PASSWORD,
           role: 'STUDENT',
-          collegeId: student.collegeId,
+          collegeId: (matchedStudent as any).collegeId,
+          registrationId,
+          isActive: true,
+          mustChangePassword: true,
+        });
+        await studentUser.save();
+
+        await Student.updateOne(
+          { _id: (matchedStudent as any)._id },
+          { $set: { userId: studentUser._id } }
+        );
+
+        user = studentUser;
+      }
+    }
+
+    if (!user) {
+      user = await User.findOne({
+        $or: [
+          { email: emailRegex },
+          { registrationId: normalizedIdentifier }
+        ]
+      });
+    }
+
+    // Legacy fallback: bootstrap a missing login user from student/parent profile emails.
+    if (!user) {
+      const parentStudents = await Student.find({ 'parentInfo.email': exactEmailRegex }).select('_id collegeId parentInfo');
+      if (parentStudents.length > 0) {
+        const leadStudent: any = parentStudents[0];
+        const parentName = String(leadStudent?.parentInfo?.name || 'Parent').trim() || 'Parent';
+        const parentPhone = String(leadStudent?.parentInfo?.phone || '0000000000').trim();
+        const parentRelation = normalizeParentRelation(String(leadStudent?.parentInfo?.relation || 'Guardian'));
+        const parentCollegeId = leadStudent?.collegeId;
+
+        user = new User({
+          name: parentName,
+          email: normalizedEmail,
+          password: DEFAULT_PARENT_PASSWORD,
+          role: 'PARENT',
+          collegeId: parentCollegeId,
           isActive: true,
           mustChangePassword: true,
         });
         await user.save();
 
-        if (!student.userId) {
-          student.userId = user._id as any;
-          await student.save();
+        const studentIds = parentStudents.map((item: any) => item._id);
+        const existingParent = await Parent.findOne({ userId: user._id });
+        if (!existingParent) {
+          await Parent.create({
+            userId: user._id,
+            students: studentIds,
+            relation: parentRelation,
+            phone: parentPhone || '0000000000',
+            isActive: true,
+          });
         }
       }
     }
@@ -101,13 +170,21 @@ export const loginUser = async (req: Request, res: Response) => {
     user.authentication.login_count = (user.authentication.login_count || 0) + 1;
 
     const normalizedRole = String(user.role || '').toUpperCase();
+    const isPersistentAdminSession = ['COLLEGE_ADMIN', 'SUPER_ADMIN', 'ADMIN'].includes(normalizedRole);
     if (!PASSWORD_CHANGE_ROLES.has(normalizedRole) && user.mustChangePassword) {
       user.mustChangePassword = false;
     }
 
     await user.save();
 
-    const token = generateToken(user._id as any, user.role, `${sessionTimeoutMinutes}m`);
+    const token = isPersistentAdminSession
+      ? generateToken(user._id as any, user.role)
+      : generateToken(user._id as any, user.role, `${sessionTimeoutMinutes}m`);
+
+    const expiresAt = isPersistentAdminSession
+      ? null
+      : new Date(now.getTime() + sessionTimeoutMinutes * 60 * 1000);
+
     await Session.create({
       userId: user._id,
       jwt_token: token,
@@ -115,7 +192,7 @@ export const loginUser = async (req: Request, res: Response) => {
       user_agent: req.get('user-agent') || 'unknown',
       login_timestamp: now,
       last_activity: now,
-      expires_at: new Date(now.getTime() + sessionTimeoutMinutes * 60 * 1000),
+      expires_at: expiresAt,
       is_active: true
     });
 
@@ -245,12 +322,23 @@ export const updateUserProfile = async (req: any, res: Response) => {
       branding,
     } = req.body || {};
 
+    const normalizedRole = String(user.role || '').toUpperCase();
+    const lockedProfileRoles = new Set(['STUDENT', 'TEACHER']);
+    const hasRestrictedProfileFields = [name, email, phone, branding].some((value) => value !== undefined);
+
+    if (lockedProfileRoles.has(normalizedRole) && hasRestrictedProfileFields) {
+      return res.status(403).json({
+        success: false,
+        message: 'Students and teachers can only update profile photo from settings'
+      });
+    }
+
     if (typeof name === 'string' && name.trim()) user.name = name.trim();
     if (typeof email === 'string' && email.trim()) user.email = email.trim().toLowerCase();
     if (typeof phone === 'string') user.phone = phone.trim();
     if (typeof profilePicture === 'string') user.profilePicture = profilePicture;
 
-    if (notificationPreferences && typeof notificationPreferences === 'object') {
+    if (!lockedProfileRoles.has(normalizedRole) && notificationPreferences && typeof notificationPreferences === 'object') {
       user.notificationPreferences = {
         email: Boolean(notificationPreferences.email),
         sms: Boolean(notificationPreferences.sms),
@@ -258,7 +346,7 @@ export const updateUserProfile = async (req: any, res: Response) => {
       };
     }
 
-    if (branding && typeof branding === 'object') {
+    if (!lockedProfileRoles.has(normalizedRole) && branding && typeof branding === 'object') {
       user.branding = {
         collegeLogo: branding.collegeLogo || user.branding?.collegeLogo,
         primaryColor: branding.primaryColor || user.branding?.primaryColor || '#4f46e5',
@@ -291,7 +379,21 @@ export const updateUserProfile = async (req: any, res: Response) => {
 
 export const getActiveSessions = async (req: any, res: Response) => {
   try {
-    const sessions = await Session.find({ userId: req.user?._id, is_active: true, expires_at: { $gt: new Date() } })
+    const normalizedRole = String(req.user?.role || '').toUpperCase();
+    const isPersistentAdminSession = ['COLLEGE_ADMIN', 'SUPER_ADMIN', 'ADMIN'].includes(normalizedRole);
+    const activeSessionQuery: any = { userId: req.user?._id, is_active: true };
+
+    if (isPersistentAdminSession) {
+      activeSessionQuery.$or = [
+        { expires_at: { $gt: new Date() } },
+        { expires_at: null },
+        { expires_at: { $exists: false } }
+      ];
+    } else {
+      activeSessionQuery.expires_at = { $gt: new Date() };
+    }
+
+    const sessions = await Session.find(activeSessionQuery)
       .sort({ last_activity: -1 })
       .select('_id ip_address user_agent login_timestamp last_activity expires_at');
 

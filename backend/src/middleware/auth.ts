@@ -20,11 +20,17 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
       const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'secret');
       console.log(`[AUTH] Token decoded successfully. ID: ${decoded.id}`);
 
-      const activeSession = await Session.findOne({
+      const normalizedTokenRole = String(decoded.role || '').toUpperCase();
+      const isPersistentAdminSession = ['COLLEGE_ADMIN', 'SUPER_ADMIN', 'ADMIN'].includes(normalizedTokenRole);
+      const activeSessionQuery: any = {
         jwt_token: token,
         is_active: true,
-        expires_at: { $gt: new Date() }
-      });
+      };
+      if (!isPersistentAdminSession) {
+        activeSessionQuery.expires_at = { $gt: new Date() };
+      }
+
+      const activeSession = await Session.findOne(activeSessionQuery);
       if (!activeSession) {
         return res.status(401).json({ message: 'Session expired or invalidated' });
       }
