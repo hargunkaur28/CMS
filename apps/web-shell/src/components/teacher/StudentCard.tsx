@@ -27,6 +27,13 @@ interface StudentCardProps {
 export default function StudentCard({ student }: StudentCardProps) {
   const fullName = `${student.personalInfo?.firstName || ''} ${student.personalInfo?.lastName || ''}`.trim();
   const profilePicture = student.personalInfo?.photo;
+  const resolveImageUrl = (url?: string) => {
+    if (!url) return '';
+    if (/^(https?:|data:|blob:)/i.test(url)) return url;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api';
+    const assetBase = apiUrl.replace(/\/api$/, '');
+    return `${assetBase}${url.startsWith('/') ? '' : '/'}${url}`;
+  };
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-xl hover:shadow-slate-900/5 transition-all group">
@@ -34,7 +41,7 @@ export default function StudentCard({ student }: StudentCardProps) {
         <div className="relative">
           {profilePicture ? (
             <img 
-              src={profilePicture} 
+              src={resolveImageUrl(profilePicture)} 
               alt={fullName} 
               className="w-20 h-20 rounded-2xl object-cover ring-4 ring-slate-50 group-hover:ring-slate-100 transition-all"
             />

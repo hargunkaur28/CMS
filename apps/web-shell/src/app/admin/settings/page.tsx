@@ -18,7 +18,6 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
-  const [savingPrefs, setSavingPrefs] = useState(false);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,12 +33,6 @@ export default function AdminSettingsPage() {
     collegeLogo: "",
     primaryColor: "#4f46e5",
     collegeDisplayName: "",
-  });
-
-  const [prefs, setPrefs] = useState({
-    email: true,
-    sms: false,
-    push: true,
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -61,28 +54,43 @@ export default function AdminSettingsPage() {
     return `${assetBase}${url}`;
   };
 
+  const syncStoredUser = (patch: Record<string, any>) => {
+    try {
+      const stored = localStorage.getItem("user");
+      if (!stored) return;
+
+      const user = JSON.parse(stored);
+      const nextUser = {
+        ...user,
+        ...patch,
+        branding: patch.branding ? { ...(user.branding || {}), ...patch.branding } : user.branding,
+      };
+
+      localStorage.setItem("user", JSON.stringify(nextUser));
+      window.dispatchEvent(new Event("user-updated"));
+    } catch {
+      // Ignore local cache sync errors; backend save is the source of truth.
+    }
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
       setError(null);
+      const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
       const [profileRes, sessionsRes] = await Promise.all([fetchAuthProfile(), fetchActiveSessions()]);
 
       if (profileRes?._id) {
         setProfile({
-          name: profileRes.name || "",
-          email: profileRes.email || "",
-          phone: profileRes.phone || "",
-          profilePicture: profileRes.profilePicture || "",
-        });
-        setPrefs({
-          email: Boolean(profileRes.notificationPreferences?.email ?? true),
-          sms: Boolean(profileRes.notificationPreferences?.sms ?? false),
-          push: Boolean(profileRes.notificationPreferences?.push ?? true),
+          name: profileRes.name || savedUser.name || "",
+          email: profileRes.email || savedUser.email || "",
+          phone: profileRes.phone || savedUser.phone || "",
+          profilePicture: profileRes.profilePicture || savedUser.profilePicture || "",
         });
         setBranding({
-          collegeLogo: profileRes.branding?.collegeLogo || "",
-          primaryColor: profileRes.branding?.primaryColor || "#4f46e5",
-          collegeDisplayName: profileRes.branding?.collegeDisplayName || "",
+          collegeLogo: profileRes.branding?.collegeLogo || savedUser.branding?.collegeLogo || "",
+          primaryColor: profileRes.branding?.primaryColor || savedUser.branding?.primaryColor || "#4f46e5",
+          collegeDisplayName: profileRes.branding?.collegeDisplayName || savedUser.branding?.collegeDisplayName || "",
         });
       }
 
@@ -107,8 +115,14 @@ export default function AdminSettingsPage() {
         const url = uploadRes.data?.url || "";
         if (target === "profilePicture") {
           setProfile((prev) => ({ ...prev, profilePicture: url }));
+          await updateAdminProfile({ profilePicture: url });
+          syncStoredUser({ profilePicture: url });
+          setMessage("Profile photo updated");
         } else {
           setBranding((prev) => ({ ...prev, collegeLogo: url }));
+          await updateAdminProfile({ branding: { ...branding, collegeLogo: url } });
+          syncStoredUser({ branding: { ...branding, collegeLogo: url } });
+          setMessage("College logo updated");
         }
       }
     } catch (err: any) {
@@ -133,7 +147,12 @@ export default function AdminSettingsPage() {
           const user = JSON.parse(userRaw);
           user.name = profile.name;
           user.email = profile.email;
+          user.phone = profile.phone;
           user.profilePicture = profile.profilePicture;
+          user.branding = {
+            ...(user.branding || {}),
+            ...branding,
+          };
           localStorage.setItem("user", JSON.stringify(user));
           window.dispatchEvent(new Event("user-updated"));
         }
@@ -143,21 +162,6 @@ export default function AdminSettingsPage() {
       setError(err?.response?.data?.message || "Failed to save profile");
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  const savePreferences = async () => {
-    try {
-      setSavingPrefs(true);
-      setError(null);
-      const res = await updateAdminProfile({ notificationPreferences: prefs });
-      if (res?.success) {
-        setMessage("Notification preferences saved");
-      }
-    } catch (err: any) {
-      setError(err?.response?.data?.message || "Failed to save preferences");
-    } finally {
-      setSavingPrefs(false);
     }
   };
 
@@ -268,25 +272,6 @@ export default function AdminSettingsPage() {
         </div>
         <button onClick={updatePassword} disabled={savingPassword} className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-black uppercase tracking-widest disabled:opacity-60 inline-flex items-center gap-2">
           {savingPassword ? <Loader2 className="animate-spin" size={14} /> : <ShieldCheck size={14} />} Update Password
-        </button>
-      </section>
-
-      <section className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
-        <h2 className="text-lg font-black text-slate-900">Notification Preferences</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {([
-            ["email", "Email Notifications"],
-            ["sms", "SMS Notifications"],
-            ["push", "Push Notifications"],
-          ] as const).map(([key, label]) => (
-            <label key={key} className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
-              <span className="text-sm text-slate-700">{label}</span>
-              <input type="checkbox" checked={Boolean((prefs as any)[key])} onChange={(e) => setPrefs((p: any) => ({ ...p, [key]: e.target.checked }))} />
-            </label>
-          ))}
-        </div>
-        <button onClick={savePreferences} disabled={savingPrefs} className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest disabled:opacity-60 inline-flex items-center gap-2">
-          {savingPrefs ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />} Save Preferences
         </button>
       </section>
 

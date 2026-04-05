@@ -49,6 +49,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [authorized, setAuthorized] = React.useState(false);
   const [currentUser, setCurrentUser] = React.useState<any>(null);
 
+  const resolveAssetUrl = (url?: string) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5005/api";
+    const assetBase = apiUrl.replace(/\/api$/, "");
+    return `${assetBase}${url}`;
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -109,12 +117,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 opacity-50" />
         
         <div className="p-8 border-b border-white/5 flex items-center gap-4">
-          <div className="w-10 h-10 bg-indigo-600 rounded-[1.25rem] flex items-center justify-center shadow-lg shadow-indigo-600/20 group-hover:rotate-12 transition-transform duration-500">
-            <ShieldCheck className="text-white" size={20} />
-          </div>
+          {currentUser?.branding?.collegeLogo ? (
+            <img
+              src={resolveAssetUrl(currentUser.branding.collegeLogo)}
+              alt={currentUser?.branding?.collegeDisplayName || currentUser?.name || 'College logo'}
+              className="w-10 h-10 rounded-[1.25rem] object-cover bg-white shadow-lg shadow-indigo-600/20"
+            />
+          ) : (
+            <div className="w-10 h-10 bg-indigo-600 rounded-[1.25rem] flex items-center justify-center shadow-lg shadow-indigo-600/20 group-hover:rotate-12 transition-transform duration-500">
+              <ShieldCheck className="text-white" size={20} />
+            </div>
+          )}
           <div>
-            <h2 className="text-sm font-black text-white uppercase tracking-tighter leading-none">Admin Portal</h2>
-            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1.5 opacity-80">Institutional Ops</p>
+            <h2 className="text-sm font-black text-white uppercase tracking-tighter leading-none">
+              {currentUser?.branding?.collegeDisplayName || currentUser?.name || 'Admin Portal'}
+            </h2>
+            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-1.5 opacity-80">
+              {currentUser?.role === 'SUPER_ADMIN' ? 'Super Admin' : 'College Admin'}
+            </p>
           </div>
         </div>
 
@@ -168,7 +188,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200/60 px-10 flex items-center justify-between z-10 shrink-0">
           <div className="flex items-center gap-4">
             <div className="w-1.5 h-6 bg-indigo-600 rounded-full" />
-            <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] opacity-80">Main Campus Hierarchy</h3>
+            <h3 className="text-xs font-black text-slate-900 uppercase tracking-[0.2em] opacity-80">
+              {currentUser?.branding?.collegeDisplayName || currentUser?.name || 'College Admin Portal'}
+            </h3>
           </div>
           
           <div className="flex items-center gap-6">

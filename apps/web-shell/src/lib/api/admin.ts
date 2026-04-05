@@ -362,8 +362,6 @@ export const logoutAllDevices = async () => {
 export const uploadSettingsAsset = async (file: File) => {
   const formData = new FormData();
   formData.append('file', file);
-  const response = await api.post('/auth/upload-file', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
+  const response = await api.post('/auth/upload-file', formData);
   return response.data;
 };
