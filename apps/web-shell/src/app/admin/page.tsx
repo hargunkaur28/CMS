@@ -13,15 +13,23 @@ import {
   School
 } from "lucide-react";
 import StatsCard from "@/components/admin/StatsCard";
-import { fetchDashboardStats } from "@/lib/api/admin";
+import { fetchDashboardStats, fetchEnrollmentActivity } from "@/lib/api/admin";
 import Link from "next/link";
 
 export default function AdminDashboard() {
   const [stats, setStats] = React.useState<any>(null);
+   const [enrollmentSeries, setEnrollmentSeries] = React.useState<Array<{ month: string; count: number }>>([]);
   const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
-    loadStats();
+      const loadAll = async () => {
+         await Promise.all([loadStats(), loadEnrollmentActivity()]);
+      };
+
+      loadAll();
+
+      const intervalId = window.setInterval(loadAll, 30000);
+      return () => window.clearInterval(intervalId);
   }, []);
 
   const loadStats = async () => {
@@ -34,6 +42,20 @@ export default function AdminDashboard() {
       setLoading(false);
     }
   };
+
+   const loadEnrollmentActivity = async () => {
+      try {
+         const res = await fetchEnrollmentActivity();
+         if (res.success && Array.isArray(res.data)) {
+            setEnrollmentSeries(res.data.map((item: any) => ({
+               month: String(item.month || ''),
+               count: Number(item.count || 0),
+            })));
+         }
+      } catch (err) {
+         console.error('Failed to load enrollment activity', err);
+      }
+   };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -118,20 +140,23 @@ export default function AdminDashboard() {
                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest animate-pulse">Synchronizing Data...</p>
               ) : (
                  <div className="w-full h-full p-8 flex items-end gap-4">
-                    {stats?.enrollmentTrend?.map((item: any, idx: number) => (
+                    {enrollmentSeries.map((item: any, idx: number) => (
                        <div key={idx} className="flex-1 flex flex-col items-center gap-2">
                           <div 
                             className="w-full bg-slate-900 rounded-t-lg transition-all hover:bg-indigo-600 cursor-help relative group/bar"
-                            style={{ height: `${(item.count / Math.max(...(stats?.enrollmentTrend?.map((i: any) => i.count) || [1]))) * 100}%`, minHeight: '4px' }}
+                            style={{
+                              height: `${(item.count / Math.max(1, ...enrollmentSeries.map((i: any) => i.count))) * 100}%`,
+                              minHeight: item.count > 0 ? '6px' : '2px'
+                            }}
                           >
                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[8px] font-black px-2 py-1 rounded opacity-0 group-hover/bar:opacity-100 transition-opacity whitespace-nowrap">
                                 {item.count} Enrollments
                              </div>
                           </div>
-                          <span className="text-[8px] font-black text-slate-400 uppercase">{new Date(0, item._id.month - 1).toLocaleString('default', { month: 'short' })}</span>
+                          <span className="text-[8px] font-black text-slate-400 uppercase">{item.month}</span>
                        </div>
                     ))}
-                    {(!stats?.enrollmentTrend || stats.enrollmentTrend.length === 0) && (
+                    {enrollmentSeries.length === 0 && (
                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic text-center w-full">No recent enrollment data</p>
                     )}
                  </div>
@@ -164,9 +189,9 @@ export default function AdminDashboard() {
               )}
            </div>
 
-           <button className="mt-auto w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all">
+           <Link href="/admin/communication" className="mt-auto w-full py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all text-center block">
               View All Notifications
-           </button>
+           </Link>
         </div>
       </div>
 
@@ -177,7 +202,7 @@ export default function AdminDashboard() {
                <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">AI Early Warning System</h3>
                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Students flagged for immediate intervention</p>
             </div>
-            <button className="text-[9px] font-black text-indigo-600 uppercase tracking-widest hover:underline">View All {stats?.atRiskCount || 0}</button>
+            <Link href="/admin/students" className="text-[9px] font-black text-indigo-600 uppercase tracking-widest hover:underline">View All {stats?.atRiskCount || 0}</Link>
          </div>
 
          <div className="space-y-4">
@@ -192,14 +217,14 @@ export default function AdminDashboard() {
                         </div>
                         <div>
                            <p className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{student.personalInfo.name}</p>
-                           <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{student.studentId}</p>
+                           <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{student.uniqueStudentId || student.studentId || 'N/A'}</p>
                         </div>
                      </div>
                      <div className="flex gap-2">
-                        {student.academic?.attendancePercentage < 75 && (
+                        {student.academicInfo?.attendancePercentage < 75 && (
                            <span className="text-[8px] font-black text-rose-600 bg-rose-50 px-2 py-1 rounded-lg uppercase">Low Attendance</span>
                         )}
-                        {student.academic?.feeStatus === 'Overdue' && (
+                        {student.academicInfo?.feeStatus === 'Overdue' && (
                            <span className="text-[8px] font-black text-amber-600 bg-amber-50 px-2 py-1 rounded-lg uppercase">Fee Overdue</span>
                         )}
                      </div>

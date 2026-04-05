@@ -94,7 +94,9 @@ export default function MarksPage() {
 };
 
   const currentExams = exams.filter((ex: any) => 
-    (ex.subjectId?._id || ex.subjectId) === selectedSubject
+    Array.isArray(ex.subjects)
+      ? ex.subjects.some((subject: any) => (subject?._id || subject)?.toString() === selectedSubject)
+      : (ex.subjectId?._id || ex.subjectId)?.toString() === selectedSubject
   );
 
   const handleSaveRow = async (studentId: string, marksObtained: number, remarks: string) => {

@@ -26,6 +26,7 @@ export default function LibraryPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [userRole, setUserRole] = useState<string>("");
 
   const loadBooks = async () => {
     setLoading(true);
@@ -52,14 +53,16 @@ export default function LibraryPage() {
   };
 
   useEffect(() => {
-    const userRole = JSON.parse(localStorage.getItem("user") || "{}").role;
+    const role = JSON.parse(localStorage.getItem("user") || "{}").role;
+    setUserRole(role || "");
     loadBooks();
-    if (userRole === "STUDENT") {
+    if (role === "STUDENT") {
       loadTransactions();
     }
   }, [searchTerm, activeCategory]);
 
   const handleReserve = async (bookId: string) => {
+    if (userRole !== "STUDENT") return;
     try {
       const res = await reserveBook(bookId);
       if (res.success) {
@@ -107,7 +110,7 @@ export default function LibraryPage() {
                         ) : (
                           <>
                             <Clock size={10} />
-                            <span>Due: {new Date(tx.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                            <span>Due: {tx?.dueDate ? new Date(tx.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "TBD"}</span>
                           </>
                         )}
                      </div>
@@ -175,7 +178,12 @@ export default function LibraryPage() {
       ) : books.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {books.map((book) => (
-            <BookCard key={book._id} book={book} onReserve={() => handleReserve(book._id)} />
+            <BookCard
+              key={book._id}
+              book={book}
+              canReserve={userRole === "STUDENT"}
+              onReserve={() => handleReserve(book._id)}
+            />
           ))}
         </div>
       ) : (
@@ -189,7 +197,7 @@ export default function LibraryPage() {
   );
 }
 
-function BookCard({ book, onReserve }: any) {
+function BookCard({ book, onReserve, canReserve }: any) {
   const [reserving, setReserving] = useState(false);
   const isAvailable = book.availableCopies > 0;
 
@@ -225,17 +233,18 @@ function BookCard({ book, onReserve }: any) {
 
       <div className="flex items-center gap-3">
         <button 
-          disabled={!isAvailable || reserving}
+          disabled={!canReserve || !isAvailable || reserving}
           onClick={async () => {
+             if (!canReserve) return;
              setReserving(true);
              await onReserve();
              setReserving(false);
           }}
           className={`flex-1 py-3 rounded-xl font-bold text-xs transition-shadow shadow-lg shadow-slate-900/5 active:scale-95 ${
-            isAvailable ? 'bg-slate-900 text-white hover:bg-indigo-600' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+            canReserve && isAvailable ? 'bg-slate-900 text-white hover:bg-indigo-600' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
           }`}
         >
-          {reserving ? 'Reserving...' : isAvailable ? 'Reserve Book' : 'Notify Me'}
+          {reserving ? 'Reserving...' : canReserve ? (isAvailable ? 'Reserve Book' : 'Notify Me') : 'Browse Only'}
         </button>
         <button className="p-3 bg-slate-50 text-slate-400 hover:text-slate-900 hover:bg-white border border-slate-100 rounded-xl transition-all shadow-sm">
            <ArrowUpRight size={18} />

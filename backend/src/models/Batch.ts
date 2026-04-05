@@ -10,6 +10,11 @@ export interface IBatch extends Document {
   endYear: number;
   currentSemester: number;
   sections: string[];
+  sectionTeachers: {
+    section: string;
+    teacherId: mongoose.Types.ObjectId;
+    subjectId?: mongoose.Types.ObjectId;
+  }[];
   students: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
@@ -26,6 +31,13 @@ const BatchSchema: Schema = new Schema(
     endYear: { type: Number, required: true },
     currentSemester: { type: Number, default: 1 },
     sections: [{ type: String, default: ["A"] }],
+    sectionTeachers: [
+      {
+        section: { type: String, required: true },
+        teacherId: { type: Schema.Types.ObjectId, ref: "User", required: true },
+        subjectId: { type: Schema.Types.ObjectId, ref: "Subject", required: false },
+      }
+    ],
     students: [{ type: Schema.Types.ObjectId, ref: "Student" }],
   },
   { timestamps: true }

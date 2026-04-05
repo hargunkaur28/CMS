@@ -213,7 +213,7 @@ export default function StudentProfilePage() {
                       <div className="space-y-4">
                          <InfoBlock label="Enrollment ID" value={student.uniqueStudentId || "PENDING"} />
                          <InfoBlock label="Date of Admission" value={student.academicInfo?.enrollmentDate ? new Date(student.academicInfo.enrollmentDate).toLocaleDateString() : "N/A"} />
-                         <InfoBlock label="Section" value={student.section || "A"} />
+                         <InfoBlock label="Section" value={student.academicInfo?.section || "A"} />
                       </div>
                    </div>
                 </div>

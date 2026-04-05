@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import "./globals.css";
 import { 
   LayoutDashboard, 
@@ -22,6 +22,7 @@ import {
   Bell,
   Search,
   Menu,
+  AlertCircle,
   ShieldCheck,
   GraduationCap,
   ClipboardCheck,
@@ -34,6 +35,9 @@ import { cn } from "@/lib/utils";
 import { SocketProvider } from "@/components/providers/SocketProvider";
 import NotificationBell from "@/components/layout/NotificationBell";
 import api from "@/lib/api";
+import UserAvatar from "../components/ui/UserAvatar";
+
+const PASSWORD_CHANGE_ROLES = ['TEACHER', 'PARENT', 'STUDENT', 'LIBRARIAN', 'COLLEGE_ADMIN'];
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -41,39 +45,84 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [globalSettings, setGlobalSettings] = useState<any>(null);
+  const [backendOnline, setBackendOnline] = useState(true);
+  const [backendChecked, setBackendChecked] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const savedUser = localStorage.getItem("user");
     const isLoginPage = pathname === "/login";
+    const isChangePasswordPage = pathname === "/change-password";
+    const isAuthPage = isLoginPage || isChangePasswordPage;
+    const parsedUser = savedUser ? JSON.parse(savedUser) : null;
+    const role = String(parsedUser?.role || '').toUpperCase();
 
-    if (!token && !isLoginPage) {
+    const normalizedRole = String(parsedUser?.role || "").toUpperCase();
+    const shouldForcePasswordChange =
+      (Boolean(parsedUser?.mustChangePassword) && PASSWORD_CHANGE_ROLES.includes(normalizedRole)) ||
+      (normalizedRole === 'COLLEGE_ADMIN' && Boolean(parsedUser?.isFirstLogin));
+
+    if (!token && !isLoginPage && !isChangePasswordPage) {
       router.push("/login");
     } else if (token && isLoginPage) {
-      router.push("/");
+      router.push(shouldForcePasswordChange ? "/change-password" : "/");
+    } else if (token && shouldForcePasswordChange && !isChangePasswordPage) {
+      router.push("/change-password");
+    } else if (token && !isAuthPage && role === 'SUPER_ADMIN' && !pathname.startsWith('/super-admin')) {
+      router.replace('/super-admin/dashboard');
+      return;
+    } else if (token && !isAuthPage && role === 'COLLEGE_ADMIN' && pathname.startsWith('/super-admin')) {
+      router.replace('/admin');
+      return;
     }
 
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    if (parsedUser) {
+      setUser(parsedUser);
     }
     setLoading(false);
   }, [pathname, router]);
 
   useEffect(() => {
-    const fetchGlobalSettings = async () => {
-      try {
-        const response = await api.get('/settings/public');
-        const settings = response.data?.data;
-        if (settings) {
-          setGlobalSettings(settings);
-        }
-      } catch {
-        // Keep app functional with defaults if settings endpoint is unavailable.
-      }
+    const syncUserState = () => {
+      const savedUser = localStorage.getItem('user');
+      setUser(savedUser ? JSON.parse(savedUser) : null);
     };
 
-    fetchGlobalSettings();
+    window.addEventListener('storage', syncUserState);
+    window.addEventListener('user-updated', syncUserState as EventListener);
+    return () => {
+      window.removeEventListener('storage', syncUserState);
+      window.removeEventListener('user-updated', syncUserState as EventListener);
+    };
   }, []);
+
+  const checkBackendConnectivity = useCallback(async () => {
+    try {
+      const response = await api.get('/settings/public');
+      const settings = response.data?.data;
+      if (settings) {
+        setGlobalSettings(settings);
+      }
+      setBackendOnline(true);
+    } catch {
+      // Keep app functional with defaults if settings endpoint is unavailable.
+      setBackendOnline(false);
+    } finally {
+      setBackendChecked(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkBackendConnectivity();
+
+    const intervalId = window.setInterval(() => {
+      checkBackendConnectivity();
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [checkBackendConnectivity]);
 
   useEffect(() => {
     if (pathname === '/login') return;
@@ -115,6 +164,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   };
 
   const isLoginPage = pathname === "/login";
+  const isChangePasswordPage = pathname === "/change-password";
+  const isAuthPage = isLoginPage || isChangePasswordPage;
+  const showBackendBanner = !isAuthPage && backendChecked && !backendOnline;
 
   // Temporary permissions mock based on old UI
   const canSee = (label: string) => true; 
@@ -143,13 +195,29 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en">
-      <body className={`bg-slate-50 text-slate-900 ${!isLoginPage ? "h-screen flex" : ""}`}>
+      <body className={`bg-slate-50 text-slate-900 ${!isAuthPage ? "h-screen flex" : ""} ${showBackendBanner ? "pt-12" : ""}`}>
         <SocketProvider>
+          {showBackendBanner && (
+            <div className="fixed inset-x-0 top-0 z-[100] flex items-center justify-between gap-3 bg-rose-600 px-4 py-2 text-white shadow-lg">
+              <div className="flex items-center gap-2 text-sm">
+                <AlertCircle size={16} />
+                <span>Backend API is unreachable at http://localhost:5005. Start backend from the backend folder using npm run dev.</span>
+              </div>
+              <button
+                type="button"
+                onClick={checkBackendConnectivity}
+                className="rounded bg-white/20 px-3 py-1 text-xs font-semibold hover:bg-white/30"
+              >
+                Retry
+              </button>
+            </div>
+          )}
+
           {loading ? (
             <div className="h-screen w-full flex items-center justify-center bg-slate-50">
                <div className="w-2 h-6 bg-indigo-500 rounded-full animate-bounce" />
             </div>
-          ) : isLoginPage ? (
+          ) : isAuthPage ? (
             children
           ) : isPortalRoute ? (
             /* Specialized Portals (Admin/Teacher) handle their own sidebars */
@@ -294,9 +362,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <div className="p-4 border-t border-slate-800">
                   {user ? (
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
-                        {user?.name?.[0]?.toUpperCase()}
-                      </div>
+                      <UserAvatar
+                        name={user?.name}
+                        imageUrl={user?.profilePicture}
+                        size={36}
+                        className="rounded-xl shrink-0"
+                      />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
                         <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full', roleColor[user?.role || 'STUDENT'])}>
@@ -330,6 +401,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                        </div>
                        <div className="h-8 w-px bg-slate-100 mx-2" />
+                        {user ? (
+                        <div className="hidden md:flex items-center gap-2">
+                          <div className="text-right">
+                           <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest truncate max-w-40">{user?.name || 'User'}</p>
+                           <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{roleLabel[user?.role || 'STUDENT']}</p>
+                          </div>
+                          <UserAvatar name={user?.name} imageUrl={user?.profilePicture} size={34} />
+                        </div>
+                        ) : null}
                        <NotificationBell />
                     </div>
                  </header>

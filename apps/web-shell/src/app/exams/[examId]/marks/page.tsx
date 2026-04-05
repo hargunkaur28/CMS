@@ -29,8 +29,13 @@ export default function MarksEntryPage({ params }: { params: Promise<{ examId: s
 
   const fetchRoster = async () => {
     try {
-      // Filtering by first course to ensure relevant data load
-      const res = await getStudents({ courseId: exam.courses[0]._id });
+      // Support both legacy course-name filtering and id-based filtering.
+      const primaryCourse = exam?.courses?.[0];
+      const params: any = {};
+      if (primaryCourse?.name) params.course = primaryCourse.name;
+      if (primaryCourse?._id) params.courseId = primaryCourse._id;
+
+      const res = await getStudents(params);
       if (res && res.data) {
         setStudents(res.data);
       } else if (Array.isArray(res)) {
@@ -65,7 +70,16 @@ export default function MarksEntryPage({ params }: { params: Promise<{ examId: s
     );
   }
 
-  if (!exam) return <div className="p-12 text-center font-bold text-slate-400">EXAM ENTITY NOT FOUND</div>;
+  if (!exam) {
+    return (
+      <div className="p-12 text-center">
+        <p className="text-sm font-black text-slate-500 uppercase tracking-widest">Exam record not found</p>
+        <Link href="/exams" className="inline-block mt-4 px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800">
+          Back to Exams
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000">

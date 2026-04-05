@@ -115,3 +115,8 @@ export const markNotifAsRead = async (id: string) => {
   const response = await api.put(`/notifications/${id}/read`, {});
   return response.data;
 };
+
+export const markAllNotifAsRead = async () => {
+  const response = await api.put(`/notifications/read-all`, {});
+  return response.data;
+};

@@ -192,7 +192,11 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
 export const getAttendance = async (req: Request, res: Response) => {
   try {
     const { batchId, subjectId, date, lecture, section } = req.query;
-    const query: any = {};
+    const collegeId = (req as any).user?.collegeId;
+    
+    if (!collegeId) return res.status(401).json({ success: false, message: 'Unauthorized: collegeId required' });
+    
+    const query: any = { collegeId };
     if (batchId) query.classId = batchId;
     if (subjectId) query.subjectId = subjectId;
     if (lecture) query.lecture = Number(lecture);
@@ -230,8 +234,12 @@ export const getClassAttendance = async (req: Request, res: Response) => {
 export const getAttendanceStats = async (req: Request, res: Response) => {
   try {
     const { batchId } = req.params;
+    const collegeId = (req as any).user?.collegeId;
+    
+    if (!collegeId) return res.status(401).json({ success: false, message: 'Unauthorized: collegeId required' });
+    
     const stats = await Attendance.aggregate([
-      { $match: { classId: new mongoose.Types.ObjectId(batchId as string) } },
+      { $match: { classId: new mongoose.Types.ObjectId(batchId as string), collegeId: new mongoose.Types.ObjectId(collegeId) } },
       { $unwind: "$records" },
       {
         $group: {
@@ -252,10 +260,14 @@ export const getAttendanceStats = async (req: Request, res: Response) => {
  */
 export const getHubStats = async (req: Request, res: Response) => {
   try {
-    const totalRecords = await Attendance.countDocuments();
+    const collegeId = (req as any).user?.collegeId;
+    
+    if (!collegeId) return res.status(401).json({ success: false, message: 'Unauthorized: collegeId required' });
+    
+    const totalRecords = await Attendance.countDocuments({ collegeId });
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayRecords = await Attendance.countDocuments({ date: today });
+    const todayRecords = await Attendance.countDocuments({ date: today, collegeId });
 
     res.status(200).json({ 
       success: true, 
@@ -281,12 +293,14 @@ export const getMonthlyReport = async (req: Request, res: Response) => {
 export const getShortageAlerts = async (req: Request, res: Response) => {
   try {
     const teacherId = (req as any).user?._id;
+    const collegeId = (req as any).user?.collegeId;
     if (!teacherId) return res.status(401).json({ success: false, message: "Unauthorized" });
+    if (!collegeId) return res.status(401).json({ success: false, message: 'Unauthorized: collegeId required' });
 
     // Aggregate attendance marked by this teacher or for this teacher's classes.
     // For simplicity and since teachers usually care about their own classes:
     const stats = await Attendance.aggregate([
-      { $match: { teacherId: new mongoose.Types.ObjectId(teacherId as string) } },
+      { $match: { teacherId: new mongoose.Types.ObjectId(teacherId as string), collegeId: new mongoose.Types.ObjectId(collegeId) } },
       { $unwind: "$records" },
       {
         $group: {

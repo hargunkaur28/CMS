@@ -18,9 +18,9 @@ export default function PlacementPage() {
           <div className="w-16 h-16 bg-slate-500/10 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-slate-500/5">
             <Briefcase size={32} />
           </div>
-          <h2 className="text-xl font-display font-semibold text-on-surface mb-3">Employer Pipeline Syncing</h2>
+          <h2 className="text-xl font-display font-semibold text-on-surface mb-3">Employer Pipeline</h2>
           <p className="text-sm text-white/40 font-utility mb-8 leading-relaxed">
-            We are integrating with top-tier employer databases and implementing an automated resume screening engine for students.
+            Live employer feeds are temporarily unavailable. You can still review placement partners and resume upload readiness from this module.
           </p>
           <button className="px-6 py-2 bg-white/10 text-white rounded-lg font-utility font-bold text-sm shadow-lg hover:bg-white/20 transition-all active:scale-95">
             View Partner List

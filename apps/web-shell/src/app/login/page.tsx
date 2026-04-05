@@ -10,6 +10,7 @@ import {
   AlertCircle,
   ShieldCheck
 } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import api from "@/lib/api";
@@ -27,6 +28,7 @@ const loginSchema = z.object({
 export default function LoginPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({ identifier: "", password: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -55,14 +57,21 @@ export default function LoginPage() {
         // 3. Session Persistence
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify({
+          _id: data._id,
           id: data._id,
           name: data.name,
           email: data.email,
-          role: data.role
+          role: data.role,
+          collegeId: data.collegeId,
+          profilePicture: data.profilePicture || '',
+          mustChangePassword: Boolean(data.mustChangePassword),
+          isFirstLogin: Boolean(data.isFirstLogin),
         }));
         
         // 4. Redirect
-        router.push("/");
+        const requiresPasswordChange = Boolean(data.mustChangePassword)
+          && ["TEACHER", "PARENT", "STUDENT", "LIBRARIAN", "COLLEGE_ADMIN"].includes(String(data.role || "").toUpperCase());
+        router.push(requiresPasswordChange ? "/change-password" : "/");
         router.refresh();
       }
     } catch (err: any) {
@@ -107,12 +116,20 @@ export default function LoginPage() {
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-2xl pl-12 pr-4 py-3.5 text-sm outline-none text-slate-800 placeholder:text-slate-400 shadow-sm"
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-2xl pl-12 pr-12 py-3.5 text-sm outline-none text-slate-800 placeholder:text-slate-400 shadow-sm"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-indigo-600"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
 

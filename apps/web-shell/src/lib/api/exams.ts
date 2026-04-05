@@ -3,12 +3,40 @@ import api from "@/lib/api";
 const BASE = "/exams";
 
 export const createExam = async (data: any): Promise<any> => {
-  const res = await api.post(BASE, data);
-  return res.data;
+  try {
+    const res = await api.post(BASE, data);
+    return res.data;
+  } catch (error: any) {
+    const serverMessage =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      "Failed to create exam";
+
+    console.error("[API] Exam creation failed:", {
+      status: error.response?.status,
+      message: serverMessage,
+      data: error.response?.data,
+    });
+
+    if (error.response?.data?.errors) {
+      const errorDetails = error.response.data.errors
+        .map((e: any) => `${e.path.join('.')}: ${e.message}`)
+        .join(", ");
+      throw new Error(`Validation failed: ${errorDetails}`);
+    }
+
+    throw new Error(serverMessage);
+  }
 };
 
 export const getExams = async (params: any = {}): Promise<any> => {
-  const res = await api.get(BASE, { params });
+  const res = await api.get(BASE, { params: { ...params, _ts: Date.now() } });
+  return res.data;
+};
+
+export const getExamStats = async (): Promise<any> => {
+  const res = await api.get(`${BASE}/stats`, { params: { _ts: Date.now() } });
   return res.data;
 };
 

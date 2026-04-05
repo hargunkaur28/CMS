@@ -902,7 +902,7 @@ function StudentDashboard() {
                     statusText = "Overdue";
                     statusColor = "bg-rose-50 text-rose-600 border-rose-100 animate-pulse shadow-sm shadow-rose-600/20";
                     icon = <AlertCircle size={12} />;
-                  } else if (diffDays <= 3) {
+                  } else if (dueDateObj && diffDays <= 3) {
                     statusText = `Due in ${diffDays} day${diffDays === 1 ? '' : 's'}`;
                     statusColor = "bg-amber-50 text-amber-600 border-amber-100";
                     icon = <AlertCircle size={12} />;
@@ -914,7 +914,7 @@ function StudentDashboard() {
                         <p className="text-sm font-bold text-slate-900 leading-tight mb-2">{bookTitle}</p>
                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
                           <Calendar size={12} />
-                          Due: {dueDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          Due: {dueDateObj ? dueDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "TBD"}
                         </div>
                       </div>
                       <div className="flex items-center justify-between mt-2 pt-3 border-t border-slate-200 border-dashed">

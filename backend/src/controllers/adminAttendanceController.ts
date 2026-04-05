@@ -178,6 +178,101 @@ export const getStudentWiseAttendance = async (req: Request, res: Response) => {
   }
 };
 
+export const getStudentAttendanceDetail = async (req: Request, res: Response) => {
+  try {
+    const studentIdParam = req.params.studentId as string;
+
+    // Validate student ID
+    if (!mongoose.Types.ObjectId.isValid(studentIdParam)) {
+      return res.status(400).json({ success: false, message: "Invalid student ID" });
+    }
+
+    // Fetch student details
+    const student = await Student.findById(studentIdParam);
+    if (!student) {
+      return res.status(404).json({ success: false, message: "Student not found" });
+    }
+
+    // Calculate attendance stats for this student
+    const stats = await Attendance.aggregate([
+      { $unwind: "$records" },
+      { $match: { "records.studentId": new mongoose.Types.ObjectId(studentIdParam) } },
+      {
+        $group: {
+          _id: "$records.studentId",
+          totalClasses: { $sum: 1 },
+          present: { $sum: { $cond: [{ $eq: ["$records.status", "Present"] }, 1, 0] } },
+          absent: { $sum: { $cond: [{ $eq: ["$records.status", "Absent"] }, 1, 0] } },
+          leave: { $sum: { $cond: [{ $eq: ["$records.status", "Leave"] }, 1, 0] } }
+        }
+      },
+      {
+        $project: {
+          totalClasses: 1,
+          present: 1,
+          absent: 1,
+          leave: 1,
+          percentage: { $cond: [{ $gt: ["$totalClasses", 0] }, { $multiply: [{ $divide: ["$present", "$totalClasses"] }, 100] }, 0] }
+        }
+      }
+    ]);
+
+    const attendanceStats = stats[0] || {
+      totalClasses: 0,
+      present: 0,
+      absent: 0,
+      leave: 0,
+      percentage: 0
+    };
+
+    // Fetch individual attendance records for this student
+    const records = await Attendance.aggregate([
+      { $unwind: "$records" },
+      { $match: { "records.studentId": new mongoose.Types.ObjectId(studentIdParam) } },
+      {
+        $project: {
+          date: 1,
+          "records.status": 1,
+          "records.remarks": 1,
+          subjectId: 1
+        }
+      },
+      { $sort: { date: -1 } }
+    ]);
+
+    // Populate subject details
+    const populatedRecords = await Attendance.populate(records, {
+      path: "subjectId",
+      select: "name code"
+    });
+
+    const formattedRecords = populatedRecords.map((r: any) => ({
+      date: r.date,
+      status: r.records.status,
+      remarks: r.records.remarks,
+      subject: r.subjectId?.name || "Unknown Subject"
+    }));
+
+    const studentData = {
+      personalInfo: student.personalInfo,
+      academicInfo: student.academicInfo,
+      studentId: student.studentId || student.uniqueStudentId,
+      ...attendanceStats
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        student: studentData,
+        records: formattedRecords,
+        attendanceRecords: formattedRecords
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export const adminOverrideAttendance = async (req: Request, res: Response) => {
    try {
      const { recordId, studentId, newStatus, reason } = req.body;

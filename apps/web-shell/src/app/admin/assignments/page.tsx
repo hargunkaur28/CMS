@@ -14,6 +14,7 @@ import {
   fetchStudents, fetchFaculties
 } from '@/lib/api/admin';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 // ─── Reusable UI (Premium Indigo Design) ─────────────────────
 
@@ -343,6 +344,7 @@ const TABS = [
 ];
 
 export default function AdminAssignmentsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('assign-teacher');
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [batches, setBatches] = useState<any[]>([]);
@@ -457,7 +459,7 @@ export default function AdminAssignmentsPage() {
                 <div className="flex flex-col items-center justify-center py-20 border-4 border-dashed border-slate-100 rounded-[3rem]">
                    <Users size={48} className="text-slate-100 mb-6" />
                    <h3 className="text-sm font-black text-slate-300 uppercase tracking-widest">SIS Module Redirect</h3>
-                   <button className="mt-4 px-8 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20">Go to Admissions</button>
+                   <button onClick={() => router.push('/admin/admissions')} className="mt-4 px-8 py-4 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20">Go to Admissions</button>
                 </div>
               )}
               {activeTab === 'view-all' && <ViewAssignmentsTab assignments={assignments} onRemove={loadAll} />}

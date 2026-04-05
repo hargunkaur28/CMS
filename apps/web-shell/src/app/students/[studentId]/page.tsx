@@ -14,7 +14,6 @@ import {
   Calendar, 
   BookOpen, 
   User, 
-  FileText,
   Loader2,
   AlertCircle
 } from "lucide-react";
@@ -150,10 +149,54 @@ export default function StudentProfile() {
                   </div>
                 </div>
               )}
-              {activeTab !== "overview" && (
-                <div className="animate-in fade-in duration-500 h-full flex flex-col items-center justify-center py-12">
-                   <FileText size={48} className="text-slate-200 mb-4" />
-                   <p className="text-sm font-bold text-slate-400 uppercase tracking-widest leading-none">Modules for {activeTab} syncing...</p>
+              {activeTab === "academics" && (
+                <div className="animate-in fade-in duration-500 space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <InfoPanel label="Course" value={academicInfo?.course || "N/A"} />
+                    <InfoPanel label="Batch" value={academicInfo?.batch || "N/A"} />
+                    <InfoPanel label="Department" value={academicInfo?.department?.name || "N/A"} />
+                    <InfoPanel label="Semester" value={String(academicInfo?.semester || "1")} />
+                  </div>
+                </div>
+              )}
+              {activeTab === "attendance" && (
+                <div className="animate-in fade-in duration-500 space-y-4">
+                  <section className="bg-slate-50 rounded-2xl border border-slate-100 p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Attendance Snapshot</p>
+                    <p className="text-sm font-semibold text-slate-700 mt-2">Attendance records are maintained session-wise and visible in the attendance portal.</p>
+                  </section>
+                </div>
+              )}
+              {activeTab === "exams" && (
+                <div className="animate-in fade-in duration-500 space-y-4">
+                  <section className="bg-slate-50 rounded-2xl border border-slate-100 p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Examination Snapshot</p>
+                    <p className="text-sm font-semibold text-slate-700 mt-2">Exam and marks details are linked to this student profile through the examinations module.</p>
+                  </section>
+                </div>
+              )}
+              {activeTab === "fees" && (
+                <div className="animate-in fade-in duration-500 space-y-4">
+                  <section className="bg-slate-50 rounded-2xl border border-slate-100 p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Fee Snapshot</p>
+                    <p className="text-sm font-semibold text-slate-700 mt-2">Fee structures, payment records, and dues are available in the finance module for this student.</p>
+                  </section>
+                </div>
+              )}
+              {activeTab === "documents" && (
+                <div className="animate-in fade-in duration-500 space-y-4">
+                  <section className="bg-slate-50 rounded-2xl border border-slate-100 p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Document Vault</p>
+                    <p className="text-sm font-semibold text-slate-700 mt-2">Uploaded student documents are indexed and verified through admissions and student records.</p>
+                  </section>
+                </div>
+              )}
+              {activeTab === "comms" && (
+                <div className="animate-in fade-in duration-500 space-y-4">
+                  <section className="bg-slate-50 rounded-2xl border border-slate-100 p-5">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Communication Log</p>
+                    <p className="text-sm font-semibold text-slate-700 mt-2">Announcements and direct communication history for this student can be accessed via communication modules.</p>
+                  </section>
                 </div>
               )}
             </div>
@@ -182,6 +225,15 @@ function PlusIcon() {
   return (
     <div className="w-6 h-6 rounded-full border border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:text-indigo-600 hover:border-indigo-400 hover:bg-indigo-50 cursor-pointer transition-all">
       <span className="text-sm font-bold mt-[-1px]">+</span>
+    </div>
+  );
+}
+
+function InfoPanel({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</p>
+      <p className="mt-1 text-sm font-bold text-slate-800">{value}</p>
     </div>
   );
 }

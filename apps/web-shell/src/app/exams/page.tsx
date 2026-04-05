@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useExams } from "@/hooks/useExams";
+import { getExamStats } from "@/lib/api/exams";
 import Link from "next/link";
 import Card from "@/components/ui/Card";
 import { 
@@ -21,6 +22,7 @@ export default function ExamsDashboard() {
   const [collegeId, setCollegeId] = useState<string>("");
   const [user, setUser] = useState<any>(null);
   const { exams, loading, error } = useExams(collegeId);
+  const [stats, setStats] = useState({ total: 0, upcoming: 0, published: 0, expired: 0 });
   const [search, setSearch] = useState("");
 
   useEffect(() => {
@@ -35,6 +37,28 @@ export default function ExamsDashboard() {
     }
   }, []);
 
+  useEffect(() => {
+    const loadStats = async () => {
+      try {
+        const res = await getExamStats();
+        if (res?.success && res?.data) {
+          setStats({
+            total: Number(res.data.total || 0),
+            upcoming: Number(res.data.upcoming || 0),
+            published: Number(res.data.published || 0),
+            expired: Number(res.data.expired || 0),
+          });
+        }
+      } catch {
+        // Non-blocking: list still renders from useExams.
+      }
+    };
+
+    if (collegeId) {
+      loadStats();
+    }
+  }, [collegeId, exams.length]);
+
   const isStaff = user?.role === 'SUPER_ADMIN' || user?.role === 'COLLEGE_ADMIN' || user?.role === 'TEACHER';
   const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'COLLEGE_ADMIN';
 
@@ -47,6 +71,7 @@ export default function ExamsDashboard() {
     switch (status) {
       case 'PUBLISHED': return "bg-success-container text-success border-success";
       case 'SCHEDULED': return "bg-primary-container text-primary border-primary";
+      case 'EXPIRED': return "bg-rose-100 text-rose-700 border-rose-300";
       case 'DRAFT': return "bg-surface-container-highest text-surface-on-surface-variant border-outline";
       default: return "bg-surface-container text-surface-on-surface-variant";
     }
@@ -82,10 +107,11 @@ export default function ExamsDashboard() {
       </div>
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <StatCard label="Total Exams" value={exams.length} icon={<FileText size={20} className="text-primary" />} />
-        <StatCard label="Upcoming" value={exams.filter(e => e.status === 'SCHEDULED').length} icon={<Calendar size={20} className="text-secondary-container-on-secondary-container" />} />
-        <StatCard label="Published" value={exams.filter(e => e.status === 'PUBLISHED').length} icon={<CheckCircle2 size={20} className="text-success" />} />
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <StatCard label="Total Exams" value={stats.total} icon={<FileText size={20} className="text-primary" />} />
+        <StatCard label="Upcoming" value={stats.upcoming} icon={<Calendar size={20} className="text-secondary-container-on-secondary-container" />} />
+        <StatCard label="Published" value={stats.published} icon={<CheckCircle2 size={20} className="text-success" />} />
+        <StatCard label="Expired" value={stats.expired} icon={<AlertCircle size={20} className="text-rose-500" />} />
       </div>
 
       {/* Search & Filters */}

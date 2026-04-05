@@ -21,6 +21,14 @@ import { fetchMyAnnouncements, fetchUnreadCount } from "@/lib/api/communication"
 import { fetchMyProfile, fetchMyAttendance, fetchMyResults, fetchMyTodaySchedule, fetchMyLibraryTransactions, fetchMyAssignments, fetchMyMaterials } from "@/lib/api/student";
 import { cn } from "@/lib/utils";
 
+const resolveFileUrl = (rawUrl?: string) => {
+  if (!rawUrl) return '#';
+  if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api';
+  const apiRoot = base.replace(/\/api\/?$/, '');
+  return `${apiRoot}${rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`}`;
+};
+
 export default function StudentDashboard() {
   const { socket } = useSocket();
   const [profile, setProfile] = React.useState<any>(null);
@@ -223,7 +231,7 @@ export default function StudentDashboard() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {materials.map((item: any) => (
-                  <a key={item._id} href={item.fileUrl} target="_blank" className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4 hover:bg-white hover:shadow-ambient hover:border-emerald-100 transition-all">
+                  <a key={item._id} href={resolveFileUrl(item.fileUrl)} target="_blank" rel="noopener noreferrer" className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center gap-4 hover:bg-white hover:shadow-ambient hover:border-emerald-100 transition-all">
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm border border-slate-100 shrink-0">
                       <Download size={18} className="text-emerald-600" />
                     </div>

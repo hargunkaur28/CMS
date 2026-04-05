@@ -10,6 +10,7 @@ export interface ITimetable extends Document {
   day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
   startTime: string;
   endTime: string;
+  roomNo?: string;
   createdBy: mongoose.Types.ObjectId;
   subjectId?: mongoose.Types.ObjectId;
   classId?: mongoose.Types.ObjectId;
@@ -38,6 +39,7 @@ const TimetableSchema: Schema = new Schema(
     startTime: { type: String, required: true, enum: TIME_SLOT_STARTS },
     endTime: { type: String, required: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    roomNo: { type: String, default: '' },
     subjectId: { type: Schema.Types.ObjectId, ref: 'Subject' },
     classId: { type: Schema.Types.ObjectId, ref: 'Batch' },
     section: { type: String },

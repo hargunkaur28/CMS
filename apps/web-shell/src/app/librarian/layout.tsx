@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Bell,
 } from "lucide-react";
+import UserAvatar from "@/components/ui/UserAvatar";
 
 export default function LibrarianLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -37,6 +38,20 @@ export default function LibrarianLayout({ children }: { children: React.ReactNod
       setUser(parsed);
     }
   }, [router]);
+
+  useEffect(() => {
+    const syncUser = () => {
+      const savedUser = localStorage.getItem('user');
+      setUser(savedUser ? JSON.parse(savedUser) : null);
+    };
+
+    window.addEventListener('storage', syncUser);
+    window.addEventListener('user-updated', syncUser as EventListener);
+    return () => {
+      window.removeEventListener('storage', syncUser);
+      window.removeEventListener('user-updated', syncUser as EventListener);
+    };
+  }, []);
 
   const handleLogout = () => {
     localStorage.clear();
@@ -120,9 +135,12 @@ export default function LibrarianLayout({ children }: { children: React.ReactNod
         <div className="p-4 border-t border-slate-800">
           {user && (
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-teal-600 flex items-center justify-center text-white font-bold text-sm shrink-0 shadow-lg shadow-teal-600/20">
-                {user?.name?.[0]?.toUpperCase()}
-              </div>
+              <UserAvatar
+                name={user?.name}
+                imageUrl={user?.profilePicture}
+                size={36}
+                className="rounded-xl shrink-0 shadow-lg shadow-teal-600/20"
+              />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300">
@@ -166,6 +184,15 @@ export default function LibrarianLayout({ children }: { children: React.ReactNod
               </p>
             </div>
             <div className="h-8 w-px bg-slate-100 mx-2" />
+            {user ? (
+              <div className="hidden md:flex items-center gap-2">
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest truncate max-w-36">{user?.name || 'Librarian'}</p>
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Librarian</p>
+                </div>
+                <UserAvatar name={user?.name} imageUrl={user?.profilePicture} size={32} />
+              </div>
+            ) : null}
             <button className="relative p-2 text-slate-400 hover:text-slate-900 transition-colors">
               <Bell size={20} />
             </button>

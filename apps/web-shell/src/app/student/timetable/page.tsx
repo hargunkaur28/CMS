@@ -3,8 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import TimetableGrid, { TimetableCellEntry } from "@/components/timetable/TimetableGrid";
-import { fetchTimetableBySection, fetchSectionsByBatch } from "@/lib/api/timetable";
-import { fetchMyProfile } from "@/lib/api/student";
+import { fetchMyProfile, fetchMyTimetable } from "@/lib/api/student";
 
 export default function StudentMyTimetablePage() {
   const [loading, setLoading] = useState(true);
@@ -23,39 +22,26 @@ export default function StudentMyTimetablePage() {
       const profileRes = await fetchMyProfile();
       const student = profileRes?.data;
 
-      const batchId = String(student?.batchId || "");
       const studentBatchName = String(student?.academicInfo?.batch || "").trim();
       const sectionName = String(student?.academicInfo?.section || "").trim();
 
       setBatchLabel(studentBatchName);
 
-      if (!batchId || !sectionName) {
+      if (!sectionName) {
         setEntries([]);
         setSectionLabel("");
         setError("You have not been assigned to a section yet");
         return;
       }
 
-      const sectionsRes = await fetchSectionsByBatch(batchId);
-      const section = (sectionsRes?.data || []).find(
-        (item: any) => String(item?.name || "").trim().toLowerCase() === sectionName.toLowerCase()
-      );
-
-      if (!section?._id) {
-        setEntries([]);
-        setSectionLabel(sectionName);
-        setError("You have not been assigned to a section yet");
-        return;
-      }
-
-      const timetableRes = await fetchTimetableBySection(String(section._id));
+      const timetableRes = await fetchMyTimetable();
       const normalized = (timetableRes?.data || []).map((entry: any) => ({
         ...entry,
         day: entry.day || entry.dayOfWeek,
       }));
 
       setEntries(normalized);
-      setSectionLabel(String(section.name));
+      setSectionLabel(sectionName);
       setError(null);
     } catch (err: any) {
       setEntries([]);

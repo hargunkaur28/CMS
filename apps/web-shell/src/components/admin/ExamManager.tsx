@@ -8,6 +8,7 @@ interface ExamManagerProps {
   exams: any[];
   onPublish: (id: string) => void;
   onView: (id: string) => void;
+   onCreate?: () => void;
 }
 
 const STATUS_COLORS = {
@@ -17,7 +18,7 @@ const STATUS_COLORS = {
   PUBLISHED: "bg-emerald-50 text-emerald-600 border-emerald-100"
 };
 
-export default function ExamManager({ exams, onPublish, onView }: ExamManagerProps) {
+export default function ExamManager({ exams, onPublish, onView, onCreate }: ExamManagerProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {exams.map((exam) => (
@@ -71,12 +72,16 @@ export default function ExamManager({ exams, onPublish, onView }: ExamManagerPro
       ))}
 
       {/* New Exam Placeholder */}
-      <div className="border-4 border-dashed border-slate-100 rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:border-slate-200 hover:bg-slate-50/50 transition-all min-h-[300px]">
+         <button
+            type="button"
+            onClick={onCreate}
+            className="border-4 border-dashed border-slate-100 rounded-3xl p-8 flex flex-col items-center justify-center text-center cursor-pointer hover:border-slate-200 hover:bg-slate-50/50 transition-all min-h-[300px] w-full"
+         >
          <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-200 mb-4">
             <ClipboardList size={24} />
          </div>
          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Schedule New Exam</p>
-      </div>
+         </button>
     </div>
   );
 }

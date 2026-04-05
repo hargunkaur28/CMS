@@ -261,9 +261,9 @@ export default function TeacherDashboard() {
                      </div>
                   ))}
                </div>
-               <button className="w-full py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors pt-2">
+               <Link href="/teacher/communication" className="w-full py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-900 transition-colors pt-2 block text-center">
                   View All Notifications
-               </button>
+               </Link>
             </div>
          </div>
       </div>

@@ -35,10 +35,19 @@ export const useExams = (collegeId?: string, status?: string) => {
         await fetchExams();
         return res;
       }
-      throw new Error(res.message);
+      
+      // Handle validation errors with detailed info
+      let errorMessage = res.message || "Failed to create exam";
+      if (res.errors && Array.isArray(res.errors)) {
+        const details = res.errors.map((e: any) => `${e.path.join('.')}: ${e.message}`).join(", ");
+        errorMessage = `${errorMessage}. ${details}`;
+      }
+      
+      throw new Error(errorMessage);
     } catch (err: any) {
-      setError(err.message);
-      throw err;
+      const apiMessage = err?.response?.data?.message || err?.message || 'Failed to create exam';
+      setError(apiMessage);
+      throw new Error(apiMessage);
     } finally {
       setLoading(false);
     }

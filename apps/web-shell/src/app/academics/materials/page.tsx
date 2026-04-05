@@ -17,6 +17,14 @@ import { fetchMyMaterials } from '@/lib/api/student';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
+const resolveFileUrl = (rawUrl?: string) => {
+  if (!rawUrl) return '#';
+  if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+  const base = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api';
+  const apiRoot = base.replace(/\/api\/?$/, '');
+  return `${apiRoot}${rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`}`;
+};
+
 export default function StudentMaterialsPage() {
   const [materials, setMaterials] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -154,14 +162,14 @@ function MaterialCard({ material }: { material: any }) {
              </div>
              <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                 <Clock size={14} className="text-slate-300" />
-                <span>{new Date(material.createdAt).toLocaleDateString()}</span>
+                <span>{material?.createdAt ? new Date(material.createdAt).toLocaleDateString() : 'N/A'}</span>
              </div>
           </div>
        </div>
 
        <div className="mt-8 flex items-center gap-3">
-          <a 
-             href={material.fileUrl} 
+           <a 
+             href={resolveFileUrl(material.fileUrl)} 
              target="_blank" 
              rel="noopener noreferrer"
              className="flex-1 bg-slate-900 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xl shadow-slate-900/10"

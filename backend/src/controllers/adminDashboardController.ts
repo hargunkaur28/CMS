@@ -4,6 +4,17 @@ import Faculty from "../models/Faculty.js";
 import Payment from "../models/Payment.js";
 import Attendance from "../models/Attendance.js";
 
+const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+const getAcademicYearBounds = () => {
+  const now = new Date();
+  const currentMonth = now.getMonth(); // 0-11
+  const startYear = currentMonth >= 3 ? now.getFullYear() : now.getFullYear() - 1;
+  const start = new Date(startYear, 3, 1, 0, 0, 0, 0); // Apr 1
+  const end = new Date(startYear + 1, 2, 31, 23, 59, 59, 999); // Mar 31
+  return { start, end };
+};
+
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
     const collegeId = (req as any).user.collegeId;
@@ -128,5 +139,51 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getEnrollmentActivity = async (req: Request, res: Response) => {
+  try {
+    const collegeId = (req as any).user?.collegeId;
+    const { start, end } = getAcademicYearBounds();
+
+    const aggregated = await Student.aggregate([
+      { $match: { collegeId } },
+      {
+        $addFields: {
+          effectiveEnrollmentDate: { $ifNull: ["$academicInfo.enrollmentDate", "$createdAt"] }
+        }
+      },
+      { $match: { effectiveEnrollmentDate: { $gte: start, $lte: end } } },
+      {
+        $group: {
+          _id: { month: { $month: "$effectiveEnrollmentDate" } },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const countMap: Record<number, number> = {};
+    aggregated.forEach((entry: any) => {
+      countMap[entry._id.month] = entry.count;
+    });
+
+    const academicMonths = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
+    const series = academicMonths.map((monthNum) => ({
+      month: monthLabels[monthNum - 1],
+      count: countMap[monthNum] || 0,
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: series,
+      meta: {
+        start,
+        end,
+        collegeId,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || 'Failed to fetch enrollment activity' });
   }
 };

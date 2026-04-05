@@ -53,7 +53,7 @@ export default function CollegeManagement() {
     name: '',
     email: '',
     phone: '',
-    location: { city: '', state: '', pin_code: '', address: '' },
+    location: { city: '', state: '', pin_code: '', address: '', country: 'India' },
     affiliation: ''
   });
   const [editFormData, setEditFormData] = useState({
@@ -91,19 +91,30 @@ export default function CollegeManagement() {
   const handleCreateCollege = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/super-admin/colleges', formData);
+      const payload = {
+        ...formData,
+        location: {
+          address: formData.location.address.trim(),
+          city: formData.location.city.trim(),
+          state: formData.location.state.trim(),
+          pin_code: formData.location.pin_code.trim(),
+          country: formData.location.country?.trim() || 'India',
+        },
+      };
+      await api.post('/super-admin/colleges', payload);
       setShowCreateModal(false);
       setFormData({
         code: '',
         name: '',
         email: '',
         phone: '',
-        location: { city: '', state: '', pin_code: '', address: '' },
+        location: { city: '', state: '', pin_code: '', address: '', country: 'India' },
         affiliation: ''
       });
+      setError(null);
       fetchColleges();
-    } catch (err) {
-      console.error('Error creating college:', err);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to create college');
     }
   };
 
@@ -171,13 +182,16 @@ export default function CollegeManagement() {
   };
 
   const openEditModal = (college: College) => {
+    const normalizedStatus: 'active' | 'inactive' | 'suspended' =
+      college?.status === 'inactive' || college?.status === 'suspended' ? college.status : 'active';
+
     setSelectedCollegeId(college._id);
     setEditFormData({
-      code: college.code,
-      name: college.name,
-      email: college.email,
-      phone: college.phone,
-      status: college.status
+      code: String(college?.code || ''),
+      name: String(college?.name || ''),
+      email: String(college?.email || ''),
+      phone: String(college?.phone || ''),
+      status: normalizedStatus
     });
     setShowEditModal(true);
   };
@@ -426,6 +440,29 @@ export default function CollegeManagement() {
                   location: { ...formData.location, city: e.target.value }
                 })}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                required
+              />
+              <input
+                type="text"
+                placeholder="State"
+                value={formData.location.state}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  location: { ...formData.location, state: e.target.value }
+                })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                required
+              />
+              <input
+                type="text"
+                placeholder="PIN Code"
+                value={formData.location.pin_code}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  location: { ...formData.location, pin_code: e.target.value }
+                })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                required
               />
               <div className="flex gap-3 pt-4">
                 <button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">

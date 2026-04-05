@@ -78,7 +78,9 @@ export default function BatchesPage() {
                      <div className="w-8 h-8 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-500">02</div>
                      <div className="w-8 h-8 rounded-full bg-slate-300 border-2 border-white flex items-center justify-center text-[10px] font-bold text-slate-600">03</div>
                    </div>
-                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">+24 Active</span>
+                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                     {Array.isArray(batch.students) ? `${batch.students.length} Active` : "0 Active"}
+                   </span>
                 </div>
                 <div className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-lg text-xs font-bold uppercase tracking-widest border border-indigo-100">
                    SEM 0{batch.currentSemester}

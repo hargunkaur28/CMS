@@ -10,25 +10,55 @@ import { emitToStudent, emitToBatch } from "../config/socket.js";
 import { calculateTotalMarks, calculateGrade, calculateCGPA } from "../services/gradeCalculator.js";
 import { syncSingleResult, syncBulkResults } from "../services/resultService.js";
 
+const deriveExamStatus = (exam: any, now: Date) => {
+  const scheduleDate = exam?.scheduleDate ? new Date(exam.scheduleDate) : null;
+  if (scheduleDate && scheduleDate <= now && exam?.status !== 'PUBLISHED') {
+    return 'EXPIRED';
+  }
+  return exam?.status;
+};
+
 /**
  * Create a new exam
  * POST /api/exams
  */
 export const createExam = async (req: Request, res: Response) => {
   try {
+    console.log("[CREATE_EXAM] Request body:", JSON.stringify(req.body, null, 2));
+    
     const userRole = (req as any).user?.role;
     const userCollegeId = (req as any).user?.collegeId;
     const bodyCollegeId = req.body.collegeId;
+    const normalizedCode = String(req.body.code || "").trim().toUpperCase();
 
     // For college admins, enforce their collegeId
     const finalCollegeId = userRole === 'COLLEGE_ADMIN' ? userCollegeId : bodyCollegeId;
 
     if (!finalCollegeId) {
+      console.error("[CREATE_EXAM] collegeId is required. userRole:", userRole, "userCollegeId:", userCollegeId, "bodyCollegeId:", bodyCollegeId);
       return res.status(400).json({ success: false, message: 'collegeId is required' });
+    }
+
+    // Validate required fields
+    if (!normalizedCode) return res.status(400).json({ success: false, message: 'Exam code is required' });
+    if (!req.body.name) return res.status(400).json({ success: false, message: 'Exam name is required' });
+    if (!req.body.examType) return res.status(400).json({ success: false, message: 'Exam type is required' });
+    if (!req.body.scheduleDate) return res.status(400).json({ success: false, message: 'Schedule date is required' });
+    if (!Array.isArray(req.body.subjects) || req.body.subjects.length === 0) {
+      return res.status(400).json({ success: false, message: 'At least one subject must be selected' });
+    }
+    if (!req.body.totalMarks) return res.status(400).json({ success: false, message: 'Total marks are required' });
+    if (req.body.passingMarks === undefined) return res.status(400).json({ success: false, message: 'Passing marks are required' });
+
+    // Check for duplicate exam code within the college
+    const existingExam = await Exam.findOne({ code: normalizedCode, collegeId: finalCollegeId });
+    if (existingExam) {
+      return res.status(409).json({ success: false, message: `An exam with code '${normalizedCode}' already exists in this college` });
     }
 
     const exam = new Exam({
       ...req.body,
+      code: normalizedCode,
       collegeId: finalCollegeId,
       status: 'DRAFT',
       createdBy: (req as any).user?._id
@@ -36,7 +66,12 @@ export const createExam = async (req: Request, res: Response) => {
     await exam.save();
     res.status(201).json({ success: true, data: exam, message: "Exam created as DRAFT" });
   } catch (error: any) {
-    res.status(400).json({ success: false, message: error.message });
+    console.error('[CREATE_EXAM]', error);
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      return res.status(409).json({ success: false, message: `An exam with this ${field} already exists` });
+    }
+    res.status(400).json({ success: false, message: error.message || 'Failed to create exam' });
   }
 };
 
@@ -53,8 +88,8 @@ export const getExams = async (req: Request, res: Response) => {
     
     const isValidObjectId = (id: any) => mongoose.Types.ObjectId.isValid(id);
 
-    // For college admins, enforce their collegeId
-    if (userRole === 'COLLEGE_ADMIN' && userCollegeId) {
+    // Enforce college scope for all non-super-admin roles
+    if (userRole !== 'SUPER_ADMIN' && userCollegeId) {
       query.collegeId = userCollegeId;
     }
 
@@ -62,9 +97,64 @@ export const getExams = async (req: Request, res: Response) => {
     if (courseId && isValidObjectId(courseId)) query.courses = courseId;
 
     const exams = await Exam.find(query).sort({ scheduleDate: -1 });
-    res.status(200).json({ success: true, data: exams });
+    const now = new Date();
+    const normalizedStatus = status ? String(status).toUpperCase() : undefined;
+
+    const transformed = exams
+      .map((exam: any) => {
+        const examObj = exam.toObject ? exam.toObject() : exam;
+        const derivedStatus = deriveExamStatus(examObj, now);
+        return {
+          ...examObj,
+          derivedStatus,
+          status: derivedStatus,
+        };
+      })
+      .filter((exam: any) => {
+        if (!normalizedStatus || normalizedStatus === 'UNDEFINED') return true;
+        return String(exam.status || '').toUpperCase() === normalizedStatus;
+      });
+
+    res.status(200).json({ success: true, data: transformed });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+/**
+ * Get exam summary stats
+ * GET /api/exams/stats
+ */
+export const getExamStats = async (req: Request, res: Response) => {
+  try {
+    const userRole = (req as any).user?.role;
+    const userCollegeId = (req as any).user?.collegeId;
+    const now = new Date();
+    const query: any = {};
+
+    if (userRole !== 'SUPER_ADMIN' && userCollegeId) {
+      query.collegeId = userCollegeId;
+    }
+
+    const [totalExams, publishedExams, upcomingExams, expiredExams] = await Promise.all([
+      Exam.countDocuments(query),
+      Exam.countDocuments({ ...query, status: 'PUBLISHED' }),
+      Exam.countDocuments({ ...query, scheduleDate: { $gt: now } }),
+      Exam.countDocuments({ ...query, scheduleDate: { $lte: now }, status: { $ne: 'PUBLISHED' } }),
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        total: totalExams,
+        upcoming: upcomingExams,
+        published: publishedExams,
+        expired: expiredExams,
+        serverNow: now,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || 'Failed to fetch exam stats' });
   }
 };
 

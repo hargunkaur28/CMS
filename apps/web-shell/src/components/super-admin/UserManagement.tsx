@@ -15,17 +15,34 @@ import {
   Upload
 } from 'lucide-react';
 import { fetchStudents } from '@/lib/api/admin';
+import UserAvatar from '../ui/UserAvatar';
 
 interface User {
   _id: string;
   name: string;
   email: string;
-  role: 'SUPER_ADMIN' | 'COLLEGE_ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT';
+  role: 'SUPER_ADMIN' | 'COLLEGE_ADMIN' | 'TEACHER' | 'STUDENT' | 'PARENT' | 'LIBRARIAN';
   isActive: boolean;
+  phone?: string;
+  profilePicture?: string;
+  dateOfBirth?: string;
+  gender?: 'male' | 'female' | 'other';
+  address?: string;
+  enrollmentNumber?: string;
+  course?: string;
+  batch?: string;
+  section?: string;
+  parentName?: string;
+  parentContact?: string;
+  employeeId?: string;
+  department?: string;
+  qualification?: string;
+  joiningDate?: string;
   collegeId?: {
+    _id?: string;
     name: string;
     code: string;
-  };
+  } | string;
   authentication: {
     last_login?: string;
     login_count: number;
@@ -64,9 +81,47 @@ export default function UserManagement() {
   const [editFormData, setEditFormData] = useState({
     name: '',
     email: '',
-    role: 'COLLEGE_ADMIN',
-    isActive: true
+    role: 'COLLEGE_ADMIN' as User['role'],
+    phone: '',
+    profilePicture: '',
+    collegeId: '',
+    dateOfBirth: '',
+    gender: '' as '' | 'male' | 'female' | 'other',
+    address: '',
+    enrollmentNumber: '',
+    course: '',
+    batch: '',
+    section: '',
+    parentName: '',
+    parentContact: '',
+    employeeId: '',
+    department: '',
+    qualification: '',
+    joiningDate: '',
+    isActive: true,
   });
+  const [editPhotoFile, setEditPhotoFile] = useState<File | null>(null);
+  const [editPhotoPreview, setEditPhotoPreview] = useState('');
+
+  const normalizeDateForInput = (rawValue?: string) => {
+    if (!rawValue) return '';
+    const value = String(rawValue).trim();
+    if (!value) return '';
+
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+      return value.slice(0, 10);
+    }
+
+    const ddmmyyyyMatch = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (ddmmyyyyMatch) {
+      const [, dd, mm, yyyy] = ddmmyyyyMatch;
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toISOString().slice(0, 10);
+  };
 
   useEffect(() => {
     fetchUsers();
@@ -122,7 +177,7 @@ export default function UserManagement() {
         phone: formData.phone,
       };
 
-      if (['STUDENT', 'TEACHER'].includes(formData.role)) {
+      if (['COLLEGE_ADMIN', 'STUDENT', 'TEACHER', 'LIBRARIAN'].includes(formData.role)) {
         payload.collegeId = formData.collegeId;
       }
 
@@ -213,15 +268,44 @@ export default function UserManagement() {
     }
   };
 
-  const openEditModal = (user: User) => {
-    setSelectedUserId(user._id);
-    setEditFormData({
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      isActive: user.isActive
-    });
-    setShowEditModal(true);
+  const openEditModal = async (user: User) => {
+    try {
+      setSelectedUserId(user._id);
+      const response = await api.get(`/super-admin/users/${user._id}`);
+      const payload = response.data?.data || user;
+
+      const collegeIdValue = typeof payload.collegeId === 'string'
+        ? payload.collegeId
+        : (payload.collegeId?._id || '');
+
+      setEditFormData({
+        name: payload.name || '',
+        email: payload.email || '',
+        role: (payload.role || 'COLLEGE_ADMIN') as User['role'],
+        phone: payload.phone || '',
+        profilePicture: payload.profilePicture || '',
+        collegeId: collegeIdValue,
+        dateOfBirth: normalizeDateForInput(payload.dateOfBirth),
+        gender: (payload.gender || '') as '' | 'male' | 'female' | 'other',
+        address: payload.address || '',
+        enrollmentNumber: payload.enrollmentNumber || '',
+        course: payload.course || '',
+        batch: payload.batch || '',
+        section: payload.section || '',
+        parentName: payload.parentName || '',
+        parentContact: payload.parentContact || '',
+        employeeId: payload.employeeId || '',
+        department: payload.department || '',
+        qualification: payload.qualification || '',
+        joiningDate: normalizeDateForInput(payload.joiningDate),
+        isActive: Boolean(payload.isActive),
+      });
+      setEditPhotoFile(null);
+      setEditPhotoPreview(payload.profilePicture || '');
+      setShowEditModal(true);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to load user details');
+    }
   };
 
   const handleUpdateUser = async (e: React.FormEvent) => {
@@ -229,13 +313,68 @@ export default function UserManagement() {
     if (!selectedUserId) return;
 
     try {
-      await api.put(`/super-admin/users/${selectedUserId}`, editFormData);
+      const payload = new FormData();
+      payload.append('name', editFormData.name);
+      payload.append('email', editFormData.email);
+      payload.append('role', editFormData.role);
+      payload.append('phone', editFormData.phone || '');
+      payload.append('collegeId', editFormData.collegeId || '');
+      payload.append('dateOfBirth', editFormData.dateOfBirth || '');
+      payload.append('gender', editFormData.gender || '');
+      payload.append('address', editFormData.address || '');
+      payload.append('enrollmentNumber', editFormData.enrollmentNumber || '');
+      payload.append('course', editFormData.course || '');
+      payload.append('batch', editFormData.batch || '');
+      payload.append('section', editFormData.section || '');
+      payload.append('parentName', editFormData.parentName || '');
+      payload.append('parentContact', editFormData.parentContact || '');
+      payload.append('employeeId', editFormData.employeeId || '');
+      payload.append('department', editFormData.department || '');
+      payload.append('qualification', editFormData.qualification || '');
+      payload.append('joiningDate', editFormData.joiningDate || '');
+      payload.append('isActive', String(Boolean(editFormData.isActive)));
+      if (editPhotoFile) {
+        payload.append('profilePictureFile', editPhotoFile);
+      }
+
+      const response = await api.put(`/super-admin/users/${selectedUserId}`, payload, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const updatedUser = response.data?.data;
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        const currentUserId = parsed?._id || parsed?.id;
+        if (currentUserId && String(currentUserId) === String(selectedUserId) && updatedUser) {
+          localStorage.setItem('user', JSON.stringify({
+            ...parsed,
+            name: updatedUser.name || parsed.name,
+            email: updatedUser.email || parsed.email,
+            role: updatedUser.role || parsed.role,
+            profilePicture: updatedUser.profilePicture || parsed.profilePicture || '',
+            collegeId: updatedUser.collegeId || parsed.collegeId,
+          }));
+          window.dispatchEvent(new Event('user-updated'));
+        }
+      }
+
       setShowEditModal(false);
       setSelectedUserId(null);
+      setEditPhotoFile(null);
+      setEditPhotoPreview('');
       fetchUsers();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to update user');
     }
+  };
+
+  const handleEditPhotoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setEditPhotoFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    setEditPhotoPreview(previewUrl);
   };
 
   const handleResetPassword = async (userId: string) => {
@@ -271,6 +410,12 @@ export default function UserManagement() {
     return isActive
       ? 'bg-green-100 text-green-800'
       : 'bg-gray-100 text-gray-800';
+  };
+
+  const getCollegeDisplayName = (college: User['collegeId']) => {
+    if (!college) return '-';
+    if (typeof college === 'string') return '-';
+    return college.name || '-';
   };
 
   if (loading && users.length === 0) {
@@ -342,6 +487,7 @@ export default function UserManagement() {
           <option value="TEACHER">Teacher</option>
           <option value="STUDENT">Student</option>
           <option value="PARENT">Parent</option>
+          <option value="LIBRARIAN">Librarian</option>
         </select>
         <select
           value={statusFilter}
@@ -383,7 +529,10 @@ export default function UserManagement() {
               {users.map((user) => (
                 <tr key={user._id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-4">
-                    <p className="font-medium text-gray-900">{user.name}</p>
+                    <div className="flex items-center gap-3">
+                      <UserAvatar name={user.name} imageUrl={user.profilePicture} size={34} />
+                      <p className="font-medium text-gray-900">{user.name}</p>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-gray-700">{user.email}</td>
                   <td className="px-6 py-4">
@@ -392,7 +541,7 @@ export default function UserManagement() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-gray-700">
-                    {user.collegeId?.name || '-'}
+                    {getCollegeDisplayName(user.collegeId)}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(user.isActive)}`}>
@@ -505,8 +654,9 @@ export default function UserManagement() {
                 <option value="TEACHER">Teacher</option>
                 <option value="STUDENT">Student</option>
                 <option value="PARENT">Parent</option>
+                <option value="LIBRARIAN">Librarian</option>
               </select>
-              {['STUDENT', 'TEACHER'].includes(formData.role) && (
+                    {['COLLEGE_ADMIN', 'STUDENT', 'TEACHER', 'LIBRARIAN'].includes(formData.role) && (
                 <select
                   value={formData.collegeId}
                   onChange={(e) => setFormData({ ...formData, collegeId: e.target.value })}
@@ -573,36 +723,173 @@ export default function UserManagement() {
       {/* Edit User Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Edit User</h2>
+          <div className="bg-white rounded-lg shadow-lg p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-3 mb-6">
+              <UserAvatar
+                name={editFormData.name}
+                imageUrl={editPhotoPreview || editFormData.profilePicture}
+                size={54}
+              />
+              <h2 className="text-2xl font-bold text-gray-900">Edit User</h2>
+            </div>
             <form onSubmit={handleUpdateUser} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Full Name"
-                value={editFormData.name}
-                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                required
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={editFormData.email}
-                onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-                required
-              />
-              <select
-                value={editFormData.role}
-                onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value as User['role'] })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
-              >
-                <option value="SUPER_ADMIN">Super Admin</option>
-                <option value="COLLEGE_ADMIN">College Admin</option>
-                <option value="TEACHER">Teacher</option>
-                <option value="STUDENT">Student</option>
-                <option value="PARENT">Parent</option>
-              </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  required
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  required
+                />
+                <select
+                  value={editFormData.role}
+                  onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value as User['role'] })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                >
+                  <option value="SUPER_ADMIN">Super Admin</option>
+                  <option value="COLLEGE_ADMIN">College Admin</option>
+                  <option value="TEACHER">Teacher</option>
+                  <option value="STUDENT">Student</option>
+                  <option value="PARENT">Parent</option>
+                  <option value="LIBRARIAN">Librarian</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="Phone Number"
+                  value={editFormData.phone}
+                  onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                />
+                <label className="w-full px-4 py-2 border border-gray-300 rounded-lg flex items-center justify-between cursor-pointer hover:border-blue-400 transition">
+                  <span className="text-gray-600 text-sm truncate">{editPhotoFile ? editPhotoFile.name : 'Upload Profile Photo'}</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleEditPhotoChange} />
+                  <span className="text-xs text-blue-600 font-medium">Choose</span>
+                </label>
+                <select
+                  value={editFormData.collegeId}
+                  onChange={(e) => setEditFormData({ ...editFormData, collegeId: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">Select College</option>
+                  {colleges.map((college) => (
+                    <option key={college._id} value={college._id}>
+                      {college.name} ({college.code})
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  value={editFormData.dateOfBirth}
+                  onChange={(e) => setEditFormData({ ...editFormData, dateOfBirth: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                />
+                <select
+                  value={editFormData.gender}
+                  onChange={(e) => setEditFormData({ ...editFormData, gender: e.target.value as '' | 'male' | 'female' | 'other' })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+                <textarea
+                  placeholder="Address"
+                  value={editFormData.address}
+                  onChange={(e) => setEditFormData({ ...editFormData, address: e.target.value })}
+                  className="md:col-span-2 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  rows={2}
+                />
+              </div>
+
+              {editFormData.role === 'STUDENT' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                  <input
+                    type="text"
+                    placeholder="Enrollment Number / Student ID"
+                    value={editFormData.enrollmentNumber}
+                    onChange={(e) => setEditFormData({ ...editFormData, enrollmentNumber: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Course / Program"
+                    value={editFormData.course}
+                    onChange={(e) => setEditFormData({ ...editFormData, course: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Batch / Year"
+                    value={editFormData.batch}
+                    onChange={(e) => setEditFormData({ ...editFormData, batch: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Section"
+                    value={editFormData.section}
+                    onChange={(e) => setEditFormData({ ...editFormData, section: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Parent Name"
+                    value={editFormData.parentName}
+                    onChange={(e) => setEditFormData({ ...editFormData, parentName: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Parent Contact"
+                    value={editFormData.parentContact}
+                    onChange={(e) => setEditFormData({ ...editFormData, parentContact: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              )}
+
+              {editFormData.role === 'TEACHER' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
+                  <input
+                    type="text"
+                    placeholder="Employee ID"
+                    value={editFormData.employeeId}
+                    onChange={(e) => setEditFormData({ ...editFormData, employeeId: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Department"
+                    value={editFormData.department}
+                    onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Qualification"
+                    value={editFormData.qualification}
+                    onChange={(e) => setEditFormData({ ...editFormData, qualification: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="date"
+                    value={editFormData.joiningDate}
+                    onChange={(e) => setEditFormData({ ...editFormData, joiningDate: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              )}
+
               <label className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -641,7 +928,7 @@ export default function UserManagement() {
               <p><span className="font-semibold">Email:</span> {viewUser.email}</p>
               <p><span className="font-semibold">Role:</span> {viewUser.role.replace('_', ' ')}</p>
               <p><span className="font-semibold">Status:</span> {viewUser.isActive ? 'Active' : 'Inactive'}</p>
-              <p><span className="font-semibold">College:</span> {viewUser.collegeId?.name || 'N/A'}</p>
+              <p><span className="font-semibold">College:</span> {getCollegeDisplayName(viewUser.collegeId)}</p>
               <p><span className="font-semibold">Login Count:</span> {viewUser.authentication?.login_count ?? 0}</p>
               <p><span className="font-semibold">Last Login:</span> {viewUser.authentication?.last_login ? new Date(viewUser.authentication.last_login).toLocaleString('en-IN') : 'N/A'}</p>
             </div>

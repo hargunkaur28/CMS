@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from "react";
 import { getDepartments, createStudent, uploadDocuments } from "@/lib/api/students";
+import api from "@/lib/api";
 import { ChevronRight, ChevronLeft, Check, Loader2, User, BookOpen, Heart, FileText } from "lucide-react";
 import Card from "@/components/ui/Card";
 import DocumentUploader from "./DocumentUploader";
@@ -15,10 +16,11 @@ export default function StudentForm({ onSuccess }: StudentFormProps) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState<any[]>([]);
+  const [colleges, setColleges] = useState<any[]>([]);
   
   const [formData, setFormData] = useState({
     personalInfo: { firstName: "", lastName: "", dob: "", gender: "male", phone: "", email: "", address: "" },
-    academicInfo: { course: "", batch: "2024-2028", department: "", semester: 1 },
+    academicInfo: { course: "", batch: "2024-2028", department: "", semester: 1, collegeId: "" },
     parentInfo: { name: "", phone: "", email: "", relation: "Father" },
     documents: [] as any[]
   });
@@ -27,6 +29,9 @@ export default function StudentForm({ onSuccess }: StudentFormProps) {
     getDepartments().then(res => {
       if (res.success) setDepartments(res.data);
     });
+    api.get('/super-admin/colleges?limit=1000')
+      .then((res) => setColleges(Array.isArray(res?.data?.data) ? res.data.data : []))
+      .catch(() => setColleges([]));
   }, []);
 
   const handleSubmit = async () => {
@@ -49,6 +54,7 @@ export default function StudentForm({ onSuccess }: StudentFormProps) {
 
       const res = await createStudent({
         ...formData,
+        collegeId: formData.academicInfo.collegeId || undefined,
         documents: finalDocuments
       });
 
@@ -120,6 +126,21 @@ export default function StudentForm({ onSuccess }: StudentFormProps) {
                </div>
                <Input label="Course Name" value={formData.academicInfo.course} onChange={v => setFormData({...formData, academicInfo: {...formData.academicInfo, course: v}})} />
                <Input label="Current Batch" value={formData.academicInfo.batch} onChange={v => setFormData({...formData, academicInfo: {...formData.academicInfo, batch: v}})} />
+               {colleges.length > 0 && (
+                 <div className="flex flex-col col-span-2">
+                   <label className="text-[10px] font-bold text-on-surface/40 uppercase mb-2 tracking-widest">College</label>
+                   <select
+                     className="w-full bg-surface-container-low border-transparent focus:border-primary-indigo/30 focus:bg-white rounded-xl px-4 py-3 text-sm outline-none border transition-all appearance-none"
+                     value={formData.academicInfo.collegeId}
+                     onChange={e => setFormData({ ...formData, academicInfo: { ...formData.academicInfo, collegeId: e.target.value } })}
+                   >
+                     <option value="">Select College</option>
+                     {colleges.map((college) => (
+                       <option key={college._id} value={college._id}>{college.name} ({college.code})</option>
+                     ))}
+                   </select>
+                 </div>
+               )}
             </div>
           </div>
         )}

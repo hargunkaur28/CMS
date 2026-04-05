@@ -46,8 +46,8 @@ export default function StudentTable({ students, onDelete, onEdit }: StudentTabl
                 </div>
               </td>
               <td className="px-6 py-4">
-                 <span className="text-[10px] font-black text-slate-700 font-mono tracking-tighter bg-slate-100 px-2 py-0.5 rounded cursor-copy active:scale-95 transition-transform" onClick={() => navigator.clipboard.writeText(student.studentId)}>
-                   {student.studentId}
+                 <span className="text-[10px] font-black text-slate-700 font-mono tracking-tighter bg-slate-100 px-2 py-0.5 rounded cursor-copy active:scale-95 transition-transform" onClick={() => navigator.clipboard.writeText(student.uniqueStudentId || student.studentId || '')}>
+                   {student.uniqueStudentId || student.studentId || "N/A"}
                  </span>
               </td>
               <td className="px-6 py-4">

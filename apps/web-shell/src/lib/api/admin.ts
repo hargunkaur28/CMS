@@ -9,6 +9,11 @@ export const fetchEnquiries = async () => {
   return response.data;
 };
 
+export const createEnquiry = async (data: any) => {
+  const response = await api.post(`${BASE}/enquiries`, data);
+  return response.data;
+};
+
 export const updateEnquiryStatus = async (id: string, status: string) => {
   const response = await api.put(`${BASE}/enquiries/${id}`, { status });
   return response.data;
@@ -173,6 +178,11 @@ export const fetchStudentWiseAttendance = async (query: any) => {
   return response.data;
 };
 
+export const fetchStudentAttendanceDetail = async (studentId: string) => {
+  const response = await api.get(`${BASE}/attendance/student/${studentId}`);
+  return response.data;
+};
+
 export const adminOverrideAttendance = async (data: any) => {
   const response = await api.put(`${BASE}/attendance/override`, data);
   return response.data;
@@ -180,7 +190,12 @@ export const adminOverrideAttendance = async (data: any) => {
 
 // --- Exams & Results ---
 export const fetchExams = async (filters: any = {}) => {
-  const response = await api.get(`${BASE}/exams`, { params: filters });
+  const response = await api.get(`${BASE}/exams`, { params: { ...filters, _ts: Date.now() } });
+  return response.data;
+};
+
+export const fetchExamStats = async () => {
+  const response = await api.get(`${BASE}/exams/stats`, { params: { _ts: Date.now() } });
   return response.data;
 };
 
@@ -202,6 +217,11 @@ export const fetchExamAnalysis = async (examId: string) => {
 // --- Fee Management ---
 export const fetchFeeStructures = async () => {
   const response = await api.get(`${BASE}/fees/structures`);
+  return response.data;
+};
+
+export const createFeeStructure = async (data: any) => {
+  const response = await api.post(`${BASE}/fees/structures`, data);
   return response.data;
 };
 
@@ -232,12 +252,26 @@ export const createAnnouncement = async (data: any) => {
 };
 
 export const fetchMessages = async () => {
-  const response = await api.get(`${BASE}/communication/messages`);
+  const response = await api.get(`${BASE}/communication/messages`, { params: { _ts: Date.now() } });
+  return response.data;
+};
+
+export const fetchConversationHistory = async (otherUserId: string) => {
+  const response = await api.get(`${BASE}/communication/messages/${otherUserId}`, { params: { _ts: Date.now() } });
   return response.data;
 };
 
 export const sendMessage = async (data: any) => {
   const response = await api.post(`${BASE}/communication/messages`, data);
+  return response.data;
+};
+
+export const uploadMessageAttachment = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post(`${BASE}/communication/messages/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
   return response.data;
 };
 
@@ -264,7 +298,12 @@ export const fetchNaacStats = async () => {
 
 // --- General Dashboard Stats ---
 export const fetchDashboardStats = async () => {
-  const response = await api.get(`${BASE}/stats`);
+  const response = await api.get(`${BASE}/stats`, { params: { _ts: Date.now() } });
+  return response.data;
+};
+
+export const fetchEnrollmentActivity = async () => {
+  const response = await api.get(`/dashboard/enrollment-activity`, { params: { _ts: Date.now() } });
   return response.data;
 };
 
@@ -286,5 +325,45 @@ export const removeTeacherAssignment = async (payload: { teacherId: string; subj
 
 export const assignStudentToBatch = async (payload: { studentId: string; batchId: string }) => {
   const response = await api.post(`${BASE}/assign-student-batch`, payload);
+  return response.data;
+};
+
+// --- Admin Settings ---
+export const fetchAuthProfile = async () => {
+  const response = await api.get('/auth/profile');
+  return response.data;
+};
+
+export const updateAdminProfile = async (data: any) => {
+  const response = await api.patch(`${BASE}/profile`, data);
+  return response.data;
+};
+
+export const changeMyPassword = async (payload: { currentPassword: string; newPassword: string }) => {
+  const response = await api.post('/auth/change-password', payload);
+  return response.data;
+};
+
+export const fetchActiveSessions = async () => {
+  const response = await api.get('/auth/sessions', { params: { _ts: Date.now() } });
+  return response.data;
+};
+
+export const revokeActiveSession = async (sessionId: string) => {
+  const response = await api.delete(`/auth/sessions/${sessionId}`);
+  return response.data;
+};
+
+export const logoutAllDevices = async () => {
+  const response = await api.post('/auth/sessions/logout-all');
+  return response.data;
+};
+
+export const uploadSettingsAsset = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await api.post('/auth/upload-file', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
   return response.data;
 };

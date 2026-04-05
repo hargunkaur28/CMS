@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Bell, X, Info, CheckCircle, AlertTriangle, Book } from "lucide-react";
 import { useSocket } from "@/components/providers/SocketProvider";
 import { useRouter } from "next/navigation";
-import { fetchNotifUnreadCount, fetchNotifications, markNotifAsRead } from "@/lib/api/communication";
+import { fetchNotifUnreadCount, fetchNotifications, markNotifAsRead, markAllNotifAsRead } from "@/lib/api/communication";
 import { cn } from "@/lib/utils";
 
 export default function NotificationBell() {
@@ -130,6 +130,16 @@ export default function NotificationBell() {
     }
   };
 
+  const handleClearAll = async () => {
+    try {
+      await markAllNotifAsRead();
+      setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error("Failed to clear notification history", error);
+    }
+  };
+
   const getIcon = (type: string) => {
     switch (type) {
       case "library": return <Book className="text-amber-500" size={16} />;
@@ -219,7 +229,7 @@ export default function NotificationBell() {
             </div>
             
             <div className="p-4 border-t border-slate-50 bg-slate-50/30 text-center">
-              <button className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-700">Clear All History</button>
+              <button onClick={handleClearAll} className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:text-indigo-700">Clear All History</button>
             </div>
           </div>
         </>

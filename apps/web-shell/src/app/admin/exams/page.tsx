@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { fetchExams, publishExamResults } from "@/lib/api/admin";
+import React, { useEffect, useMemo, useState } from "react";
+import { fetchExams, fetchExamStats, publishExamResults } from "@/lib/api/admin";
 import ExamManager from "@/components/admin/ExamManager";
 import { Plus, Download, Search, CheckSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,23 @@ import { useRouter } from "next/navigation";
 export default function ExamsPage() {
   const router = useRouter();
   const [exams, setExams] = useState<any[]>([]);
+  const [examStats, setExamStats] = useState({ total: 0, upcoming: 0, published: 0, expired: 0 });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const stats = useMemo(() => {
+    const ongoing = examStats.upcoming;
+    const awaitingPublish = examStats.expired;
+    const totalResults = examStats.published;
+    const passRates = exams
+      .map((exam) => Number(exam?.passRate || 0))
+      .filter((value) => Number.isFinite(value) && value > 0);
+    const avgPassRate = passRates.length
+      ? `${(passRates.reduce((sum, value) => sum + value, 0) / passRates.length).toFixed(1)}%`
+      : "N/A";
+
+    return { ongoing, awaitingPublish, totalResults, avgPassRate };
+  }, [examStats, exams]);
 
   useEffect(() => {
     loadExams();
@@ -18,10 +34,22 @@ export default function ExamsPage() {
   const loadExams = async () => {
     try {
       setLoading(true);
-      const res = await fetchExams();
+      setError(null);
+      const [res, statsRes] = await Promise.all([fetchExams(), fetchExamStats()]);
       if (res.success) setExams(res.data);
+      else setError(res?.message || "Failed to load exams");
+
+      if (statsRes?.success && statsRes?.data) {
+        setExamStats({
+          total: Number(statsRes.data.total || 0),
+          upcoming: Number(statsRes.data.upcoming || 0),
+          published: Number(statsRes.data.published || 0),
+          expired: Number(statsRes.data.expired || 0),
+        });
+      }
     } catch (err) {
       console.error(err);
+      setError("Failed to load exams");
     } finally {
       setLoading(false);
     }
@@ -68,19 +96,19 @@ export default function ExamsPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
          <div className="bg-white border border-slate-200 rounded-2xl p-4">
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Ongoing Exams</p>
-            <p className="text-lg font-black text-slate-900 tracking-tighter">02</p>
+          <p className="text-lg font-black text-slate-900 tracking-tighter">{stats.ongoing}</p>
          </div>
          <div className="bg-white border border-slate-200 rounded-2xl p-4">
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Awaiting Publish</p>
-            <p className="text-lg font-black text-slate-900 tracking-tighter">05</p>
+          <p className="text-lg font-black text-slate-900 tracking-tighter">{stats.awaitingPublish}</p>
          </div>
          <div className="bg-white border border-slate-200 rounded-2xl p-4">
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Pass Rate (Term)</p>
-            <p className="text-lg font-black text-emerald-600 tracking-tighter">84.2%</p>
+          <p className="text-lg font-black text-emerald-600 tracking-tighter">{stats.avgPassRate}</p>
          </div>
          <div className="bg-white border border-slate-200 rounded-2xl p-4">
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Total Results</p>
-            <p className="text-lg font-black text-slate-900 tracking-tighter">1,240</p>
+          <p className="text-lg font-black text-slate-900 tracking-tighter">{stats.totalResults}</p>
          </div>
       </div>
 
@@ -89,11 +117,19 @@ export default function ExamsPage() {
            <div className="w-8 h-8 border-4 border-slate-900 border-t-transparent rounded-full animate-spin" />
            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Processing Exam Data...</p>
         </div>
+      ) : error ? (
+        <div className="h-96 flex flex-col items-center justify-center gap-4 rounded-2xl border border-rose-100 bg-rose-50/50">
+          <p className="text-sm font-black uppercase tracking-widest text-rose-600">{error}</p>
+          <button onClick={loadExams} className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest hover:bg-slate-800">
+            Retry
+          </button>
+        </div>
       ) : (
         <ExamManager 
           exams={exams} 
           onPublish={handlePublish}
-          onView={(id) => console.log("View", id)}
+          onView={(id) => router.push(`/exams/${id}`)}
+          onCreate={() => router.push('/exams/create')}
         />
       )}
     </div>

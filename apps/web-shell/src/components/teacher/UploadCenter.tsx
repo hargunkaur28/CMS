@@ -33,6 +33,16 @@ export default function UploadCenter({ materials, onUpload, onDelete }: UploadCe
   });
   const [file, setFile] = useState<File | null>(null);
 
+  const toAbsoluteFileUrl = (url?: string) => {
+    if (!url) return "#";
+    if (/^https?:\/\//i.test(url)) return url;
+
+    const apiBase = String(process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api").replace(/\/$/, "");
+    const origin = apiBase.replace(/\/api$/, "");
+    if (url.startsWith("/")) return `${origin}${url}`;
+    return `${origin}/${url}`;
+  };
+
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return;
@@ -195,14 +205,14 @@ export default function UploadCenter({ materials, onUpload, onDelete }: UploadCe
                         <p className="text-xs text-slate-500 mt-1 line-clamp-1">{m.description || "No description provided."}</p>
                         
                         <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-                           <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
+                          <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
                               <Calendar size={12} />
-                              <span>Uploaded: {new Date(m.createdAt).toLocaleDateString()}</span>
+                            <span>Uploaded: {m?.createdAt ? new Date(m.createdAt).toLocaleDateString() : "N/A"}</span>
                            </div>
                            {m.dueDate && (
                              <div className="flex items-center gap-1.5 text-[10px] font-bold text-red-500">
                                 <Clock size={12} />
-                                <span>Due: {new Date(m.dueDate).toLocaleDateString()}</span>
+                              <span>Due: {new Date(m.dueDate).toLocaleDateString()}</span>
                              </div>
                            )}
                            <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
@@ -213,7 +223,7 @@ export default function UploadCenter({ materials, onUpload, onDelete }: UploadCe
                      </div>
                      <div className="flex items-center gap-2">
                         <a 
-                          href={m.fileUrl} 
+                          href={toAbsoluteFileUrl(m.fileUrl)} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="p-2 text-slate-400 hover:text-slate-900 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-all shadow-sm"

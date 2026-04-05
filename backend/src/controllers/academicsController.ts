@@ -4,6 +4,7 @@ import Subject from "../models/Subject.js";
 import Batch from "../models/Batch.js";
 import Student from "../models/Student.js";
 import Section from "../models/Section.js";
+import User from "../models/User.js";
 import { verifyCollegeOwnership } from "../middleware/collegeOwnership.js";
 
 const resolveCollegeScope = (req: Request) => {
@@ -304,6 +305,69 @@ export const assignStudentsToSection = async (req: Request, res: Response) => {
     );
 
     res.status(200).json({ success: true, message: `Successfully assigned ${studentIds.length} students to Section ${section}` });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const assignTeacherToSection = async (req: Request, res: Response) => {
+  try {
+    const { id, section } = req.params;
+    const { teacherId, subjectId } = req.body;
+    const collegeId = resolveCollegeScope(req);
+
+    const batch = await Batch.findById(id);
+    if (!batch) return res.status(404).json({ success: false, message: 'Batch not found' });
+    if (!verifyCollegeOwnership(batch, collegeId)) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Batch does not belong to your college' });
+    }
+
+    if (!batch.sections.includes(section as string)) {
+      return res.status(400).json({ success: false, message: 'Section does not exist in this batch' });
+    }
+
+    // Allow unassign by sending empty teacherId.
+    if (!teacherId) {
+      batch.sectionTeachers = (batch.sectionTeachers || []).filter((entry: any) => entry.section !== section) as any;
+      await batch.save();
+      return res.status(200).json({ success: true, message: `Teacher unassigned from Section ${section}`, data: batch });
+    }
+
+    const teacherUser = await User.findById(teacherId);
+    if (!teacherUser || String(teacherUser.role || '').toUpperCase() !== 'TEACHER') {
+      return res.status(404).json({ success: false, message: 'Teacher not found' });
+    }
+
+    if (String(teacherUser.collegeId || '') !== String(batch.collegeId || '')) {
+      return res.status(403).json({ success: false, message: 'Forbidden: Teacher does not belong to this college' });
+    }
+
+    // Validate subject if provided
+    let validSubjectId: any = subjectId || null;
+    if (subjectId) {
+      const subject = await Subject.findById(subjectId);
+      if (!subject) {
+        return res.status(404).json({ success: false, message: 'Subject not found' });
+      }
+      if (String(subject.collegeId || '') !== String(batch.collegeId || '')) {
+        return res.status(403).json({ success: false, message: 'Subject does not belong to this college' });
+      }
+      validSubjectId = subject._id;
+    }
+
+    const idx = (batch.sectionTeachers || []).findIndex((entry: any) => entry.section === section);
+    if (idx >= 0) {
+      (batch.sectionTeachers as any)[idx].teacherId = teacherUser._id;
+      (batch.sectionTeachers as any)[idx].subjectId = validSubjectId;
+    } else {
+      (batch.sectionTeachers as any).push({ section, teacherId: teacherUser._id, subjectId: validSubjectId });
+    }
+
+    await batch.save();
+    const updated = await Batch.findById(id)
+      .populate('sectionTeachers.teacherId', 'name email')
+      .populate('sectionTeachers.subjectId', 'name code');
+    res.status(200).json({ success: true, message: `Teacher assigned to Section ${section}`, data: updated || batch });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
   }

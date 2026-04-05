@@ -3,14 +3,39 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { Menu, X, ChevronDown, LogOut, Settings } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import UserAvatar from '../ui/UserAvatar';
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeMenu, setActiveMenu] = useState('dashboard');
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  React.useEffect(() => {
+    const syncUser = () => {
+      const saved = localStorage.getItem('user');
+      const parsed = saved ? JSON.parse(saved) : null;
+      setUser(parsed);
+
+      const role = String(parsed?.role || '').toUpperCase();
+      if (!parsed) {
+        router.replace('/login');
+      } else if (role !== 'SUPER_ADMIN') {
+        router.replace(role === 'COLLEGE_ADMIN' ? '/admin' : '/');
+      }
+    };
+
+    syncUser();
+    window.addEventListener('storage', syncUser);
+    window.addEventListener('user-updated', syncUser as EventListener);
+    return () => {
+      window.removeEventListener('storage', syncUser);
+      window.removeEventListener('user-updated', syncUser as EventListener);
+    };
+  }, [router]);
   const handleLogout = async () => {
     try {
       await api.post('/auth/logout');
@@ -30,8 +55,15 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     { id: 'users', label: 'User Management', icon: '👥', href: '/super-admin/users', color: 'from-green-500 to-green-600' },
     { id: 'analytics', label: 'Analytics', icon: '📈', href: '/super-admin/analytics', color: 'from-orange-500 to-orange-600' },
     { id: 'audit', label: 'Audit Logs', icon: '📋', href: '/super-admin/audit-logs', color: 'from-red-500 to-red-600' },
-    { id: 'settings', label: 'System Settings', icon: '⚙️', href: '/super-admin/settings', color: 'from-indigo-500 to-indigo-600' }
+    { id: 'settings', label: 'System Settings', icon: '⚙️', href: '/super-admin/settings', color: 'from-indigo-500 to-indigo-600' },
+    { id: 'profile', label: 'Profile Settings', icon: '🧑', href: '/super-admin/profile', color: 'from-slate-500 to-slate-600' }
   ];
+
+  const isMenuItemActive = (href: string) => {
+    if (pathname === href) return true;
+    if (href !== '/super-admin/dashboard' && pathname.startsWith(`${href}/`)) return true;
+    return false;
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -52,9 +84,8 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             <Link
               key={item.id}
               href={item.href}
-              onClick={() => setActiveMenu(item.id)}
               className={`flex items-center gap-3 px-4 py-3 rounded-lg mb-2 transition-all ${
-                activeMenu === item.id
+                isMenuItemActive(item.href)
                   ? `bg-gradient-to-r ${item.color} shadow-lg`
                   : 'hover:bg-gray-700'
               }`}
@@ -65,13 +96,6 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             </Link>
           ))}
         </nav>
-
-        <div className="border-t border-gray-700 p-3">
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-700 transition">
-            <LogOut size={20} />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -89,11 +113,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
               onClick={() => setUserMenuOpen(!userMenuOpen)}
               className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
             >
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold">
-                SA
-              </div>
+              <UserAvatar name={user?.name || 'Super Admin'} imageUrl={user?.profilePicture} size={40} />
               <div className="text-left hidden sm:block">
-                <p className="font-medium text-gray-900">Super Admin</p>
+                <p className="font-medium text-gray-900">{user?.name || 'Super Admin'}</p>
                 <p className="text-xs text-gray-600">Platform Owner</p>
               </div>
               <ChevronDown size={18} className="text-gray-600" />
@@ -104,7 +126,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
                 <button
                   onClick={() => {
                     setUserMenuOpen(false);
-                    router.push('/super-admin/settings');
+                    router.push('/super-admin/profile');
                   }}
                   className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 text-gray-700"
                 >

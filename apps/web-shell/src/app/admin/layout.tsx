@@ -24,6 +24,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import api from "@/lib/api";
+import UserAvatar from "@/components/ui/UserAvatar";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Overview", href: "/admin" },
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { icon: FileText, label: "Exams", href: "/admin/exams" },
   { icon: CreditCard, label: "Fees", href: "/admin/fees" },
   { icon: MessageSquare, label: "Communication", href: "/admin/communication" },
+  { icon: Settings, label: "Settings", href: "/admin/settings" },
   { icon: ShieldCheck, label: "Governance", href: "/admin/naac" },
 ];
 
@@ -45,18 +47,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const [authorized, setAuthorized] = React.useState(false);
+  const [currentUser, setCurrentUser] = React.useState<any>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const user = JSON.parse(localStorage.getItem("user") || "{}");
     if (!token || !user.role) {
       router.replace("/login");
-    } else if (!["SUPER_ADMIN", "COLLEGE_ADMIN"].includes(user.role)) {
+    } else if (user.role === 'SUPER_ADMIN') {
+      router.replace('/super-admin/dashboard');
+    } else if ((user.mustChangePassword || user.isFirstLogin) && user.role === 'COLLEGE_ADMIN') {
+      router.replace('/change-password');
+    } else if (user.role !== 'COLLEGE_ADMIN') {
       router.replace("/");
     } else {
+      setCurrentUser(user);
       setAuthorized(true);
     }
   }, [router]);
+
+  useEffect(() => {
+    const syncUser = () => {
+      const raw = localStorage.getItem('user');
+      setCurrentUser(raw ? JSON.parse(raw) : null);
+    };
+
+    window.addEventListener('storage', syncUser);
+    window.addEventListener('user-updated', syncUser as EventListener);
+    return () => {
+      window.removeEventListener('storage', syncUser);
+      window.removeEventListener('user-updated', syncUser as EventListener);
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -159,12 +181,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
              <div className="flex items-center gap-4">
                 <div className="text-right">
-                   <p className="text-[10px] font-black text-slate-900 leading-none uppercase tracking-tighter">Dr. Rajesh Khanna</p>
-                   <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest mt-1.5 border-r-2 border-indigo-500 pr-2 inline-block">College Admin</p>
+                   <p className="text-[10px] font-black text-slate-900 leading-none uppercase tracking-tighter">{currentUser?.name || 'College Admin'}</p>
+                   <p className="text-[8px] font-black text-indigo-500 uppercase tracking-widest mt-1.5 border-r-2 border-indigo-500 pr-2 inline-block">{currentUser?.role === 'SUPER_ADMIN' ? 'Super Admin' : 'College Admin'}</p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-slate-900 border-2 border-white flex items-center justify-center text-white font-black text-xs shadow-xl rotate-3 hover:rotate-0 transition-all cursor-pointer">
-                   RK
-                </div>
+                 <UserAvatar
+                  name={currentUser?.name || 'Admin User'}
+                  imageUrl={currentUser?.profilePicture}
+                  size={48}
+                  className="rounded-2xl border-2 border-white shadow-xl rotate-3 hover:rotate-0 transition-all"
+                 />
                 <button 
                   onClick={handleLogout}
                   className="p-3 bg-slate-50 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all border border-transparent hover:border-rose-100 group/logout"

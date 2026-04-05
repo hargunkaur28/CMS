@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { 
   fetchShortageList, 
   fetchAttendanceOverview, 
@@ -256,6 +257,12 @@ function TabButton({ active, label, onClick }: any) {
 }
 
 function StudentWiseTable({ students, isShortageOnly = false }: { students: any[], isShortageOnly?: boolean }) {
+  const router = useRouter();
+  
+  const handleDrillDown = (studentId: string) => {
+    router.push(`/admin/attendance/${studentId}`);
+  };
+
   if (students.length === 0) {
     return (
       <div className="py-24 text-center">
@@ -313,7 +320,10 @@ function StudentWiseTable({ students, isShortageOnly = false }: { students: any[
                    </div>
                 </td>
                 <td className="p-5 text-right">
-                   <button className="text-[9px] font-black text-indigo-500 uppercase tracking-widest hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg transition-colors">
+                   <button 
+                     onClick={() => handleDrillDown(student._id)}
+                     className="text-[9px] font-black text-indigo-500 uppercase tracking-widest hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-lg transition-colors"
+                   >
                      Drill Down
                    </button>
                 </td>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import api from '@/lib/api';
 import {
   AlertCircle,
@@ -22,16 +22,29 @@ interface AuditLog {
   status: 'success' | 'failure';
   timestamp: string;
   error_message?: string;
+  change_details?: any;
 }
 
 export default function AuditLogs() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [actionFilter, setActionFilter] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => {
+      setPage(1);
+      setSearchTerm(searchInput.trim());
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchInput]);
 
   useEffect(() => {
     fetchAuditLogs();
@@ -87,6 +100,92 @@ export default function AuditLogs() {
     });
   };
 
+  const renderChangeDetails = (log: AuditLog) => {
+    const details = log.change_details;
+    if (!details) {
+      if (log.action === 'CREATE') return `Created ${log.resource_type}`;
+      if (log.action === 'DELETE') return `Deleted ${log.resource_type}`;
+      return '-';
+    }
+
+    if (Array.isArray(details.fields) && details.fields.length) {
+      return details.fields
+        .slice(0, 5)
+        .map((item: any) => `${item.field}: ${String(item.from ?? '-') } -> ${String(item.to ?? '-')}`)
+        .join('\n');
+    }
+
+    if (details.created) {
+      const createdName = details.created?.name || details.created?.email || log.resource_id || '';
+      return `Created ${log.resource_type}: ${createdName}`.trim();
+    }
+
+    if (details.deleted) {
+      const deletedName = details.deleted?.name || details.deleted?.email || log.resource_id || '';
+      return `Deleted ${log.resource_type}: ${deletedName}`.trim();
+    }
+
+    if (details.before || details.after) {
+      const lines = buildLegacyDiffLines(details.before || {}, details.after || {});
+      if (lines.length) return lines.slice(0, 5).join('\n');
+    }
+
+    if (details.summary) return String(details.summary);
+
+    if (log.status === 'failure' && log.error_message) {
+      return `Failed: ${log.error_message}`;
+    }
+
+    return '-';
+  };
+
+  const buildLegacyDiffLines = (beforeObj: any, afterObj: any) => {
+    const flatten = (value: any, path = '', output: Record<string, string> = {}) => {
+      if (value === null || typeof value === 'undefined') {
+        if (path) output[path] = '-';
+        return output;
+      }
+
+      if (Array.isArray(value)) {
+        if (path) output[path] = value.map((entry) => String(entry)).join(', ');
+        return output;
+      }
+
+      if (typeof value !== 'object') {
+        if (path) output[path] = String(value);
+        return output;
+      }
+
+      Object.entries(value).forEach(([key, nested]) => {
+        const nextPath = path ? `${path}.${key}` : key;
+        flatten(nested, nextPath, output);
+      });
+      return output;
+    };
+
+    const ignored = ['password', 'authentication', '__v', 'updatedAt', 'createdAt', '_id', 'tokens', 'session'];
+    const isIgnored = (key: string) => ignored.some((candidate) => key === candidate || key.startsWith(`${candidate}.`));
+
+    const before = flatten(beforeObj || {});
+    const after = flatten(afterObj || {});
+    const keys = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
+
+    return keys
+      .filter((key) => !isIgnored(key))
+      .filter((key) => (before[key] || '-') !== (after[key] || '-'))
+      .map((key) => `${beautifyKey(key)}: ${before[key] || '-'} -> ${after[key] || '-'}`);
+  };
+
+  const beautifyKey = (key: string) => {
+    return key
+      .split('.')
+      .map((part) => part.replace(/_/g, ' '))
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' > ');
+  };
+
+  const visibleLogs = useMemo(() => logs, [logs]);
+
   const handleExport = async () => {
     try {
       const params = new URLSearchParams();
@@ -104,6 +203,16 @@ export default function AuditLogs() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
+      if (err?.response?.data instanceof Blob) {
+        const raw = await err.response.data.text();
+        try {
+          const parsed = JSON.parse(raw);
+          setError(parsed?.message || 'Failed to export audit logs');
+          return;
+        } catch {
+          // Continue to generic message
+        }
+      }
       setError(err.response?.data?.message || 'Failed to export audit logs');
     }
   };
@@ -137,8 +246,8 @@ export default function AuditLogs() {
             <input
               type="text"
               placeholder="Search user or resource..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -176,12 +285,13 @@ export default function AuditLogs() {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">User</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Action</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Resource</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Changes</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Status</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">Timestamp</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {logs.map((log) => (
+              {visibleLogs.map((log) => (
                 <tr key={log._id} className="hover:bg-gray-50 transition">
                   <td className="px-6 py-4">
                     <div>
@@ -199,6 +309,9 @@ export default function AuditLogs() {
                       <p className="font-medium text-gray-900">{log.resource_type}</p>
                       <p className="text-sm text-gray-600">{log.resource_id}</p>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 text-xs text-gray-700 whitespace-pre-line max-w-[24rem]">
+                    {renderChangeDetails(log)}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">

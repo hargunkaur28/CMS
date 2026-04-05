@@ -29,6 +29,7 @@ import notificationsRoutes from './routes/notifications.js';
 import superAdminRoutes from './routes/superAdmin.routes.js';
 import publicSettingsRoutes from './routes/publicSettings.routes.js';
 import timetableRoutes from './routes/timetableRoutes.js';
+import dashboardRoutes from './routes/dashboard.js';
 
 // Connect to MongoDB
 console.log("[DB] Attempting to connect to MongoDB...");
@@ -86,6 +87,7 @@ app.use('/api/notifications', notificationsRoutes);
 app.use('/api/super-admin', superAdminRoutes);
 app.use('/api/settings', publicSettingsRoutes);
 app.use('/api/timetable', timetableRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('AI-Powered College Management System API is running...');

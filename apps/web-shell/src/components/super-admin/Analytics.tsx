@@ -24,7 +24,7 @@ export default function Analytics() {
 
   const handleExport = async () => {
     try {
-      const response = await api.get('/super-admin/analytics/export?range=' + encodeURIComponent(dateRange), {
+      const response = await api.get('/super-admin/analytics/export?format=csv&range=' + encodeURIComponent(dateRange), {
         responseType: 'blob'
       });
       const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
@@ -37,6 +37,16 @@ export default function Analytics() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
+      if (err?.response?.data instanceof Blob) {
+        const raw = await err.response.data.text();
+        try {
+          const parsed = JSON.parse(raw);
+          setError(parsed?.message || 'Failed to export analytics');
+          return;
+        } catch {
+          // Continue to generic message
+        }
+      }
       setError(err.response?.data?.message || 'Failed to export analytics');
     }
   };

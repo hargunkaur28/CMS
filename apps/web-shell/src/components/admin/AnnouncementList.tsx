@@ -27,7 +27,7 @@ export default function AnnouncementList({ announcements }: AnnouncementListProp
                    <div>
                       <h4 className="text-[11px] font-black text-slate-900 uppercase tracking-tight">{item.title}</h4>
                       <div className="flex items-center gap-2 mt-0.5">
-                         <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">{item.targetAudience}</span>
+                         <span className="text-[8px] font-black text-indigo-400 uppercase tracking-widest">{item.targetClass || 'all'}</span>
                          <span className="w-1 h-1 rounded-full bg-slate-200" />
                          <span className="text-[8px] font-bold text-slate-400 uppercase">{new Date(item.createdAt).toLocaleDateString()}</span>
                       </div>
@@ -42,7 +42,7 @@ export default function AnnouncementList({ announcements }: AnnouncementListProp
              </div>
              
              <p className="text-[10px] font-medium text-slate-600 leading-relaxed line-clamp-2 mb-4">
-                {item.content}
+                {item.body || item.content}
              </p>
 
              <div className="pt-4 border-t border-slate-50 flex items-center justify-between">
@@ -50,7 +50,7 @@ export default function AnnouncementList({ announcements }: AnnouncementListProp
                    <div className="w-5 h-5 rounded-full bg-slate-900 text-[7px] flex items-center justify-center text-white font-black">
                       A
                    </div>
-                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Sent by {item.createdBy?.name || "Admin"}</span>
+                   <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Sent by {item.senderId?.name || "Admin"}</span>
                 </div>
                 <button className="text-[9px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors">
                    Read Full Path

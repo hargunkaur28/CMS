@@ -7,9 +7,10 @@ interface CourseManagerProps {
   courses: any[];
   onCreateCourse: () => void;
   onCreateSubject: (courseId: string) => void;
+   onViewProgramDetails: (course: any) => void;
 }
 
-export default function CourseManager({ courses, onCreateCourse, onCreateSubject }: CourseManagerProps) {
+export default function CourseManager({ courses, onCreateCourse, onCreateSubject, onViewProgramDetails }: CourseManagerProps) {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
       {courses.map((course) => (
@@ -69,7 +70,10 @@ export default function CourseManager({ courses, onCreateCourse, onCreateSubject
               </div>
            </div>
 
-           <button className="mt-8 w-full py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-slate-200">
+                <button
+                   onClick={() => onViewProgramDetails(course)}
+                   className="mt-8 w-full py-4 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-lg shadow-slate-200"
+                >
               Program Details <ExternalLink size={14} />
            </button>
         </div>

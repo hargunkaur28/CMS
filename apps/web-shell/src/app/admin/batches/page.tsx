@@ -12,6 +12,7 @@ interface Course { _id: string; name: string; code: string; }
 interface Batch {
   _id: string; name: string; startYear: number; endYear: number;
   sections: string[]; students: any[]; courseId?: { _id: string; name: string };
+  sectionTeachers?: { section: string; teacherId: string | { _id: string; name?: string; email?: string }; subjectId?: string | { _id: string; name?: string; code?: string } }[];
 }
 interface Student {
   _id: string;
@@ -21,6 +22,11 @@ interface Student {
   batchId?: string;
   academicInfo?: { section?: string; course?: string; batch?: string; status?: string };
 }
+interface FacultyOption {
+  _id: string;
+  userId?: { _id: string; name?: string; email?: string };
+  personalInfo?: { name?: string; email?: string };
+}
 
 type Toast = { type: "success" | "error"; text: string } | null;
 
@@ -28,6 +34,7 @@ export default function BatchManagementPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [batches, setBatches] = useState<Batch[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [teachers, setTeachers] = useState<FacultyOption[]>([]);
   const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   const [batchStudents, setBatchStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,6 +45,7 @@ export default function BatchManagementPage() {
   const [showAddSection, setShowAddSection] = useState(false);
   const [showAddStudent, setShowAddStudent] = useState(false);
   const [showBulkAssign, setShowBulkAssign] = useState(false);
+  const [showAssignTeacher, setShowAssignTeacher] = useState(false);
 
   // Forms
   const [batchForm, setBatchForm] = useState({ name: "", courseId: "", startYear: new Date().getFullYear(), endYear: new Date().getFullYear() + 4 });
@@ -48,6 +56,9 @@ export default function BatchManagementPage() {
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [selectedSubjectId, setSelectedSubjectId] = useState("");
+  const [teacherSubjects, setTeacherSubjects] = useState<any[]>([]);
 
   const showToast = (type: "success" | "error", text: string) => {
     setToast({ type, text });
@@ -62,9 +73,11 @@ export default function BatchManagementPage() {
         api.get("/admin/batches"),
         api.get("/admin/students"),
       ]);
+      const fd = await api.get("/admin/faculty");
       if (cd.data.success) setCourses(cd.data.data);
       if (bd.data.success) setBatches(bd.data.data);
       if (sd.data.success) setAllStudents(sd.data.data);
+      if (fd.data.success) setTeachers(fd.data.data || []);
     } catch {
       showToast("error", "Failed to load data");
     } finally {
@@ -250,9 +263,85 @@ export default function BatchManagementPage() {
     s.userId?.name || [s.personalInfo?.firstName, s.personalInfo?.lastName].filter(Boolean).join(" ") || "Unknown";
   const getStudentEmail = (s: Student) => s.userId?.email || s.personalInfo?.email || "";
 
+  const teacherOptions = teachers.map((f) => {
+    const user = f.userId;
+    return {
+      id: String(user?._id || f._id),
+      name: user?.name || f.personalInfo?.name || "Teacher",
+      email: user?.email || f.personalInfo?.email || "",
+    };
+  });
+
+  const currentSectionTeacherAssignment = selectedBatch && selectedSection
+    ? (selectedBatch.sectionTeachers || []).find((entry) => entry.section === selectedSection)
+    : undefined;
+
+  const currentSectionTeacherId = (() => {
+    if (!currentSectionTeacherAssignment) return "";
+    const value: any = currentSectionTeacherAssignment.teacherId;
+    if (!value) return "";
+    if (typeof value === "string") return value;
+    return String(value._id || "");
+  })();
+
+  const currentSectionTeacher = currentSectionTeacherId
+    ? teacherOptions.find((t) => t.id === currentSectionTeacherId)
+    : null;
+
+  const handleOpenAssignTeacher = () => {
+    if (!selectedSection) return;
+    setSelectedTeacherId(currentSectionTeacherId);
+    setSelectedSubjectId("");
+    setTeacherSubjects([]);
+    setShowAssignTeacher(true);
+  };
+
+  const handleTeacherSelectionChange = (teacherId: string) => {
+    setSelectedTeacherId(teacherId);
+    setSelectedSubjectId(""); // Reset subject when teacher changes
+    
+    if (teacherId) {
+      // Find teacher's assigned subjects from faculty data
+      const teacher = teachers.find((t) => String(t.userId?._id || t._id) === teacherId);
+      if (teacher && teacher.assignedSubjects) {
+        setTeacherSubjects(teacher.assignedSubjects);
+      } else {
+        setTeacherSubjects([]);
+      }
+    } else {
+      setTeacherSubjects([]);
+    }
+  };
+
+  const handleAssignTeacherToSection = async () => {
+    if (!selectedBatch || !selectedSection) return;
+    setSubmitting(true);
+    try {
+      const response = await api.put(`/admin/batches/${selectedBatch._id}/sections/${selectedSection}/teacher`, {
+        teacherId: selectedTeacherId || null,
+        subjectId: selectedSubjectId || null,
+      });
+      const data = response.data;
+      if (response.status === 200 && data.success) {
+        const updatedBatch = data.data;
+        setBatches((prev) => prev.map((b) => (b._id === updatedBatch._id ? { ...b, ...updatedBatch } : b)));
+        setSelectedBatch((prev) => (prev ? { ...prev, ...updatedBatch } : prev));
+        showToast("success", data.message || "Section teacher updated");
+        setShowAssignTeacher(false);
+        setSelectedTeacherId("");
+        setSelectedSubjectId("");
+      } else {
+        showToast("error", data.message || "Failed to update section teacher");
+      }
+    } catch {
+      showToast("error", "An error occurred");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const assignedStudentIds = new Set(batchStudents.map(s => s._id));
   const filteredStudents = allStudents.filter(s => {
-    if (s.batchId) return false; // Strictly prevent assigning students already in a batch
     if (assignedStudentIds.has(s._id)) return false;
     const q = studentSearch.toLowerCase();
     return !q || getStudentName(s).toLowerCase().includes(q) || getStudentEmail(s).toLowerCase().includes(q);
@@ -464,8 +553,21 @@ export default function BatchManagementPage() {
                     {selectedSection ? `Section ${selectedSection} Students` : 'Students'}
                     <span className="text-slate-400 font-bold ml-2">({displayedStudents.length})</span>
                   </h3>
+                  {selectedSection && currentSectionTeacher && (
+                    <span className="text-[9px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-lg px-2 py-1">
+                      Teacher: {currentSectionTeacher.name}
+                    </span>
+                  )}
                 </div>
                 <div className="flex gap-2">
+                  {selectedSection && (
+                    <button
+                      onClick={handleOpenAssignTeacher}
+                      className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest bg-violet-50 text-violet-700 hover:bg-violet-100 rounded-xl px-3 py-2 transition-colors border border-violet-100"
+                    >
+                      <GraduationCap size={11} /> Assign Teacher
+                    </button>
+                  )}
                   {selectedSection && (
                     <button
                       onClick={() => {
@@ -894,6 +996,82 @@ export default function BatchManagementPage() {
               >
                 {submitting ? <Loader2 size={14} className="animate-spin" /> : <Users size={14} />}
                 Assign {selectedStudentIds.size} Students
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Assign Teacher Modal */}
+      {showAssignTeacher && selectedBatch && selectedSection && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg">
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Assign Teacher</h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">
+                  {selectedBatch.name} · Section {selectedSection}
+                </p>
+              </div>
+              <button onClick={() => setShowAssignTeacher(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                <X size={18} className="text-slate-500" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Teacher</label>
+                <select
+                  value={selectedTeacherId}
+                  onChange={(e) => handleTeacherSelectionChange(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-violet-100"
+                >
+                  <option value="">Unassign teacher</option>
+                  {teacherOptions.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}{t.email ? ` (${t.email})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              {selectedTeacherId && teacherSubjects.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Subject (Optional)</label>
+                  <select
+                    value={selectedSubjectId}
+                    onChange={(e) => setSelectedSubjectId(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-violet-100"
+                  >
+                    <option value="">-- No specific subject --</option>
+                    {teacherSubjects.map((subj: any) => (
+                      <option key={subj.subjectId} value={subj.subjectId}>
+                        {subj.subjectId?.name || "Unknown"} ({subj.subjectId?.code || "?"})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              
+              {currentSectionTeacher && (
+                <p className="text-xs text-slate-500">
+                  Current: <span className="font-semibold text-slate-700">{currentSectionTeacher.name}</span>
+                </p>
+              )}
+            </div>
+            <div className="p-6 border-t border-slate-100 flex gap-3 bg-slate-50/50 rounded-b-3xl">
+              <button
+                onClick={() => setShowAssignTeacher(false)}
+                className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAssignTeacherToSection}
+                disabled={submitting}
+                className="flex-[2] py-3 bg-violet-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-violet-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {submitting ? <Loader2 size={14} className="animate-spin" /> : <GraduationCap size={14} />}
+                Save Teacher
               </button>
             </div>
           </div>

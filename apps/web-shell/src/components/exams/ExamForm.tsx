@@ -6,6 +6,7 @@ import { useExams } from "@/hooks/useExams";
 import { getCourses } from "@/lib/api/academics";
 import { getSubjects } from "@/lib/api/subjects";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface ExamFormProps {
   collegeId: string;
@@ -14,8 +15,9 @@ interface ExamFormProps {
 }
 
 const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }) => {
-  const { createExam, loading, error: apiError } = useExams(collegeId);
+  const { exams, createExam, error: apiError } = useExams(collegeId);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   const [availableCourses, setAvailableCourses] = useState<any[]>([]);
   const [availableSubjects, setAvailableSubjects] = useState<any[]>([]);
   const [fetchingData, setFetchingData] = useState(true);
@@ -67,13 +69,104 @@ const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }
     setFormData((prev) => ({ ...prev, gradingScheme: newScheme }));
   };
 
+  const resetForm = () => {
+    setFormData({
+      code: "",
+      name: "",
+      examType: "INTERNAL",
+      scheduleDate: "",
+      duration: 120,
+      courses: [],
+      subjects: [],
+      totalMarks: 100,
+      passingMarks: 40,
+      gradingScheme: [
+        { grade: "A+", minMarks: 90, maxMarks: 100, gradePoint: 4.0 },
+        { grade: "A", minMarks: 80, maxMarks: 89, gradePoint: 3.7 },
+        { grade: "B+", minMarks: 70, maxMarks: 79, gradePoint: 3.3 },
+        { grade: "B", minMarks: 60, maxMarks: 69, gradePoint: 3.0 },
+        { grade: "C", minMarks: 50, maxMarks: 59, gradePoint: 2.5 },
+        { grade: "D", minMarks: 40, maxMarks: 49, gradePoint: 2.0 },
+        { grade: "F", minMarks: 0, maxMarks: 39, gradePoint: 0.0 }
+      ],
+    });
+    setError(null);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
+    if (!collegeId) {
+      setError("College context is still loading. Please wait a moment and try again.");
+      return;
+    }
+
+    if (fetchingData) {
+      setError("Courses and subjects are still loading. Please wait a moment and try again.");
+      return;
+    }
+
+    // Client-side validation
+    if (!formData.code) {
+      setError("Exam code is required");
+      return;
+    }
+    if (!/^[A-Z0-9_]+$/.test(formData.code)) {
+      setError("Exam code must contain only uppercase letters, numbers, and underscores");
+      return;
+    }
+    if (!formData.name || formData.name.length < 5) {
+      setError("Exam name must be at least 5 characters");
+      return;
+    }
+    if (!formData.scheduleDate) {
+      setError("Schedule date is required");
+      return;
+    }
+    const normalizedCode = formData.code.trim().toUpperCase();
+    const existingCodes = new Set(
+      exams.map((exam) => String(exam.code || "").trim().toUpperCase())
+    );
+    if (existingCodes.has(normalizedCode)) {
+      let counter = 2;
+      let suggestedCode = `${normalizedCode}_${counter}`;
+      while (existingCodes.has(suggestedCode)) {
+        counter += 1;
+        suggestedCode = `${normalizedCode}_${counter}`;
+      }
+      setFormData((prev) => ({ ...prev, code: suggestedCode }));
+      setError(
+        `An exam with code '${normalizedCode}' already exists in this college. Suggested code applied: '${suggestedCode}'.`
+      );
+      return;
+    }
+    if (formData.subjects.length === 0) {
+      setError("Please select at least one subject");
+      return;
+    }
+    if (formData.passingMarks >= formData.totalMarks) {
+      setError("Passing marks must be less than total marks");
+      return;
+    }
+    
+    // Validate grading scheme ranges
+    for (const grade of formData.gradingScheme) {
+      if (grade.minMarks > grade.maxMarks) {
+        setError(`Grade ${grade.grade}: Min marks cannot be greater than max marks`);
+        return;
+      }
+      if (grade.minMarks < 0 || grade.maxMarks > formData.totalMarks) {
+        setError(`Grade ${grade.grade}: Marks must be within 0 to ${formData.totalMarks}`);
+        return;
+      }
+    }
+
     try {
+      setSubmitting(true);
       const payload = {
         ...formData,
+        code: normalizedCode,
         collegeId,
         courses: Array.isArray(formData.courses) ? formData.courses : [formData.courses],
         subjects: Array.isArray(formData.subjects) ? formData.subjects : [formData.subjects],
@@ -84,11 +177,21 @@ const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }
       };
 
       await createExam(payload);
+      resetForm();
       if (onSuccess) onSuccess();
     } catch (err: any) {
-      setError(err.message || "Something went wrong");
+      setError(err?.message || "Something went wrong");
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  const submitDisabled = submitting || !collegeId || fetchingData;
+  const submitStatus = !collegeId
+    ? "Loading college context..."
+    : fetchingData
+      ? "Loading courses and subjects..."
+      : null;
 
   return (
     <Card className="p-6 max-w-4xl mx-auto">
@@ -111,11 +214,12 @@ const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }
               type="text"
               name="code"
               value={formData.code}
-              onChange={handleChange}
+              onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
               placeholder="e.g., MID_SEM_2024"
               className="w-full bg-surface-container placeholder-surface-on-surface-variant/50 text-surface-on-surface p-3 rounded-xl border border-outline focus:outline-none focus:ring-2 focus:ring-primary"
               required
             />
+            <p className="text-[10px] text-surface-on-surface-variant mt-1">Uppercase letters, numbers, and underscores only</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-surface-on-surface-variant mb-1">Exam Name</label>
@@ -247,12 +351,17 @@ const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }
         {/* Relational Mapping */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
-            <label className="text-sm font-bold text-surface-on-surface-variant uppercase tracking-widest pl-1">Target Courses</label>
-            <div className="bg-surface-container rounded-2xl p-4 border border-outline max-h-50 overflow-y-auto space-y-2 custom-scrollbar">
+            <label className="text-sm font-bold text-surface-on-surface-variant uppercase tracking-widest pl-1">Target Courses <span className="text-xs text-surface-on-surface-variant">(Optional)</span></label>
+            <div className={cn(
+              "bg-surface-container rounded-2xl p-4 border max-h-50 overflow-y-auto space-y-2 custom-scrollbar",
+              "border-outline"
+            )}>
               {fetchingData ? (
                 <div className="flex items-center gap-2 py-4 justify-center text-xs text-surface-on-surface-variant">
                   <Loader2 size={16} className="animate-spin" /> Fetching Courses...
                 </div>
+              ) : availableCourses.length === 0 ? (
+                <p className="text-xs text-surface-on-surface-variant py-4 text-center">No courses available</p>
               ) : availableCourses.map((course: any) => (
                 <label key={course._id} className="flex items-center gap-3 p-2 hover:bg-surface-container-high rounded-xl cursor-pointer transition-all">
                   <input
@@ -273,12 +382,19 @@ const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }
           </div>
 
           <div className="space-y-3">
-            <label className="text-sm font-bold text-surface-on-surface-variant uppercase tracking-widest pl-1">Academic Subjects</label>
-            <div className="bg-surface-container rounded-2xl p-4 border border-outline max-h-50 overflow-y-auto space-y-2 custom-scrollbar">
+            <label className="text-sm font-bold text-surface-on-surface-variant uppercase tracking-widest pl-1">
+              Academic Subjects <span className="text-rose-500 font-black">*</span>
+            </label>
+            <div className={cn(
+              "bg-surface-container rounded-2xl p-4 border max-h-50 overflow-y-auto space-y-2 custom-scrollbar",
+              formData.subjects.length === 0 ? "border-rose-300" : "border-outline"
+            )}>
               {fetchingData ? (
                 <div className="flex items-center gap-2 py-4 justify-center text-xs text-surface-on-surface-variant">
                   <Loader2 size={16} className="animate-spin" /> Fetching Subjects...
                 </div>
+              ) : availableSubjects.length === 0 ? (
+                <p className="text-xs text-surface-on-surface-variant py-4 text-center">No subjects available</p>
               ) : availableSubjects.map((subject: any) => (
                 <label key={subject._id} className="flex items-center gap-3 p-2 hover:bg-surface-container-high rounded-xl cursor-pointer transition-all">
                   <input
@@ -305,18 +421,24 @@ const ExamForm: React.FC<ExamFormProps> = ({ collegeId, onSuccess, initialData }
         <div className="pt-4 flex justify-end gap-3">
           <button
             type="button"
+            onClick={resetForm}
             className="px-6 py-3 rounded-xl border border-outline text-surface-on-surface font-medium hover:bg-surface-container transition-colors"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={submitDisabled}
             className="px-8 py-3 bg-primary text-primary-on-primary rounded-xl font-medium shadow-ambient hover:opacity-90 transition-all disabled:opacity-50"
           >
-            {loading ? "Creating..." : "Create Exam"}
+            {submitting ? "Creating..." : "Create Exam"}
           </button>
         </div>
+        {(error || apiError || submitStatus) && (
+          <div className="text-sm mt-2 text-surface-on-surface-variant">
+            {error || apiError || submitStatus}
+          </div>
+        )}
       </form>
     </Card>
   );

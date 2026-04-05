@@ -8,6 +8,7 @@ const router = express.Router();
 
 // --- GET ROUTES (Specific before Parameterized) ---
 router.get("/", protect, examsController.getExams);
+router.get('/stats', protect, examsController.getExamStats);
 router.get("/results", protect, examsController.getResults);
 router.get("/reports/exam-analysis", protect, authorize("SUPER_ADMIN", "COLLEGE_ADMIN", "TEACHER"), examsController.generateExamAnalysis);
 router.get("/hall-tickets/:studentId/:examId", protect, examsController.getHallTicket);

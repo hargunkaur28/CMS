@@ -10,6 +10,8 @@ import Batch from "../models/Batch.js";
 import Notification from "../models/Notification.js";
 import { createAndEmitNotification, getRolePathPrefix } from "../services/notificationService.js";
 
+const buildConversationId = (a: string, b: string) => [String(a), String(b)].sort().join('_');
+
 // ====================================================================
 // ANNOUNCEMENTS
 // ====================================================================
@@ -388,7 +390,7 @@ export const getConversation = async (req: Request, res: Response) => {
     // Auto-mark received messages as read
     await Message.updateMany(
       { senderId: otherUserId, receiverId: userId, isRead: false },
-      { $set: { isRead: true } }
+      { $set: { isRead: true, deliveryStatus: 'read' } }
     );
 
     res.status(200).json({ success: true, data: messages });
@@ -405,17 +407,30 @@ export const getConversation = async (req: Request, res: Response) => {
 export const sendMessage = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { receiverId, content } = req.body;
+    const { receiverId, content, attachmentUrl, attachmentType, attachmentName } = req.body;
 
-    if (!receiverId || !content) {
-      return res.status(400).json({ success: false, message: "receiverId and content are required" });
+    if (!receiverId || (!content && !attachmentUrl)) {
+      return res.status(400).json({ success: false, message: "receiverId and at least one of content/attachment are required" });
     }
+
+    const receiver = await User.findById(receiverId).select('_id role');
+    if (!receiver) {
+      return res.status(404).json({ success: false, message: 'Receiver not found' });
+    }
+
+    const conversationId = buildConversationId(String(user._id), String(receiverId));
 
     const message = new Message({
       senderId: user._id,
       receiverId,
+      receiverRole: receiver.role,
       senderRole: user.role,
-      content,
+      content: String(content || '').trim(),
+      conversationId,
+      attachmentUrl,
+      attachmentType,
+      attachmentName,
+      deliveryStatus: 'delivered',
       collegeId: user.collegeId,
     });
     await message.save();
@@ -470,17 +485,30 @@ export const sendMessage = async (req: Request, res: Response) => {
 export const parentSendMessage = async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const { receiverId, content } = req.body;
+    const { receiverId, content, attachmentUrl, attachmentType, attachmentName } = req.body;
 
-    if (!receiverId || !content) {
-      return res.status(400).json({ success: false, message: "receiverId and content are required" });
+    if (!receiverId || (!content && !attachmentUrl)) {
+      return res.status(400).json({ success: false, message: "receiverId and at least one of content/attachment are required" });
     }
+
+    const receiver = await User.findById(receiverId).select('_id role');
+    if (!receiver) {
+      return res.status(404).json({ success: false, message: 'Receiver not found' });
+    }
+
+    const conversationId = buildConversationId(String(user._id), String(receiverId));
 
     const message = new Message({
       senderId: user._id,
       receiverId,
+      receiverRole: receiver.role,
       senderRole: "PARENT",
-      content,
+      content: String(content || '').trim(),
+      conversationId,
+      attachmentUrl,
+      attachmentType,
+      attachmentName,
+      deliveryStatus: 'delivered',
       collegeId: user.collegeId,
     });
     await message.save();
@@ -573,12 +601,36 @@ export const markAsRead = async (req: Request, res: Response) => {
 
     await Message.findOneAndUpdate(
       { _id: messageId, receiverId: userId },
-      { $set: { isRead: true } }
+      { $set: { isRead: true, deliveryStatus: 'read' } }
     );
 
     res.status(200).json({ success: true });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const uploadMessageAttachment = async (req: Request, res: Response) => {
+  try {
+    const file = (req as any).file;
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const attachmentUrl = `/uploads/messages/${file.filename}`;
+    const attachmentType = file.mimetype;
+    const attachmentName = file.originalname;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        attachmentUrl,
+        attachmentType,
+        attachmentName,
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || 'Failed to upload attachment' });
   }
 };
 

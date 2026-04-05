@@ -12,6 +12,7 @@ export interface IUser extends Document {
   profilePicture?: string;
   phone?: string;
   mustChangePassword?: boolean;
+  isFirstLogin?: boolean;
   dateOfBirth?: Date;
   gender?: 'male' | 'female' | 'other';
   address?: string;
@@ -25,6 +26,16 @@ export interface IUser extends Document {
   department?: string;
   qualification?: string;
   joiningDate?: Date;
+  notificationPreferences?: {
+    email: boolean;
+    sms: boolean;
+    push: boolean;
+  };
+  branding?: {
+    collegeLogo?: string;
+    primaryColor?: string;
+    collegeDisplayName?: string;
+  };
   authentication: {
     two_factor_enabled: boolean;
     two_factor_method: 'email' | 'sms' | 'authenticator_app';
@@ -51,6 +62,7 @@ const UserSchema: Schema = new Schema({
   profilePicture: { type: String },
   phone: { type: String },
   mustChangePassword: { type: Boolean, default: false },
+  isFirstLogin: { type: Boolean, default: true },
   dateOfBirth: { type: Date },
   gender: { type: String, enum: ['male', 'female', 'other'] },
   address: { type: String },
@@ -64,6 +76,16 @@ const UserSchema: Schema = new Schema({
   department: { type: String },
   qualification: { type: String },
   joiningDate: { type: Date },
+  notificationPreferences: {
+    email: { type: Boolean, default: true },
+    sms: { type: Boolean, default: false },
+    push: { type: Boolean, default: true },
+  },
+  branding: {
+    collegeLogo: { type: String },
+    primaryColor: { type: String, default: "#4f46e5" },
+    collegeDisplayName: { type: String },
+  },
   authentication: {
     two_factor_enabled: { type: Boolean, default: false },
     two_factor_method: { type: String, enum: ['email', 'sms', 'authenticator_app'], default: 'email' },
@@ -79,6 +101,13 @@ const UserSchema: Schema = new Schema({
 }, { timestamps: true });
 
 UserSchema.pre('save', async function (this: IUser) {
+  if (this.isModified('role')) {
+    const normalizedRole = String(this.role || '').toUpperCase();
+    if (normalizedRole === 'COLLEGE_ADMIN' && this.isFirstLogin === undefined) {
+      this.isFirstLogin = true;
+    }
+  }
+
   if (!this.isModified('password')) {
     return;
   }

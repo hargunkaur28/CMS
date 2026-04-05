@@ -34,6 +34,25 @@ export const protect = async (req: AuthRequest, res: Response, next: NextFunctio
         return res.status(401).json({ message: 'Not authorized, user no longer exists' });
       }
 
+      const normalizedRole = String(req.user.role || '').toUpperCase();
+      const allowedDuringFirstLogin = [
+        '/api/auth/change-password',
+        '/api/auth/profile',
+        '/api/auth/logout',
+        '/api/settings/public',
+      ];
+      if (
+        normalizedRole === 'COLLEGE_ADMIN' &&
+        req.user.isFirstLogin &&
+        !allowedDuringFirstLogin.some((path) => req.originalUrl.startsWith(path))
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: 'First login password change required',
+          code: 'FIRST_LOGIN_PASSWORD_CHANGE_REQUIRED'
+        });
+      }
+
       activeSession.last_activity = new Date();
       await activeSession.save();
       return next();

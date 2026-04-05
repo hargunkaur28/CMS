@@ -8,6 +8,7 @@ import Student from '../models/Student.js';
 const DEFAULT_STUDENT_PASSWORD = 'Student@123';
 const STUDENT_LOCKOUT_MS = 15 * 1000;
 const PASSWORD_CHANGE_ROLES = new Set(['STUDENT', 'TEACHER', 'PARENT', 'LIBRARIAN']);
+const STRONG_PASSWORD_REGEX = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
 
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -118,7 +119,9 @@ export const loginUser = async (req: Request, res: Response) => {
       is_active: true
     });
 
-    const shouldForcePasswordChange = PASSWORD_CHANGE_ROLES.has(normalizedRole) && Boolean(user.mustChangePassword);
+    const shouldForcePasswordChange =
+      (PASSWORD_CHANGE_ROLES.has(normalizedRole) && Boolean(user.mustChangePassword)) ||
+      (normalizedRole === 'COLLEGE_ADMIN' && Boolean(user.isFirstLogin));
 
     return res.json({
       _id: user._id,
@@ -128,6 +131,7 @@ export const loginUser = async (req: Request, res: Response) => {
       collegeId: user.collegeId,
       profilePicture: user.profilePicture || '',
       mustChangePassword: shouldForcePasswordChange,
+      isFirstLogin: Boolean(user.isFirstLogin),
       token,
       session_timeout: sessionTimeoutMinutes
     });
@@ -141,7 +145,9 @@ export const getUserProfile = async (req: any, res: Response) => {
 
   if (user) {
     const normalizedRole = String(user.role || '').toUpperCase();
-    const shouldForcePasswordChange = PASSWORD_CHANGE_ROLES.has(normalizedRole) && Boolean(user.mustChangePassword);
+    const shouldForcePasswordChange =
+      (PASSWORD_CHANGE_ROLES.has(normalizedRole) && Boolean(user.mustChangePassword)) ||
+      (normalizedRole === 'COLLEGE_ADMIN' && Boolean(user.isFirstLogin));
 
     res.json({
       _id: user._id,
@@ -151,6 +157,7 @@ export const getUserProfile = async (req: any, res: Response) => {
       collegeId: user.collegeId,
       profilePicture: user.profilePicture || '',
       mustChangePassword: shouldForcePasswordChange,
+      isFirstLogin: Boolean(user.isFirstLogin),
     });
   } else {
     res.status(404).json({ message: 'User not found' });
@@ -165,8 +172,11 @@ export const changePassword = async (req: any, res: Response) => {
       return res.status(400).json({ success: false, message: 'currentPassword and newPassword are required' });
     }
 
-    if (String(newPassword).length < 6) {
-      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+    if (!STRONG_PASSWORD_REGEX.test(String(newPassword))) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 8 characters and include an uppercase letter, a number, and a special character'
+      });
     }
 
     const user = await User.findById(req.user?._id);
@@ -185,6 +195,7 @@ export const changePassword = async (req: any, res: Response) => {
 
     user.password = String(newPassword);
     user.mustChangePassword = false;
+    user.isFirstLogin = false;
     await user.save();
 
     return res.status(200).json({ success: true, message: 'Password changed successfully' });
@@ -209,5 +220,123 @@ export const logoutUser = async (req: any, res: Response) => {
     res.status(200).json({ success: true, message: 'Logged out successfully' });
   } catch (error: any) {
     res.status(500).json({ success: false, message: error.message || 'Failed to logout' });
+  }
+};
+
+export const updateUserProfile = async (req: any, res: Response) => {
+  try {
+    const user = await User.findById(req.user?._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const {
+      name,
+      email,
+      phone,
+      profilePicture,
+      notificationPreferences,
+      branding,
+    } = req.body || {};
+
+    if (typeof name === 'string' && name.trim()) user.name = name.trim();
+    if (typeof email === 'string' && email.trim()) user.email = email.trim().toLowerCase();
+    if (typeof phone === 'string') user.phone = phone.trim();
+    if (typeof profilePicture === 'string') user.profilePicture = profilePicture;
+
+    if (notificationPreferences && typeof notificationPreferences === 'object') {
+      user.notificationPreferences = {
+        email: Boolean(notificationPreferences.email),
+        sms: Boolean(notificationPreferences.sms),
+        push: Boolean(notificationPreferences.push),
+      };
+    }
+
+    if (branding && typeof branding === 'object') {
+      user.branding = {
+        collegeLogo: branding.collegeLogo || user.branding?.collegeLogo,
+        primaryColor: branding.primaryColor || user.branding?.primaryColor || '#4f46e5',
+        collegeDisplayName: branding.collegeDisplayName || user.branding?.collegeDisplayName,
+      };
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        profilePicture: user.profilePicture || '',
+        notificationPreferences: user.notificationPreferences,
+        branding: user.branding,
+      },
+    });
+  } catch (error: any) {
+    if (error?.code === 11000) {
+      return res.status(400).json({ success: false, message: 'Email already in use' });
+    }
+    return res.status(500).json({ success: false, message: error.message || 'Failed to update profile' });
+  }
+};
+
+export const getActiveSessions = async (req: any, res: Response) => {
+  try {
+    const sessions = await Session.find({ userId: req.user?._id, is_active: true, expires_at: { $gt: new Date() } })
+      .sort({ last_activity: -1 })
+      .select('_id ip_address user_agent login_timestamp last_activity expires_at');
+
+    return res.status(200).json({ success: true, data: sessions });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || 'Failed to load sessions' });
+  }
+};
+
+export const revokeSession = async (req: any, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    const updated = await Session.findOneAndUpdate(
+      { _id: sessionId, userId: req.user?._id, is_active: true },
+      { $set: { is_active: false, last_activity: new Date() } },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ success: false, message: 'Session not found' });
+    }
+
+    return res.status(200).json({ success: true, message: 'Session revoked' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || 'Failed to revoke session' });
+  }
+};
+
+export const logoutAllSessions = async (req: any, res: Response) => {
+  try {
+    await Session.updateMany(
+      { userId: req.user?._id, is_active: true },
+      { $set: { is_active: false, last_activity: new Date() } }
+    );
+
+    return res.status(200).json({ success: true, message: 'Logged out from all devices' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || 'Failed to logout all sessions' });
+  }
+};
+
+export const uploadUserAsset = async (req: any, res: Response) => {
+  try {
+    const file = req.file;
+    if (!file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const fileUrl = `/uploads/profile-assets/${file.filename}`;
+    return res.status(200).json({ success: true, data: { url: fileUrl, name: file.originalname, mime: file.mimetype } });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, message: error.message || 'Upload failed' });
   }
 };

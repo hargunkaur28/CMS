@@ -121,17 +121,29 @@ export const assignStudentToBatch = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Student and batch must belong to the same college' });
     }
 
-    // Update student's top-level batchId
+    const studentObjectId = new mongoose.Types.ObjectId(String(studentId));
+
+    // Remove student from any previous batch rosters in the same college scope.
+    await Batch.updateMany(
+      {
+        ...(isSuperAdmin ? { collegeId: batch.collegeId } : { collegeId: adminUser?.collegeId }),
+        students: studentObjectId,
+        _id: { $ne: batch._id }
+      },
+      { $pull: { students: studentObjectId } }
+    );
+
+    // Update student's top-level batchId.
     await Student.findOneAndUpdate(
       { _id: studentId, ...(isSuperAdmin ? {} : { collegeId: adminUser?.collegeId }) },
       { batchId, collegeId: batch.collegeId }
     );
 
-    // Push to batch.students if not already there
-    if (!batch.students.map((s: any) => s.toString()).includes(studentId.toString())) {
-      batch.students.push(studentId);
-      await batch.save();
-    }
+    // Add to target batch roster only once.
+    await Batch.updateOne(
+      { _id: batch._id },
+      { $addToSet: { students: studentObjectId } }
+    );
 
     res.status(200).json({
       success: true,
@@ -248,7 +260,7 @@ export const bulkAssignStudentsToBatch = async (req: Request, res: Response) => 
       return res.status(403).json({ success: false, message: 'One or more students do not belong to the target college scope' });
     }
 
-    // Explicit check requested by user: fail if any student is already in THAT batch
+    // Explicit check: fail if any student is already in THIS batch.
     const existingStudentIds = new Set(batch.students.map((s: any) => s.toString()));
     const duplicates = studentIds.filter((id: string) => existingStudentIds.has(id.toString()));
     
@@ -256,14 +268,29 @@ export const bulkAssignStudentsToBatch = async (req: Request, res: Response) => 
       return res.status(400).json({ success: false, message: 'One or more selected students are already assigned to this batch.' });
     }
 
-    // Update students' top-level batchId
+    const studentObjectIds = studentIds.map((id: string) => new mongoose.Types.ObjectId(String(id)));
+
+    // Remove students from any previous batch rosters within same college scope.
+    await Batch.updateMany(
+      {
+        ...(isSuperAdmin ? { collegeId: batch.collegeId } : { collegeId: adminUser?.collegeId }),
+        students: { $in: studentObjectIds },
+        _id: { $ne: batch._id }
+      },
+      { $pull: { students: { $in: studentObjectIds } } }
+    );
+
+    // Update students' top-level batchId.
     await Student.updateMany(
       { _id: { $in: studentIds }, ...(isSuperAdmin ? { collegeId: batch.collegeId } : { collegeId: adminUser?.collegeId }) },
       { $set: { batchId: batchId, collegeId: batch.collegeId } }
     );
 
-    batch.students.push(...studentIds);
-    await batch.save();
+    // Add students to target batch roster uniquely.
+    await Batch.updateOne(
+      { _id: batch._id },
+      { $addToSet: { students: { $each: studentObjectIds } } }
+    );
 
     res.status(200).json({
       success: true,

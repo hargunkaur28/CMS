@@ -1,6 +1,8 @@
 import express from "express";
 import { protect, authorize } from "../middleware/auth.js";
 import multer from "multer";
+import path from 'path';
+import fs from 'fs';
 import {
   createEnquiry,
   getEnquiries,
@@ -42,18 +44,21 @@ import {
   removeBatchSection,
   getBatchStudents,
   removeStudentFromBatch,
-  assignStudentsToSection
+  assignStudentsToSection,
+  assignTeacherToSection
 } from "../controllers/academicsController.js";
 import {
   getAttendanceOverview,
   getAttendanceReports,
   getShortageList,
   getStudentWiseAttendance,
+  getStudentAttendanceDetail,
   adminOverrideAttendance
 } from "../controllers/adminAttendanceController.js";
 import {
   createExam,
   getExams,
+  getExamStats,
   getExamById,
   updateExam,
   publishResults,
@@ -72,15 +77,18 @@ import {
   getAnnouncements,
   createAnnouncement,
   getMessages,
-  sendMessage
+  sendMessage,
+  getConversation,
+  uploadMessageAttachment,
 } from "../controllers/communicationController.js";
+import { updateUserProfile } from "../controllers/authController.js";
 import {
   getNaacDocuments,
   uploadNaacDocument,
   updateDocumentStatus,
   getComplianceStats
 } from "../controllers/naacController.js";
-import { getDashboardStats } from "../controllers/adminDashboardController.js";
+import { getDashboardStats, getEnrollmentActivity } from "../controllers/adminDashboardController.js";
 import {
   assignTeacher,
   assignStudentToBatch,
@@ -99,6 +107,20 @@ import {
 
 const router = express.Router();
 const uploadCsv = multer({ dest: "uploads/temp/" });
+const messageUploadDir = path.join(process.cwd(), 'uploads', 'messages');
+if (!fs.existsSync(messageUploadDir)) {
+  fs.mkdirSync(messageUploadDir, { recursive: true });
+}
+const messageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, messageUploadDir),
+    filename: (_req, file, cb) => {
+      const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      cb(null, `${unique}${path.extname(file.originalname)}`);
+    }
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 // All routes require protection and Admin authorization (uppercase normalized in middleware)
 router.use(protect);
@@ -109,6 +131,8 @@ router.use(authorize("COLLEGE_ADMIN", "SUPER_ADMIN"));
 
 // Dashboard Stats
 router.get("/stats", getDashboardStats);
+router.get('/dashboard/enrollment-activity', getEnrollmentActivity);
+router.patch('/profile', updateUserProfile);
 
 // Module 0: Academic Assignments
 router.get("/assignments", getAssignments);
@@ -161,6 +185,7 @@ router.put("/batches/:id", updateBatch);
 router.get("/batches/:id/students", getBatchStudents);
 router.delete("/batches/:id/students/:studentId", removeStudentFromBatch);
 router.put("/batches/:id/sections/:section/students", assignStudentsToSection);
+router.put("/batches/:id/sections/:section/teacher", assignTeacherToSection);
 router.post("/batches/:id/sections", addBatchSection);
 router.delete("/batches/:id/sections/:section", removeBatchSection);
 
@@ -169,10 +194,12 @@ router.get("/attendance/overview", getAttendanceOverview);
 router.get("/attendance/reports", getAttendanceReports);
 router.get("/attendance/shortage", getShortageList);
 router.get("/attendance/student-wise", getStudentWiseAttendance);
+router.get("/attendance/student/:studentId", getStudentAttendanceDetail);
 router.put("/attendance/override", adminOverrideAttendance);
 
 // Module 6: Exams & Results
 router.get("/exams", getExams);
+router.get('/exams/stats', getExamStats);
 router.get("/exams/:examId", getExamById);
 router.post("/exams", createExam);
 router.put("/exams/:examId", updateExam);
@@ -192,7 +219,9 @@ router.get("/fees/summary", getFinancialSummary);
 router.get("/communication/announcements", getAnnouncements);
 router.post("/communication/announcements", createAnnouncement);
 router.get("/communication/messages", getMessages);
+router.get('/communication/messages/:otherUserId', getConversation);
 router.post("/communication/messages", sendMessage);
+router.post('/communication/messages/upload', messageUpload.single('file'), uploadMessageAttachment);
 
 // Module 9: NAAC Compliance
 router.get("/naac/documents", getNaacDocuments);
