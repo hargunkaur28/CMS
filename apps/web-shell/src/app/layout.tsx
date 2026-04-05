@@ -71,6 +71,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    const isLandingPage = pathname === "/";
     const isLoginPage = pathname === "/login";
     const isChangePasswordPage = pathname === "/change-password";
     const isAuthPage = isLoginPage || isChangePasswordPage;
@@ -88,16 +89,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       return;
     }
 
-    if (!token && !isLoginPage && !isChangePasswordPage) {
+    if (!token && !isLoginPage && !isChangePasswordPage && !isLandingPage) {
       router.push("/login");
     } else if (token && isLoginPage) {
       router.push(shouldForcePasswordChange ? "/change-password" : "/");
     } else if (token && shouldForcePasswordChange && !isChangePasswordPage) {
       router.push("/change-password");
-    } else if (token && !isAuthPage && role === 'SUPER_ADMIN' && !pathname.startsWith('/super-admin')) {
+    } else if (token && !isAuthPage && !isLandingPage && role === 'SUPER_ADMIN' && !pathname.startsWith('/super-admin')) {
       router.replace('/super-admin/dashboard');
       return;
-    } else if (token && !isAuthPage && role === 'COLLEGE_ADMIN' && pathname.startsWith('/super-admin')) {
+    } else if (token && !isAuthPage && !isLandingPage && role === 'COLLEGE_ADMIN' && pathname.startsWith('/super-admin')) {
       router.replace('/admin');
       return;
     }
@@ -198,7 +199,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   const isLoginPage = pathname === "/login";
   const isChangePasswordPage = pathname === "/change-password";
+  const isLandingPage = pathname === "/";
   const isAuthPage = isLoginPage || isChangePasswordPage;
+  const isPublicShellPage = isAuthPage || isLandingPage;
   const showBackendBanner = !isAuthPage && backendChecked && !backendOnline;
   const showAccessBanner = !isAuthPage && Boolean(portalNotice);
   const themeToggleTopClass = showBackendBanner && showAccessBanner
@@ -255,7 +258,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           )}
 
-          {!isAuthPage ? (
+          {!isAuthPage && !isLandingPage ? (
             <button
               type="button"
               onClick={toggleTheme}
@@ -274,7 +277,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <div className="h-screen w-full flex items-center justify-center bg-slate-50">
                <div className="w-2 h-6 bg-indigo-500 rounded-full animate-bounce" />
             </div>
-          ) : isAuthPage ? (
+          ) : isPublicShellPage ? (
             children
           ) : isPortalRoute ? (
             /* Specialized Portals (Admin/Teacher) handle their own sidebars */

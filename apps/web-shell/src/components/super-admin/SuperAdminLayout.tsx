@@ -66,7 +66,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="super-admin-shell flex h-screen bg-gray-50">
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-gradient-to-b from-gray-900 to-gray-800 text-white transition-all duration-300 flex flex-col shadow-lg`}>
         <div className="p-6 flex items-center justify-between">
@@ -101,7 +101,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between shadow-sm">
+        <header className="super-admin-topbar bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between shadow-sm">
           <div>
             <h2 className="text-2xl font-bold text-gray-900">Platform Administration</h2>
             <p className="text-sm text-gray-600">Manage colleges, users, and system settings</p>
@@ -111,7 +111,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
           <div className="relative">
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
+              className="super-admin-user-trigger flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
             >
               <UserAvatar name={user?.name || 'Super Admin'} imageUrl={user?.profilePicture} size={40} />
               <div className="text-left hidden sm:block">
@@ -122,7 +122,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             </button>
 
             {userMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+              <div className="super-admin-user-menu absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                 <button
                   onClick={() => {
                     setUserMenuOpen(false);

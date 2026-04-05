@@ -39,9 +39,17 @@ import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const [role, setRole] = React.useState<string | null>(null);
+  const [isVisitor, setIsVisitor] = React.useState<boolean | null>(null);
   const router = useRouter();
 
   React.useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setIsVisitor(true);
+      return;
+    }
+
+    setIsVisitor(false);
     const userRole = getSessionUser()?.role;
     setRole(userRole);
     
@@ -56,6 +64,18 @@ export default function DashboardPage() {
       router.push("/librarian");
     }
   }, [router]);
+
+  if (isVisitor === null) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-slate-50">
+        <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isVisitor) {
+    return <PublicLanding />;
+  }
 
   // Loading or Redirecting State
   if (!role || role === "COLLEGE_ADMIN" || role === "SUPER_ADMIN" || role === "TEACHER" || role === "LIBRARIAN") return (
@@ -74,6 +94,64 @@ export default function DashboardPage() {
     default:
       return null;
   }
+}
+
+function PublicLanding() {
+  return (
+    <div className="min-h-screen bg-[#080719] text-white overflow-x-hidden">
+      <header className="sticky top-0 z-30 border-b border-white/10 backdrop-blur bg-[#080719]/80">
+        <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-indigo-600 shadow-[0_0_24px_rgba(67,56,247,0.5)] grid place-items-center font-bold">✦</div>
+            <div className="font-black tracking-tight">NgCMS <span className="text-indigo-400">ERP</span></div>
+          </div>
+          <Link href="/login" className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold hover:bg-indigo-500 transition-colors">
+            Sign In
+          </Link>
+        </div>
+      </header>
+
+      <section className="relative px-6 pt-24 pb-20 text-center">
+        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_60%_50%_at_50%_0%,rgba(67,56,247,0.4),transparent_70%)]" />
+        <div className="mx-auto max-w-4xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-indigo-400/40 bg-indigo-500/15 px-4 py-1 text-xs uppercase tracking-[0.15em] text-indigo-200">
+            <span className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse" />
+            St. Xavier's Digital Curator
+          </div>
+          <h1 className="mt-7 text-5xl md:text-7xl font-black tracking-tight leading-[0.95]">
+            The <span className="text-indigo-400">Intelligent</span><br />Campus OS
+          </h1>
+          <p className="mt-6 mx-auto max-w-2xl text-slate-300 text-base md:text-lg leading-relaxed">
+            Unified academics, attendance, exams, finance, library, and communication across student, parent, teacher, and admin portals.
+          </p>
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            <Link href="/login" className="rounded-full bg-indigo-600 px-6 py-3 font-semibold hover:bg-indigo-500 transition-colors">
+              Initialize Connection
+            </Link>
+            <a href="#modules" className="rounded-full border border-white/25 px-6 py-3 font-semibold hover:bg-white/10 transition-colors">
+              Explore Features
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <section id="modules" className="mx-auto max-w-6xl px-6 pb-20 grid gap-4 md:grid-cols-3">
+        {[
+          ["Smart Attendance", "Real-time shortage alerts and parent notifications."],
+          ["Exams & Results", "Mark entry, verification, and secure publish flow."],
+          ["Timetable", "Role-aware schedule views with instant propagation."],
+          ["Subjects & Materials", "Syllabus and references in one searchable hub."],
+          ["Finance & Fees", "Clear fee tracking for student, parent, and admin."],
+          ["Communication", "Announcements and message channels across roles."],
+        ].map(([title, desc]) => (
+          <div key={title} className="rounded-3xl border border-white/10 bg-white/5 p-6 hover:border-indigo-400/60 transition-colors">
+            <h3 className="text-lg font-bold text-white">{title}</h3>
+            <p className="mt-2 text-sm text-slate-300">{desc}</p>
+          </div>
+        ))}
+      </section>
+    </div>
+  );
 }
 
 function AdminDashboard() {

@@ -5,6 +5,8 @@ import {
   Sparkles, 
   Mail, 
   Lock, 
+  Moon,
+  Sun,
   Loader2, 
   ChevronRight, 
   AlertCircle,
@@ -31,6 +33,24 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  React.useEffect(() => {
+    const storedTheme = localStorage.getItem("portal_theme");
+    const systemPrefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const initialTheme = storedTheme === "dark" || storedTheme === "light"
+      ? (storedTheme as "light" | "dark")
+      : (systemPrefersDark ? "dark" : "light");
+    setTheme(initialTheme);
+    document.documentElement.classList.toggle("theme-dark", initialTheme === "dark");
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("portal_theme", nextTheme);
+    document.documentElement.classList.toggle("theme-dark", nextTheme === "dark");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +103,16 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen w-full bg-slate-50 flex items-center justify-center p-6 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-indigo-100/50 via-slate-50 to-slate-50">
+      <button
+        type="button"
+        onClick={toggleTheme}
+        className="fixed top-4 right-4 z-40 w-10 h-10 rounded-xl bg-white/90 border border-slate-200 text-slate-700 shadow-lg hover:bg-white transition-all flex items-center justify-center"
+        aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      >
+        {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+      </button>
+
       <div className="w-full max-w-md relative z-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
         <div className="flex flex-col items-center mb-10 group">
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-indigo-600/30 shadow-xl transition-all group-hover:scale-105 duration-500">
@@ -111,7 +141,6 @@ export default function LoginPage() {
             <div className="space-y-2">
               <div className="flex items-center justify-between pl-1 pr-1">
                 <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Security Protocol</label>
-                <button type="button" className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 hover:underline">Reset Key?</button>
               </div>
               <div className="relative group">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />

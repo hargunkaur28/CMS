@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 :root {
   --background: #ffffff;
@@ -40,6 +41,19 @@ html.theme-dark .bg-slate-100 {
   background-color: #1e293b !important;
 }
 
+html.theme-dark .bg-gray-50,
+html.theme-dark .bg-gray-100 {
+  background-color: #0b1220 !important;
+}
+
+html.theme-dark .bg-gray-800 {
+  background-color: #111827 !important;
+}
+
+html.theme-dark .bg-gray-900 {
+  background-color: #020617 !important;
+}
+
 html.theme-dark .text-slate-900 {
   color: #e5e7eb !important;
 }
@@ -51,9 +65,27 @@ html.theme-dark .text-slate-400 {
   color: #cbd5e1 !important;
 }
 
+html.theme-dark .text-gray-900 {
+  color: #e5e7eb !important;
+}
+
+html.theme-dark .text-gray-800,
+html.theme-dark .text-gray-700,
+html.theme-dark .text-gray-600,
+html.theme-dark .text-gray-500,
+html.theme-dark .text-gray-400 {
+  color: #cbd5e1 !important;
+}
+
 html.theme-dark .border-slate-100,
 html.theme-dark .border-slate-200,
 html.theme-dark .border-slate-300 {
+  border-color: #334155 !important;
+}
+
+html.theme-dark .border-gray-100,
+html.theme-dark .border-gray-200,
+html.theme-dark .border-gray-300 {
   border-color: #334155 !important;
 }
 
@@ -89,6 +121,29 @@ html.theme-dark .admin-search-input {
 
 html.theme-dark .admin-search-input::placeholder {
   color: #94a3b8 !important;
+}
+
+html.theme-dark .super-admin-shell {
+  background-color: #020617 !important;
+}
+
+html.theme-dark .super-admin-topbar {
+  background-color: rgba(2, 6, 23, 0.92) !important;
+  border-bottom-color: #334155 !important;
+}
+
+html.theme-dark .super-admin-user-trigger:hover {
+  background-color: rgba(30, 41, 59, 0.7) !important;
+}
+
+html.theme-dark .super-admin-user-menu {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+html.theme-dark .hover\:bg-gray-50:hover,
+html.theme-dark .hover\:bg-gray-100:hover {
+  background-color: rgba(30, 41, 59, 0.8) !important;
 }
 
 @layer utilities {
