@@ -52,7 +52,7 @@ export default function MarksEntryTable({
   const handleInputChange = (studentId: string, field: 'marks' | 'remarks', value: string) => {
     setEntries(prev => ({
       ...prev,
-      [studentId]: prev[studentId] ? { ...prev[studentId], [field]: value, status: 'idle' } : { marks: "", remarks: "", [field]: value, status: 'idle' }
+      [studentId]: prev[studentId] ? { ...prev[studentId], [field]: value, status: 'idle' } : { marks: "", remarks: "", [field]: value, status: 'idle', isEditing: false }
     }));
   };
 

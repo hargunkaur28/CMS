@@ -56,10 +56,9 @@ export default function TeacherMyTimetablePage() {
     if (entries.length === 0) return;
     
     // Create CSV content
-    const headers = ['Day', 'Period', 'Time', 'Subject', 'Batch', 'Section', 'Room'];
+    const headers = ['Day', 'Time', 'Subject', 'Batch', 'Section', 'Room'];
     const rows = entries.map(e => [
       e.day || '',
-      e.period || '',
       `${e.startTime} - ${e.endTime}`,
       e.subject || '',
       e.batchId?.name || '',

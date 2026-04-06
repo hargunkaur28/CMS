@@ -30,7 +30,7 @@ export default function MarksPage() {
   const [loading, setLoading] = useState(true);
   const [fetchingBatches, setFetchingBatches] = useState(false);
   const [fetchingStudents, setFetchingStudents] = useState(false);
-  const [submittedMarks, setSubmittedMarks] = useState<Record<string, { marks: number; remarks: string }>>({});
+  const [submittedMarks, setSubmittedMarks] = useState<Record<string, { marks: number; remarks: string; markId: string }>>({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
