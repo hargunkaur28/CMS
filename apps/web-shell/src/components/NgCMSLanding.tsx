@@ -263,9 +263,12 @@ body{background:var(--bg);color:var(--slate);font-family:'Plus Jakarta Sans',san
 @media(max-width:600px){
   .m-sidebar{display:none}
   .screen-inner{grid-template-columns:1fr}
-  .features-grid{grid-template-columns:1fr}
-  .stats-row{align-items:center;flex-direction:column}
-  .stat-item{border-bottom:1px solid var(--border);border-right:none;width:100%}
+  .features-grid{grid-template-columns:1fr 1fr}
+  .stats-row{flex-direction:row;flex-wrap:nowrap}
+  .stat-item{border-right:1px solid var(--border);border-bottom:none;flex:1 1 0;min-width:0;padding:1.2rem .5rem}
+  .stat-item:last-child{border-right:none}
+  .stat-num{font-size:1.6rem}
+  .stat-label{font-size:.65rem}
   .cta-box{padding:3rem 1.5rem}
   .hero-stats{gap:1.5rem}
 }
@@ -303,7 +306,7 @@ export const Counter: React.FC<{ to: number; suffix?: string }> = ({ to, suffix 
 // Marquee
 // ─────────────────────────────────────────
 export const Marquee: React.FC = () => {
-  const items = ["Academics", "Attendance", "Exams & Results", "Timetable", "Placements", "Digital Library", "Communication", "Admin Control"];
+  const items = ["Admissions", "Student Records", "Academics & Timetable", "Attendance", "Exams & Results", "Fees & Payments", "Communication", "NAAC Compliance", "Library", "Placements"];
   return (
     <div className="marquee-wrap">
       <div className="marquee-track">
@@ -386,7 +389,7 @@ export const HeroSection: React.FC = () => {
         <motion.div className="hero-badge"
           initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}>
-          <span className="badge-dot" /> St. Xavier's Digital Curator
+          <span className="badge-dot" /> Admissions to Placements · End-to-End ERP
         </motion.div>
         <motion.h1 className="hero-h1"
           initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
@@ -397,7 +400,7 @@ export const HeroSection: React.FC = () => {
         <motion.p className="hero-sub"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}>
-          NgCMS ERP unifies academics, attendance, exams, placements, and communication — tailored for every role, powered by AI.
+          NgCMS ERP streamlines every administrative, academic, and operational workflow — from the first student enquiry to final placement — for modern higher education institutions.
         </motion.p>
         <motion.div className="hero-actions"
           initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
@@ -409,19 +412,6 @@ export const HeroSection: React.FC = () => {
             Explore Features
           </motion.a>
         </motion.div>
-        <motion.div className="hero-stats"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9, duration: 0.5 }}>
-          {[["60+", "Students"], ["4", "Roles"], ["99%", "Uptime"]].map(([val, label]) => (
-            <div key={label} className="hero-stat">
-              <strong>{val}</strong>
-              <span>{label}</span>
-            </div>
-          ))}
-        </motion.div>
-      </motion.div>
-      <motion.div className="hero-scroll-hint"
-        animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
-        <div className="scroll-line" /> scroll
       </motion.div>
     </section>
   );
@@ -435,10 +425,10 @@ export const StatsBar: React.FC = () => (
     <Marquee />
     <div className="stats-row">
       {[
-        { to: 12, suffix: "+", label: "Roles Supported" },
-        { to: 5000, suffix: "+", label: "Student Profiles" },
+        { to: 4, suffix: "", label: "Role Portals" },
+        { to: 10, suffix: "+", label: "Core Modules" },
         { to: 99, suffix: "%", label: "Uptime SLA" },
-        { to: 6, suffix: "", label: "Core Modules" },
+        { to: 100, suffix: "%", label: "NAAC Ready" },
       ].map((s, i) => (
         <motion.div key={i} className="stat-item"
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
@@ -463,9 +453,9 @@ export const MockupSection: React.FC = () => {
 
   const cards = [
     { label: "Total Students", num: "60", sub: "↑ Active Roll", cls: "" },
-    { label: "Classes Today", num: "0", sub: "Next: 11:30 AM", cls: "grey" },
-    { label: "Shortage Alerts", num: "0", sub: "Below 75%", cls: "alert" },
-    { label: "Assignments", num: "1", sub: "Ungraded", cls: "grey" },
+    { label: "Pending Admissions", num: "4", sub: "Awaiting Approval", cls: "grey" },
+    { label: "Shortage Alerts", num: "3", sub: "Below 75%", cls: "alert" },
+    { label: "Fee Defaulters", num: "2", sub: "Overdue This Month", cls: "grey" },
   ];
 
   return (
@@ -487,17 +477,17 @@ export const MockupSection: React.FC = () => {
             {/* Sidebar */}
             <div className="m-sidebar">
               <div className="m-brand">NgCMS ERP<small>AI POWERED ERP</small></div>
-              {["Dashboard", "Students"].map(item => (
+              {["Dashboard", "Students", "Admissions"].map(item => (
                 <div key={item} className={`m-item${item === "Dashboard" ? " active" : ""}`}>
                   <div className="m-item-icon" />{item}
                 </div>
               ))}
               <div className="m-section">ACADEMIC HUB</div>
-              {["Subjects", "Timetable", "Attendance", "Exams"].map(item => (
+              {["Academics", "Attendance", "Exams", "Fees"].map(item => (
                 <div key={item} className="m-item"><div className="m-item-icon" />{item}</div>
               ))}
-              <div className="m-section">CAMPUS LIFE</div>
-              {["Library", "Placement"].map(item => (
+              <div className="m-section">CAMPUS</div>
+              {["Library", "Placements", "NAAC"].map(item => (
                 <div key={item} className="m-item"><div className="m-item-icon" />{item}</div>
               ))}
               <div className="m-avatar">
@@ -752,12 +742,16 @@ export const ChartsSection: React.FC = () => (
 // ─────────────────────────────────────────
 export const FeaturesSection: React.FC = () => {
   const features = [
-    { icon: "📋", title: "Smart Attendance", desc: "Real-time tracking with shortage alerts and automated parent notifications below 75%.", color: "#2563EB" },
-    { icon: "📝", title: "Exams & Results", desc: "End-to-end exam lifecycle — mark entry, verification, and secure admin-approved publishing.", color: "#7C3AED" },
-    { icon: "📚", title: "Subjects & Materials", desc: "Upload syllabi and references. Students access everything from one searchable hub.", color: "#0EA5E9" },
-    { icon: "🗓️", title: "Live Timetable", desc: "Role-aware schedule views with instant real-time propagation across all users.", color: "#16A34A" },
-    { icon: "💬", title: "Communication Hub", desc: "Announcements, messages, and notice boards connecting every stakeholder securely.", color: "#D97706" },
-    { icon: "🎓", title: "Placement Portal", desc: "Track drives, applications, and offer letters. Full pipeline for placement cells.", color: "#EC4899" },
+    { icon: "🏫", title: "Admissions Management", desc: "Capture enquiries, manage customizable application forms with Cloudinary document uploads, and automate seat & batch allocation workflows.", color: "#2563EB" },
+    { icon: "🎒", title: "Student Information System", desc: "Centralized profiles with unique IDs, parent linking, document storage, and bulk CSV imports. Full lifecycle tracking with advanced search & filters.", color: "#7C3AED" },
+    { icon: "🗓️", title: "Academics & Timetable", desc: "Configure courses, subjects, and batch systems. Schedule faculty with built-in conflict detection — zero overlapping sessions guaranteed.", color: "#0EA5E9" },
+    { icon: "📋", title: "Attendance Management", desc: "Daily subject-wise attendance with automatic percentage calculation, shortage alerts below 75%, leave request processing, and monthly reports.", color: "#16A34A" },
+    { icon: "📝", title: "Exams & Results", desc: "Configure internal/external exams, generate hall tickets, enter marks, auto-calculate grades, track backlogs, and publish official transcripts.", color: "#D97706" },
+    { icon: "💰", title: "Fees & Payments", desc: "Course-wise fee structures, payment processing with Razorpay integration, receipt generation, financial reports, and automated fine calculation for defaulters.", color: "#EC4899" },
+    { icon: "💬", title: "Communication System", desc: "System-wide announcements, event alerts, in-app notifications, and direct messaging — keeping admins, faculty, students, and parents fully connected.", color: "#F97316" },
+    { icon: "🏛️", title: "NAAC & Compliance", desc: "Multi-year repositories for student data, faculty qualifications, course outcomes, and attendance. Export compliance reports as Excel or PDF for audits.", color: "#8B5CF6" },
+    { icon: "📖", title: "Library Management", desc: "Digitize book inventory with ISBN/metadata, manage issue & return workflows, track fines, and generate category-wise distribution reports for NAAC.", color: "#0D9488" },
+    { icon: "🤝", title: "Training & Placements", desc: "Onboard corporate partners, manage recruitment drives, coordinate interviews, track placed vs. unplaced students, and export placement analytics for NAAC.", color: "#BE185D" },
   ];
 
   return (
@@ -766,7 +760,7 @@ export const FeaturesSection: React.FC = () => {
         <motion.div className="features-label"
           initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }} transition={{ duration: 0.6 }}>
-          <div className="section-tag">Core Modules</div>
+          <div className="section-tag">10 Core Modules</div>
           <h2 className="section-title">Everything your <span className="accent">campus needs</span></h2>
         </motion.div>
         <div className="features-grid">
@@ -774,7 +768,7 @@ export const FeaturesSection: React.FC = () => {
             <motion.div key={i} className="feat-card"
               initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }} transition={{ delay: 0.06 * i, duration: 0.5 }}>
-              <div className="feat-num">0{i + 1}</div>
+              <div className="feat-num">{String(i + 1).padStart(2, '0')}</div>
               <div className="feat-icon" style={{ background: f.color + "18" }}>{f.icon}</div>
               <h3 className="feat-title">{f.title}</h3>
               <p className="feat-desc">{f.desc}</p>
@@ -793,10 +787,11 @@ export const FeaturesSection: React.FC = () => {
 export const RolesSection: React.FC = () => {
   const [active, setActive] = useState(0);
   const roles = [
-    { emoji: "🏛️", name: "Administrator", tag: "Full Access", color: "#2563EB", desc: "Complete institutional oversight — manage users, approve results, configure modules, and monitor the entire campus ecosystem.", perks: ["User & Role Management", "Result Approval Workflow", "System Configuration", "Analytics & Reports", "Full Module Access"] },
-    { emoji: "👨‍🏫", name: "Teacher", tag: "Academic Access", color: "#7C3AED", desc: "Your classroom, digitized. Mark attendance, upload materials, grade assignments, and publish verified results for your subjects.", perks: ["Attendance Marking", "Material Uploads", "Assignment Grading", "Result Publishing", "Timetable View"] },
-    { emoji: "🎒", name: "Student", tag: "Student Portal", color: "#0EA5E9", desc: "Everything you need, one place. Track attendance, download materials, check results, and manage your placement journey.", perks: ["Attendance Tracking", "Material Downloads", "Result Viewing", "Placement Applications", "Communication"] },
-    { emoji: "👨‍👩‍👧", name: "Parent", tag: "Guardian View", color: "#16A34A", desc: "Stay connected with your ward's academic journey. Get instant alerts and monitor performance without stepping into the office.", perks: ["Attendance Monitoring", "Result Viewing", "Shortage Alerts", "Communication", "Progress Reports"] },
+    { emoji: "🏛️", name: "Administrator", tag: "Full Access", color: "#2563EB", desc: "Complete institutional control — manage admissions, approve results, configure fee structures, oversee NAAC compliance, and monitor the entire campus ecosystem from a unified dashboard.", perks: ["Admissions & Seat Allocation", "Result Approval Workflow", "Fee & Defaulter Management", "NAAC Compliance Exports", "Full Module Configuration"] },
+    { emoji: "👨‍🏫", name: "Teacher", tag: "Academic Access", color: "#7C3AED", desc: "Your classroom, digitized. Mark subject-wise attendance, enter exam marks, grade assignments, upload study materials, and publish verified results — all from one portal.", perks: ["Subject-wise Attendance Marking", "Marks Entry & Grade Calculation", "Material & Syllabus Uploads", "Hall Ticket Generation", "Timetable & Schedule View"] },
+    { emoji: "🎒", name: "Student", tag: "Student Portal", color: "#0EA5E9", desc: "Everything you need, in one place. Monitor your attendance, download study materials, check results, request library books, and apply to placement drives directly.", perks: ["Attendance & Shortage Alerts", "Results & Transcript Access", "Library Book Requests", "Placement Drive Applications", "Fee Receipts & History"] },
+    { emoji: "👨‍👩‍👧", name: "Parent", tag: "Guardian View", color: "#16A34A", desc: "Stay connected with your child's academic journey. Receive real-time shortage notifications, monitor results, and track fee status — without a single office visit.", perks: ["Real-time Attendance Monitoring", "Result & Grade Viewing", "Shortage Alerts (< 75%)", "Fee Payment Status", "Direct Communication Channel"] },
+    { emoji: "📚", name: "Librarian", tag: "Library Access", color: "#0D9488", desc: "Manage the entire library digitally. Add and catalog books with full metadata, approve student issue requests, track returns and overdue items, collect fines, and generate NAAC-ready usage reports.", perks: ["Book Inventory Management", "Issue & Return Approval", "Overdue & Fine Tracking", "Category & Search Management", "NAAC Usage Reports Export"] },
   ];
 
   return (
