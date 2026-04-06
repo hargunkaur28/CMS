@@ -202,8 +202,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const isLandingPage = pathname === "/";
   const isAuthPage = isLoginPage || isChangePasswordPage;
   const isPublicShellPage = isAuthPage || isLandingPage;
-  const showBackendBanner = !isAuthPage && backendChecked && !backendOnline;
-  const showAccessBanner = !isAuthPage && Boolean(portalNotice);
+  const showBackendBanner = !isPublicShellPage && backendChecked && !backendOnline;
+  const showAccessBanner = !isPublicShellPage && Boolean(portalNotice);
   const themeToggleTopClass = showBackendBanner && showAccessBanner
     ? "top-28"
     : showBackendBanner || showAccessBanner
@@ -234,7 +234,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en">
-      <body className={`bg-slate-50 text-slate-900 ${!isAuthPage ? "h-screen flex" : ""} ${showBackendBanner ? "pt-12" : ""}`}>
+      <body className={`bg-slate-50 text-slate-900 ${!isPublicShellPage ? "h-screen flex" : ""} ${showBackendBanner ? "pt-12" : ""}`}>
         <SocketProvider>
           {showBackendBanner && (
             <div className="fixed inset-x-0 top-0 z-100 flex items-center justify-between gap-3 bg-rose-600 px-4 py-2 text-white shadow-lg">

@@ -34,6 +34,7 @@ import { fetchTodayTimetable as fetchTeacherTimetable, fetchTeacherDashboardStat
 import { getExams } from "@/lib/api/exams";
 import { cn } from "@/lib/utils";
 import { getSessionUser } from "@/lib/session";
+import NgCMSLandingPage from "@/components/NgCMSLanding";
 
 import { useRouter } from "next/navigation";
 
@@ -74,7 +75,7 @@ export default function DashboardPage() {
   }
 
   if (isVisitor) {
-    return <PublicLanding />;
+    return <NgCMSLandingPage />;
   }
 
   // Loading or Redirecting State
