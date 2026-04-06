@@ -51,8 +51,9 @@ body{background:var(--bg);color:var(--slate);font-family:'Plus Jakarta Sans',san
 .nav.nav-scrolled{box-shadow:var(--shadow-sm)}
 .nav-logo{align-items:center;display:flex;gap:.65rem}
 .nav-logo-icon{background:var(--blue);border-radius:10px;color:#fff;display:grid;font-size:.95rem;font-weight:700;height:36px;place-items:center;width:36px}
-.nav-logo-text{font-size:1rem;font-weight:700;color:var(--slate)}
+.nav-logo-text{font-size:1rem;font-weight:700;color:var(--slate);line-height:1.2}
 .nav-logo-text span{color:var(--blue)}
+.nav-logo-sub{color:var(--slate-soft);font-size:.62rem;font-weight:500;letter-spacing:.03em}
 .nav-links{display:flex;gap:2rem;list-style:none}
 .nav-links a{color:var(--slate-soft);font-size:.9rem;font-weight:500;text-decoration:none;transition:color .2s}
 .nav-links a:hover{color:var(--blue)}
@@ -358,7 +359,10 @@ export const Navbar: React.FC = () => {
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}>
       <div className="nav-logo">
         <div className="nav-logo-icon">✦</div>
-        <div className="nav-logo-text">NgCMS <span>ERP</span></div>
+        <div>
+          <div className="nav-logo-text">NgCMS <span>ERP</span></div>
+          <div className="nav-logo-sub">by Avani Enterprises</div>
+        </div>
       </div>
       <ul className="nav-links">
         {["Features", "Analytics", "Roles", "About"].map(item => (
@@ -889,7 +893,7 @@ export const Footer: React.FC = () => (
         <div className="nav-logo-icon" style={{ width: 28, height: 28, fontSize: ".85rem" }}>✦</div>
         <div>
           <div className="footer-name">NgCMS <span>ERP</span></div>
-          <div className="footer-tagline">St. Xavier's Digital Curator</div>
+          <div className="footer-tagline">by Avani Enterprises</div>
         </div>
       </div>
       <div className="footer-copy">© 2026 NgCMS ERP. All rights reserved.</div>
