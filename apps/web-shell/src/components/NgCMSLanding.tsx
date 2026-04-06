@@ -264,6 +264,11 @@ body{background:var(--bg);color:var(--slate);font-family:'Plus Jakarta Sans',san
   .m-sidebar{display:none}
   .screen-inner{grid-template-columns:1fr}
   .features-grid{grid-template-columns:1fr 1fr}
+  .feat-card{padding:1rem .85rem}
+  .feat-num{font-size:1.3rem;margin-bottom:.3rem}
+  .feat-icon{height:34px;width:34px;font-size:1rem;border-radius:8px;margin-bottom:.55rem}
+  .feat-title{font-size:.8rem;margin-bottom:.35rem}
+  .feat-desc{font-size:.7rem;line-height:1.55}
   .stats-row{flex-direction:row;flex-wrap:nowrap}
   .stat-item{border-right:1px solid var(--border);border-bottom:none;flex:1 1 0;min-width:0;padding:1.2rem .5rem}
   .stat-item:last-child{border-right:none}
