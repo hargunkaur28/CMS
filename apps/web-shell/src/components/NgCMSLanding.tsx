@@ -1,340 +1,275 @@
+"use client";
+
 /**
- * NgCMS ERP Landing Page
- * Converted from ngcms-landing-animated.html (compiled React app)
+ * NgCMS ERP Landing Page — Audience-Friendly Redesign
  *
  * Dependencies:
- *   npm install framer-motion gsap @gsap/react
- *   Fonts: https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap
+ *   npm install framer-motion
+ *   Fonts: loaded via @import in GLOBAL_CSS
  */
 
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
-gsap.registerPlugin(ScrollTrigger);
 
 // ─────────────────────────────────────────
-// CSS (inject once via a <style> tag or import a .css file)
+// CSS
 // ─────────────────────────────────────────
 const GLOBAL_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400&display=swap');
 
 *,::after,::before{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --indigo:#4338f7;--indigo-light:#6366f1;--indigo-glow:#4338f773;
-  --navy:#080719;--navy-mid:#10102a;--white:#fff;--grey:#8892a4;
-  --border:#ffffff12;--card:#ffffff08;
+  --blue:#2563EB;--blue-light:#EFF6FF;--blue-mid:#DBEAFE;--blue-dark:#1D4ED8;
+  --green:#16A34A;--green-light:#F0FDF4;
+  --amber:#D97706;--amber-light:#FFFBEB;
+  --slate:#0F172A;--slate-mid:#334155;--slate-soft:#64748B;
+  --border:#E2E8F0;--bg:#F8FAFC;--white:#FFFFFF;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:0 4px 16px rgba(0,0,0,.08),0 2px 6px rgba(0,0,0,.04);
+  --shadow-lg:0 20px 48px rgba(0,0,0,.1),0 8px 20px rgba(0,0,0,.06);
+  --radius:14px;--radius-lg:22px;
+  --nav-bg:rgba(248,250,252,0.92);
+  --hero-bg:linear-gradient(160deg, #EFF6FF 0%, #F8FAFC 50%, #F0FDF4 100%);
+}
+html.theme-dark {
+  --blue:#3B82F6;--blue-light:rgba(59,130,246,0.15);--blue-mid:rgba(59,130,246,0.25);--blue-dark:#60A5FA;
+  --green:#22C55E;--green-light:rgba(34,197,94,0.15);
+  --amber:#F59E0B;--amber-light:rgba(245,158,11,0.15);
+  --slate:#F1F5F9;--slate-mid:#94A3B8;--slate-soft:#94A3B8;
+  --border:#1E293B;--bg:#020617;--white:#0F172A;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.3);
+  --shadow-md:0 4px 16px rgba(0,0,0,.4);
+  --shadow-lg:0 20px 48px rgba(0,0,0,.5);
+  --nav-bg:rgba(15,23,42,0.92);
+  --hero-bg:linear-gradient(160deg, #0f172a 0%, #020617 50%, #064e3b 100%);
 }
 html{scroll-behavior:smooth}
-body{background:var(--navy);color:var(--white);cursor:none;font-family:'DM Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--slate);font-family:'Plus Jakarta Sans',sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased;line-height:1.6}
 
-/* Custom cursor */
-.cursor-dot{background:#fff;border-radius:50%;height:8px;width:8px;mix-blend-mode:difference;z-index:9999;left:0;pointer-events:none;position:fixed;top:0;transform:translate(-50%,-50%)}
-.cursor-ring{border:1.5px solid rgba(99,102,241,.7);border-radius:50%;height:36px;width:36px;z-index:9998;left:0;pointer-events:none;position:fixed;top:0;transform:translate(-50%,-50%)}
-
-/* Nav */
-.nav{align-items:center;border-bottom:1px solid transparent;display:flex;justify-content:space-between;left:0;padding:1.1rem 5%;position:fixed;right:0;top:0;transition:background .3s,border-color .3s;z-index:200}
-.nav.nav-scrolled{-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);background:rgba(8,7,25,.875);border-color:var(--border)}
-.nav-logo{align-items:center;display:flex;gap:.7rem}
-.nav-logo-icon{background:var(--indigo);border-radius:10px;box-shadow:0 0 20px var(--indigo-glow);display:grid;font-size:1rem;height:34px;place-items:center;width:34px}
-.nav-logo-text{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700}
-.nav-logo-text span{color:var(--indigo-light)}
+/* ── Nav ── */
+.nav{align-items:center;background:var(--nav-bg);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;left:0;padding:1rem 5%;position:fixed;right:0;top:0;transition:box-shadow .3s;z-index:200}
+.nav.nav-scrolled{box-shadow:var(--shadow-sm)}
+.nav-logo{align-items:center;display:flex;gap:.65rem}
+.nav-logo-icon{background:var(--blue);border-radius:10px;color:#fff;display:grid;font-size:.95rem;font-weight:700;height:36px;place-items:center;width:36px}
+.nav-logo-text{font-size:1rem;font-weight:700;color:var(--slate)}
+.nav-logo-text span{color:var(--blue)}
 .nav-links{display:flex;gap:2rem;list-style:none}
-.nav-links a{color:var(--grey);font-size:.88rem;text-decoration:none;transition:color .2s}
-.nav-links a:hover{color:var(--white)}
-.nav-cta{background:var(--indigo);border-radius:50px;box-shadow:0 0 24px rgba(67,56,247,.35);color:#fff;display:inline-block;font-size:.88rem;font-weight:500;padding:.55rem 1.3rem;text-decoration:none}
+.nav-links a{color:var(--slate-soft);font-size:.9rem;font-weight:500;text-decoration:none;transition:color .2s}
+.nav-links a:hover{color:var(--blue)}
+.nav-cta{background:var(--blue);border-radius:50px;color:#fff;font-size:.88rem;font-weight:600;padding:.55rem 1.4rem;text-decoration:none;transition:background .2s,transform .15s}
+.nav-cta:hover{background:var(--blue-dark)}
+.theme-toggle{background:none;border:none;border-radius:50%;color:var(--slate);cursor:pointer;display:flex;font-size:1.2rem;height:38px;padding:0;place-items:center;justify-content:center;transition:background .2s;width:38px}
+.theme-toggle:hover{background:var(--border)}
 
-/* Hero */
-.hero{align-items:center;display:flex;justify-content:center;min-height:100vh;overflow:hidden;padding:8rem 5% 5rem;position:relative}
-.hero-bg,.particle-canvas{inset:0;pointer-events:none;position:absolute;z-index:0}
-.hero-bg{background:radial-gradient(ellipse 65% 55% at 50% -5%,rgba(67,56,247,.4) 0,transparent 70%),radial-gradient(ellipse 35% 35% at 85% 75%,rgba(99,102,241,.15) 0,transparent 60%)}
-.hero-grid{background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 0),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 0);background-size:64px 64px;inset:0;-webkit-mask-image:radial-gradient(ellipse 85% 85% at 50% 40%,#000 20%,transparent 75%);mask-image:radial-gradient(ellipse 85% 85% at 50% 40%,#000 20%,transparent 75%);pointer-events:none;position:absolute;z-index:0}
-.hero-content{max-width:860px;position:relative;text-align:center;z-index:1}
-.hero-badge{align-items:center;background:rgba(67,56,247,.16);border:1px solid rgba(99,102,241,.3);border-radius:50px;color:#a5b4fc;display:inline-flex;font-size:.76rem;font-weight:500;gap:.5rem;letter-spacing:.08em;margin-bottom:2rem;padding:.38rem 1rem;text-transform:uppercase}
-.badge-pulse{animation:pulse 2s infinite;background:var(--indigo-light);border-radius:50%;display:inline-block;height:7px;width:7px}
+/* ── Hero ── */
+.hero{align-items:center;display:flex;justify-content:center;min-height:100vh;overflow:hidden;padding:9rem 5% 6rem;position:relative;background:var(--hero-bg)}
+.hero-blob{position:absolute;border-radius:50%;pointer-events:none;filter:blur(80px);opacity:.55}
+.hero-blob-1{background:#BFDBFE;height:520px;width:520px;top:-10%;left:-8%}
+.hero-blob-2{background:#BBF7D0;height:380px;width:380px;bottom:-5%;right:-5%}
+.hero-content{max-width:820px;position:relative;text-align:center;z-index:1}
+.hero-badge{align-items:center;background:var(--white);border:1.5px solid var(--border);border-radius:50px;color:var(--blue);display:inline-flex;font-size:.78rem;font-weight:600;gap:.45rem;letter-spacing:.06em;margin-bottom:1.8rem;padding:.38rem 1.1rem;text-transform:uppercase;box-shadow:var(--shadow-sm)}
+.badge-dot{background:var(--green);border-radius:50%;display:inline-block;height:7px;width:7px;animation:pulse 2.2s infinite}
 @keyframes pulse{0%,to{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.5)}}
-.hero-h1{font-family:'Syne',sans-serif;font-size:clamp(3rem,7vw,5.5rem);font-weight:800;letter-spacing:-.04em;line-height:1;margin-bottom:1.6rem}
-.hero-line-thin{color:rgba(255,255,255,.3);font-size:.6em;font-weight:400;letter-spacing:.18em}
-.hero-line-accent{color:var(--indigo-light);display:inline-block}
-.hero-line-white{color:var(--white)}
-.hero-sub{color:var(--grey);font-size:1.05rem;line-height:1.75;margin:0 auto 2.4rem;max-width:520px}
-.hero-actions{display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;margin-bottom:3rem}
-.btn-primary{align-items:center;background:var(--indigo);border-radius:50px;box-shadow:0 4px 32px rgba(67,56,247,.5);color:#fff;display:inline-flex;font-size:1rem;font-weight:500;gap:.4rem;padding:.85rem 2.1rem;text-decoration:none}
-.btn-arrow{display:inline-block;transition:transform .2s}
-.btn-primary:hover .btn-arrow{transform:translateX(4px)}
-.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.18);border-radius:50px;color:#fff;display:inline-block;font-size:1rem;font-weight:500;padding:.85rem 2.1rem;text-decoration:none}
-.hero-stats{border-top:1px solid var(--border);display:flex;gap:2.5rem;justify-content:center;padding-top:1rem}
+.hero-h1{color:var(--slate);font-size:clamp(2.5rem,6vw,4.6rem);font-weight:800;letter-spacing:-.035em;line-height:1.08;margin-bottom:1.5rem}
+.hero-h1 .accent{color:var(--blue)}
+.hero-h1 .serif{font-family:'Lora',serif;font-style:italic;font-weight:400;color:var(--slate-mid)}
+.hero-sub{color:var(--slate-soft);font-size:1.08rem;line-height:1.8;margin:0 auto 2.4rem;max-width:540px}
+.hero-actions{display:flex;flex-wrap:wrap;gap:.9rem;justify-content:center;margin-bottom:3rem}
+.btn-primary{align-items:center;background:var(--blue);border-radius:50px;box-shadow:0 4px 20px rgba(37,99,235,.35);color:#fff;display:inline-flex;font-size:.98rem;font-weight:600;gap:.45rem;padding:.85rem 2rem;text-decoration:none;transition:background .2s,transform .15s,box-shadow .2s}
+.btn-primary:hover{background:var(--blue-dark);transform:translateY(-1px);box-shadow:0 8px 28px rgba(37,99,235,.4)}
+.btn-ghost{background:var(--white);border:1.5px solid var(--border);border-radius:50px;color:var(--slate);display:inline-block;font-size:.98rem;font-weight:600;padding:.85rem 2rem;text-decoration:none;transition:border-color .2s,transform .15s}
+.btn-ghost:hover{border-color:var(--blue);color:var(--blue);transform:translateY(-1px)}
+.hero-stats{border-top:1.5px solid var(--border);display:flex;gap:2.5rem;justify-content:center;padding-top:1.5rem}
 .hero-stat{text-align:center}
-.hero-stat strong{display:block;font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800}
-.hero-stat span{font-size:.72rem;letter-spacing:.07em;color:var(--grey);text-transform:uppercase}
-.hero-scroll-hint{align-items:center;bottom:2.5rem;display:flex;flex-direction:column;font-size:.68rem;gap:.4rem;left:50%;letter-spacing:.1em;position:absolute;transform:translateX(-50%);z-index:1;color:var(--grey);text-transform:uppercase}
-.scroll-line{background:linear-gradient(to bottom,transparent,var(--indigo-light));height:36px;width:1px}
+.hero-stat strong{color:var(--blue);display:block;font-size:1.5rem;font-weight:800}
+.hero-stat span{color:var(--slate-soft);font-size:.72rem;font-weight:500;letter-spacing:.07em;text-transform:uppercase}
 
-/* Marquee */
-.marquee-wrap{border-bottom:1px solid var(--border);border-top:1px solid var(--border);overflow:hidden;padding:1rem 0}
-.marquee-track{animation:marquee 28s linear infinite;display:flex;white-space:nowrap}
+/* ── Marquee ── */
+.marquee-wrap{background:var(--white);border-bottom:1px solid var(--border);border-top:1px solid var(--border);overflow:hidden;padding:.85rem 0}
+.marquee-track{animation:marquee 30s linear infinite;display:flex;white-space:nowrap}
 @keyframes marquee{0%{transform:translateX(0)}to{transform:translateX(-50%)}}
-.marquee-item{color:var(--grey);flex-shrink:0;font-size:.78rem;letter-spacing:.06em;padding:0 2rem;text-transform:uppercase}
-.marquee-dot{color:var(--indigo-light)}
+.marquee-item{color:var(--slate-soft);flex-shrink:0;font-size:.78rem;font-weight:500;letter-spacing:.04em;padding:0 2rem;text-transform:uppercase}
+.marquee-dot{color:var(--blue)}
 
-/* Stats Row */
-.stats-row{display:flex;flex-wrap:wrap;justify-content:center;padding:3.5rem 5%}
-.stat-item{border-right:1px solid var(--border);flex:1 1;min-width:150px;padding:1.5rem;text-align:center}
+/* ── Stats Row ── */
+.stats-row{background:var(--white);display:flex;flex-wrap:wrap;justify-content:center;border-bottom:1px solid var(--border)}
+.stat-item{border-right:1px solid var(--border);flex:1 1;min-width:150px;padding:2rem 1.5rem;text-align:center}
 .stat-item:last-child{border-right:none}
-.stat-num{font-family:'Syne',sans-serif;font-size:2.8rem;font-weight:800;letter-spacing:-.05em}
-.stat-label{color:var(--grey);font-size:.78rem;margin-top:.3rem}
+.stat-num{color:var(--blue);font-size:2.6rem;font-weight:800;letter-spacing:-.04em}
+.stat-label{color:var(--slate-soft);font-size:.78rem;font-weight:500;margin-top:.35rem}
 
-/* Mockup */
-.mockup-section{margin:0 auto;max-width:1200px;padding:5rem 5%}
+/* ── Section helpers ── */
+.section-tag{color:var(--blue);font-size:.74rem;font-weight:700;letter-spacing:.14em;margin-bottom:.5rem;text-transform:uppercase}
+.section-title{color:var(--slate);font-size:clamp(1.7rem,3.5vw,2.7rem);font-weight:800;letter-spacing:-.03em;line-height:1.1}
+.section-title .accent{color:var(--blue)}
+
+/* ── Mockup ── */
+.mockup-section{background:var(--bg);padding:6rem 5%}
+.mockup-inner{margin:0 auto;max-width:1200px}
 .mockup-label{margin-bottom:3rem}
-.mockup-wrapper{box-shadow:0 60px 120px rgba(0,0,0,.7),0 0 0 1px rgba(99,102,241,.2),0 0 80px rgba(67,56,247,.12);border-radius:18px;overflow:hidden}
-.screen-wrap{background:var(--navy-mid);border-radius:18px;overflow:hidden}
-.screen-bar{align-items:center;background:var(--navy);display:flex;gap:.5rem;padding:.7rem 1rem}
+.mockup-wrapper{border-radius:var(--radius-lg);box-shadow:var(--shadow-lg),0 0 0 1px var(--border);overflow:hidden}
+.screen-wrap{background:#F1F5F9;border-radius:var(--radius-lg);overflow:hidden}
+.screen-bar{align-items:center;background:var(--white);border-bottom:1px solid var(--border);display:flex;gap:.5rem;padding:.65rem 1rem}
 .screen-dot{border-radius:50%;height:10px;width:10px}
-.screen-dot.d1{background:#ff5f57}.screen-dot.d2{background:#febc2e}.screen-dot.d3{background:#28c840}
-.screen-url{background:rgba(255,255,255,.05);border-radius:6px;color:var(--grey);flex:1;font-family:monospace;font-size:.7rem;margin:0 .5rem;padding:.22rem .7rem}
+.screen-dot.d1{background:#FF5F57}.screen-dot.d2{background:#FEBC2E}.screen-dot.d3{background:#28C840}
+.screen-url{background:#F8FAFC;border:1px solid var(--border);border-radius:6px;color:var(--slate-soft);flex:1;font-family:monospace;font-size:.7rem;margin:0 .5rem;padding:.22rem .7rem}
 .screen-inner{display:grid;grid-template-columns:200px 1fr;min-height:380px}
-.m-sidebar{background:var(--navy);border-right:1px solid rgba(255,255,255,.05);display:flex;flex-direction:column;gap:.25rem;padding:1rem .75rem}
-.m-brand{color:#a5b4fc;font-family:'Syne',sans-serif;font-size:.78rem;font-weight:700;padding:.4rem .5rem .9rem}
-.m-brand small{display:block;font-family:'DM Sans',sans-serif;font-size:.58rem;font-weight:400;letter-spacing:.08em;color:var(--grey)}
-.m-item{align-items:center;border-radius:7px;display:flex;font-size:.7rem;gap:.45rem;padding:.4rem .55rem;color:var(--grey)}
-.m-item.active{background:rgba(67,56,247,.2);color:#a5b4fc}
-.m-item-icon{background:currentColor;border-radius:3px;flex-shrink:0;height:12px;opacity:.5;width:12px}
-.m-section{color:rgba(255,255,255,.2);font-size:.56rem;letter-spacing:.1em;padding:.6rem .55rem .15rem;text-transform:uppercase}
-.m-avatar{align-items:center;border-top:1px solid rgba(255,255,255,.05);display:flex;gap:.5rem;margin-top:auto;padding:.6rem .5rem}
-.m-av-circle{background:var(--indigo);border-radius:50%;display:grid;flex-shrink:0;font-size:.62rem;font-weight:700;height:24px;place-items:center;width:24px}
-.m-av-info{font-size:.64rem;line-height:1.3}
-.m-av-info small{color:#4ade80;display:block;font-size:.54rem}
-.m-content{padding:1.2rem}
-.m-header{align-items:flex-start;display:flex;justify-content:space-between;margin-bottom:.8rem}
-.m-role-label{color:var(--grey);font-size:.58rem;letter-spacing:.08em;margin-bottom:.15rem;text-transform:uppercase}
-.m-title{font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700}
-.m-title span{color:var(--indigo-light)}
-.m-subtitle{font-size:.58rem;color:var(--grey);margin-top:.1rem}
-.m-date{font-size:.6rem;line-height:1.5;text-align:right;color:var(--grey)}
-.m-cards{gap:.5rem;display:grid;grid-template-columns:repeat(4,1fr);margin-bottom:.7rem}
-.m-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:.65rem}
-.m-card-ico{background:rgba(67,56,247,.28);border-radius:6px;height:20px;margin-bottom:.3rem;width:20px}
-.m-card-ico.red{background:rgba(239,68,68,.28)}
-.m-card-label{color:var(--grey);font-size:.54rem;letter-spacing:.05em;text-transform:uppercase}
-.m-card-num{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin:.15rem 0}
-.m-card-sub{color:#4ade80;font-size:.5rem}
-.m-card-sub.grey{color:var(--grey)}
-.m-card-sub.alert{color:#f87171}
-.m-bottom{gap:.6rem;display:grid;grid-template-columns:1fr 1fr}
-.m-panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:9px;padding:.7rem}
-.m-panel-title{font-size:.65rem;font-weight:600;margin-bottom:.35rem}
-.m-panel-empty{color:var(--grey);font-size:.6rem;padding:.3rem 0}
-.m-action-card{background:var(--navy);border-radius:9px;padding:.7rem}
-.m-action-title{font-size:.65rem;font-weight:600;margin-bottom:.2rem}
-.m-action-desc{color:var(--grey);font-size:.58rem;line-height:1.55}
-.m-action-btn{border:1px solid rgba(255,255,255,.18);border-radius:5px;color:#fff;display:inline-block;font-size:.56rem;margin-top:.45rem;padding:.22rem .55rem}
+.m-sidebar{background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;gap:.2rem;padding:1rem .75rem}
+.m-brand{color:var(--blue);font-size:.8rem;font-weight:700;padding:.4rem .5rem .9rem}
+.m-brand small{display:block;color:var(--slate-soft);font-size:.58rem;font-weight:500;letter-spacing:.07em}
+.m-item{align-items:center;border-radius:8px;display:flex;font-size:.72rem;font-weight:500;gap:.45rem;padding:.42rem .55rem;color:var(--slate-soft);transition:background .15s,color .15s;cursor:default}
+.m-item:hover{background:var(--blue-light);color:var(--blue)}
+.m-item.active{background:var(--blue-light);color:var(--blue);font-weight:600}
+.m-item-icon{background:currentColor;border-radius:3px;flex-shrink:0;height:11px;opacity:.35;width:11px}
+.m-section{color:#94A3B8;font-size:.56rem;font-weight:700;letter-spacing:.1em;padding:.7rem .55rem .2rem;text-transform:uppercase}
+.m-avatar{align-items:center;border-top:1px solid var(--border);display:flex;gap:.5rem;margin-top:auto;padding:.6rem .5rem}
+.m-av-circle{background:var(--blue);border-radius:50%;color:#fff;display:grid;flex-shrink:0;font-size:.62rem;font-weight:700;height:26px;place-items:center;width:26px}
+.m-av-info{font-size:.64rem;font-weight:500;line-height:1.4;color:var(--slate)}
+.m-av-info small{color:var(--green);display:block;font-size:.54rem;font-weight:600}
+.m-content{background:#F8FAFC;padding:1.3rem}
+.m-header{align-items:flex-start;display:flex;justify-content:space-between;margin-bottom:.9rem}
+.m-role-label{color:var(--blue);font-size:.58rem;font-weight:700;letter-spacing:.1em;margin-bottom:.12rem;text-transform:uppercase}
+.m-title{color:var(--slate);font-size:.9rem;font-weight:700}
+.m-title span{color:var(--blue)}
+.m-subtitle{color:var(--slate-soft);font-size:.6rem;margin-top:.1rem}
+.m-date{color:var(--slate-soft);font-size:.6rem;line-height:1.5;text-align:right}
+.m-cards{display:grid;gap:.5rem;grid-template-columns:repeat(4,1fr);margin-bottom:.7rem}
+.m-card{background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:.7rem}
+.m-card-ico{border-radius:6px;height:20px;margin-bottom:.35rem;width:20px;background:var(--blue-mid)}
+.m-card-ico.red{background:#FEE2E2}
+.m-card-label{color:var(--slate-soft);font-size:.54rem;font-weight:500;letter-spacing:.04em;text-transform:uppercase}
+.m-card-num{color:var(--slate);font-size:1.05rem;font-weight:700;margin:.15rem 0}
+.m-card-sub{color:var(--green);font-size:.5rem;font-weight:600}
+.m-card-sub.grey{color:var(--slate-soft)}
+.m-card-sub.alert{color:#EF4444}
+.m-bottom{display:grid;gap:.6rem;grid-template-columns:1fr 1fr}
+.m-panel{background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:.75rem}
+.m-panel-title{color:var(--slate);font-size:.66rem;font-weight:600;margin-bottom:.35rem}
+.m-panel-empty{color:var(--slate-soft);font-size:.6rem;padding:.3rem 0}
+.m-action-card{background:var(--blue-light);border:1.5px solid var(--blue-mid);border-radius:10px;padding:.75rem}
+.m-action-title{color:var(--blue-dark);font-size:.66rem;font-weight:700;margin-bottom:.2rem}
+.m-action-desc{color:var(--slate-mid);font-size:.58rem;line-height:1.55}
+.m-action-btn{background:var(--blue);border-radius:5px;color:#fff;display:inline-block;font-size:.56rem;font-weight:600;margin-top:.45rem;padding:.22rem .6rem}
 
-/* Section helpers */
-.section-tag{color:var(--indigo-light);font-size:.72rem;font-weight:600;letter-spacing:.14em;margin-bottom:.6rem;text-transform:uppercase}
-.section-title{font-family:'Syne',sans-serif;font-size:clamp(1.9rem,3.8vw,3rem);font-weight:800;letter-spacing:-.035em;line-height:1.08}
-.section-title .accent{color:var(--indigo-light)}
+/* ── Charts Section ── */
+.charts-section{background:var(--white);padding:6rem 5%}
+.charts-inner{margin:0 auto;max-width:1100px}
+.charts-label{margin-bottom:3rem}
+.charts-grid{display:grid;gap:1.4rem;grid-template-columns:1.5fr 1fr 1fr}
+.chart-card{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.5rem}
+.chart-card-title{color:var(--slate);font-size:.82rem;font-weight:700;margin-bottom:.25rem}
+.chart-card-sub{color:var(--slate-soft);font-size:.7rem;margin-bottom:1.1rem}
+.chart-bar-wrap{align-items:flex-end;display:flex;gap:.55rem;height:120px;padding-bottom:0}
+.chart-bar-col{align-items:center;display:flex;flex-direction:column;flex:1;gap:.3rem;height:100%}
+.chart-bar-track{background:var(--border);border-radius:4px;flex:1;overflow:hidden;position:relative;width:100%}
+.chart-bar-fill{border-radius:4px;bottom:0;left:0;position:absolute;right:0;transition:height 1s cubic-bezier(.34,1.56,.64,1)}
+.chart-bar-label{color:var(--slate-soft);font-size:.58rem;font-weight:600;text-align:center}
+.chart-bar-val{color:var(--slate);font-size:.6rem;font-weight:700}
+/* Donut */
+.donut-wrap{display:flex;align-items:center;gap:1.2rem}
+.donut-svg{flex-shrink:0}
+.donut-circle-bg{fill:none;stroke:#E2E8F0;stroke-width:10}
+.donut-circle-fill{fill:none;stroke-width:10;stroke-linecap:round;transition:stroke-dasharray 1.2s ease}
+.donut-center-text{font-size:.9rem;font-weight:800;fill:#0F172A;text-anchor:middle;dominant-baseline:middle}
+.donut-center-sub{font-size:.38rem;fill:#64748B;text-anchor:middle;dominant-baseline:middle}
+.donut-legend{display:flex;flex-direction:column;gap:.5rem;flex:1}
+.donut-leg-item{align-items:center;display:flex;gap:.45rem;font-size:.68rem;color:var(--slate-mid);font-weight:500}
+.donut-leg-dot{border-radius:50%;flex-shrink:0;height:8px;width:8px}
+.donut-leg-pct{color:var(--slate-soft);font-size:.62rem;margin-left:auto}
+/* Sparkline */
+.spark-wrap{position:relative}
+.spark-svg{width:100%;overflow:visible}
+.spark-area{opacity:.15}
+.spark-line{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.spark-labels{display:flex;justify-content:space-between;margin-top:.4rem}
+.spark-label{color:var(--slate-soft);font-size:.6rem}
+.spark-highlight{align-items:center;background:var(--blue);border-radius:6px;color:#fff;display:inline-flex;font-size:.68rem;font-weight:700;gap:.3rem;margin-bottom:.7rem;padding:.25rem .65rem}
+@keyframes bar-grow{from{height:0}to{height:var(--h)}}
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.charts-grid{grid-template-columns:1fr}}
 
-/* Horizontal scroll features */
-.h-features-section{display:flex;flex-direction:column;height:100vh;overflow:hidden;padding-top:5rem;position:relative}
-.h-features-label{padding:0 5% 2rem}
-.h-scroll-hint{color:var(--grey);font-size:.75rem;margin-top:.8rem}
-.h-features-track{display:flex;flex-shrink:0;gap:1.4rem;padding:0 5%;will-change:transform}
-.h-feat-card{background:var(--card);border:1px solid var(--border);border-radius:20px;flex-shrink:0;overflow:hidden;padding:2.2rem 1.8rem;position:relative;transition:border-color .25s;width:320px}
-.h-feat-card:hover{border-color:var(--accent,var(--indigo-light))}
-.h-feat-num{color:rgba(255,255,255,.05);font-family:'Syne',sans-serif;font-size:3rem;font-weight:800;line-height:1;margin-bottom:.8rem}
-.h-feat-icon{border-radius:14px;display:grid;font-size:1.5rem;height:52px;margin-bottom:1.2rem;place-items:center;width:52px}
-.h-feat-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;margin-bottom:.6rem}
-.h-feat-desc{color:var(--grey);font-size:.85rem;line-height:1.65}
-.h-feat-bar{bottom:0;height:2px;left:0;opacity:.6;position:absolute;right:0}
-.h-feat-card:hover .h-feat-bar{opacity:1}
+/* ── Features ── */
+.features-section{background:var(--white);padding:6rem 5%}
+.features-inner{margin:0 auto;max-width:1100px}
+.features-label{margin-bottom:3rem}
+.features-grid{display:grid;gap:1.2rem;grid-template-columns:repeat(3,1fr)}
+.feat-card{background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.8rem;position:relative;transition:border-color .22s,box-shadow .22s,transform .22s;overflow:hidden}
+.feat-card:hover{border-color:var(--blue);box-shadow:var(--shadow-md);transform:translateY(-3px)}
+.feat-card-accent{bottom:0;height:3px;left:0;position:absolute;right:0;border-radius:0 0 var(--radius) var(--radius);opacity:0;transition:opacity .22s}
+.feat-card:hover .feat-card-accent{opacity:1}
+.feat-icon{border-radius:12px;display:grid;font-size:1.4rem;height:48px;margin-bottom:1.1rem;place-items:center;width:48px}
+.feat-num{color:var(--border);font-size:2.2rem;font-weight:800;line-height:1;margin-bottom:.5rem}
+.feat-title{color:var(--slate);font-size:1rem;font-weight:700;margin-bottom:.5rem}
+.feat-desc{color:var(--slate-soft);font-size:.875rem;line-height:1.7}
 
-/* Roles */
-.roles-section{padding:7rem 5%}
+/* ── Roles ── */
+.roles-section{background:var(--bg);padding:6rem 5%}
 .roles-inner{margin:0 auto;max-width:1100px}
 .roles-tabs{display:flex;flex-wrap:wrap;gap:.7rem;margin:2.5rem 0}
-.role-tab{align-items:center;background:var(--card);border:1px solid var(--border);border-radius:50px;color:var(--grey);cursor:pointer;display:flex;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:500;gap:.55rem;padding:.6rem 1.3rem;transition:all .25s}
-.role-tab:hover{border-color:rgba(255,255,255,.2);color:var(--white)}
-.role-tab.active{background:rgba(67,56,247,.15);border-color:var(--col);color:var(--white)}
-.role-tab-emoji{font-size:1.1rem}
-.role-panel{gap:3rem;background:var(--card);border:1px solid var(--border);border-top:2px solid var(--col,var(--indigo));border-radius:24px;display:grid;grid-template-columns:1fr 1fr;padding:3rem}
-.role-big-emoji{display:block;font-size:3.5rem;margin-bottom:1rem}
-.role-tag-badge{border-radius:50px;display:inline-block;font-size:.72rem;font-weight:600;letter-spacing:.06em;margin-bottom:1rem;padding:.3rem .85rem;text-transform:uppercase}
-.role-panel-name{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:.7rem}
-.role-panel-desc{color:var(--grey);font-size:.9rem;line-height:1.7}
-.role-perks-title{color:var(--grey);font-size:.72rem;letter-spacing:.1em;margin-bottom:1.2rem;text-transform:uppercase}
-.role-perk{align-items:center;border-bottom:1px solid var(--border);color:rgba(255,255,255,.85);display:flex;font-size:.9rem;gap:.75rem;padding:.8rem 0}
+.role-tab{align-items:center;background:var(--white);border:1.5px solid var(--border);border-radius:50px;color:var(--slate-soft);cursor:pointer;display:flex;font-family:'Plus Jakarta Sans',sans-serif;font-size:.9rem;font-weight:600;gap:.5rem;padding:.55rem 1.3rem;transition:all .22s}
+.role-tab:hover{border-color:var(--blue);color:var(--blue)}
+.role-tab.active{background:var(--blue-light);border-color:var(--blue);color:var(--blue)}
+.role-tab-emoji{font-size:1.05rem}
+.role-panel{background:var(--white);border:1.5px solid var(--border);border-top:3px solid var(--col,var(--blue));border-radius:var(--radius-lg);display:grid;gap:3rem;grid-template-columns:1fr 1fr;padding:2.8rem}
+.role-big-emoji{display:block;font-size:3rem;margin-bottom:.8rem}
+.role-tag-badge{border-radius:50px;display:inline-block;font-size:.72rem;font-weight:700;letter-spacing:.06em;margin-bottom:.9rem;padding:.28rem .85rem;text-transform:uppercase}
+.role-panel-name{color:var(--slate);font-size:1.5rem;font-weight:800;margin-bottom:.6rem}
+.role-panel-desc{color:var(--slate-soft);font-size:.9rem;line-height:1.75}
+.role-perks-title{color:var(--slate-soft);font-size:.72rem;font-weight:600;letter-spacing:.09em;margin-bottom:1rem;text-transform:uppercase}
+.role-perk{align-items:center;border-bottom:1px solid var(--border);color:var(--slate-mid);display:flex;font-size:.9rem;font-weight:500;gap:.7rem;padding:.75rem 0}
 .role-perk:last-child{border-bottom:none}
-.perk-check{flex-shrink:0;font-size:1rem}
+.perk-check{flex-shrink:0;font-size:.95rem}
 
-/* CTA */
-.cta-section{display:flex;justify-content:center;padding:5rem 5%}
-.cta-box{background:linear-gradient(135deg,#3730e8,#6d28d9 60%,#4338f7);border-radius:28px;box-shadow:0 30px 100px var(--indigo-glow),0 0 0 1px rgba(99,102,241,.3);max-width:860px;overflow:hidden;padding:5rem;position:relative;text-align:center;width:100%}
+/* ── CTA ── */
+.cta-section{display:flex;justify-content:center;padding:5rem 5%;background:var(--white)}
+.cta-box{background:linear-gradient(135deg,var(--blue) 0%,#1E40AF 60%,#1D4ED8 100%);border-radius:var(--radius-lg);box-shadow:0 30px 80px rgba(37,99,235,.3);max-width:860px;overflow:hidden;padding:5rem;position:relative;text-align:center;width:100%}
 .cta-orb{border-radius:50%;pointer-events:none;position:absolute}
-.cta-orb1{background:rgba(255,255,255,.07);height:500px;right:-15%;top:-40%;width:500px}
-.cta-orb2{background:rgba(255,255,255,.05);bottom:-35%;height:350px;left:-8%;width:350px}
+.cta-orb1{background:rgba(255,255,255,.06);height:460px;right:-12%;top:-35%;width:460px}
+.cta-orb2{background:rgba(255,255,255,.04);bottom:-30%;height:320px;left:-6%;width:320px}
 .cta-inner{position:relative;z-index:1}
-.cta-h2{font-family:'Syne',sans-serif;font-size:clamp(1.9rem,3.5vw,2.8rem);font-weight:800;letter-spacing:-.035em;margin:.6rem 0 1rem}
-.cta-sub{color:rgba(255,255,255,.78);font-size:.95rem;line-height:1.7;margin:0 auto 2.4rem;max-width:500px}
+.cta-eyebrow{color:rgba(255,255,255,.7);font-size:.75rem;font-weight:600;letter-spacing:.14em;margin-bottom:.5rem;text-transform:uppercase}
+.cta-h2{color:#fff;font-size:clamp(1.8rem,3.2vw,2.6rem);font-weight:800;letter-spacing:-.03em;line-height:1.15;margin:0 0 1rem}
+.cta-sub{color:rgba(255,255,255,.8);font-size:.95rem;line-height:1.75;margin:0 auto 2.4rem;max-width:480px}
 .cta-actions{display:flex;flex-wrap:wrap;gap:1rem;justify-content:center}
-.cta-btn{background:#fff;border-radius:50px;color:var(--indigo);display:inline-block;font-size:1rem;font-weight:600;padding:.85rem 2.2rem;text-decoration:none}
-.cta-ghost{border:1px solid rgba(255,255,255,.3);border-radius:50px;color:rgba(255,255,255,.85);display:inline-block;font-size:1rem;padding:.85rem 2rem;text-decoration:none}
+.cta-btn{background:#fff;border-radius:50px;color:var(--blue);display:inline-block;font-size:.98rem;font-weight:700;padding:.85rem 2.2rem;text-decoration:none;transition:transform .15s,box-shadow .2s}
+.cta-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,0,0,.15)}
+.cta-ghost{border:1.5px solid rgba(255,255,255,.4);border-radius:50px;color:rgba(255,255,255,.9);display:inline-block;font-size:.98rem;font-weight:500;padding:.85rem 2rem;text-decoration:none;transition:border-color .2s}
+.cta-ghost:hover{border-color:#fff}
 
-/* Footer */
-.footer{border-top:1px solid var(--border);padding:2.2rem 5%}
-.footer-inner{flex-wrap:wrap;gap:1rem;justify-content:space-between;margin:0 auto;max-width:1200px;align-items:center;display:flex}
-.footer-brand{align-items:center;display:flex;gap:.7rem}
-.footer-name{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700}
-.footer-name span{color:var(--indigo-light)}
-.footer-tagline{font-size:.72rem;color:var(--grey)}
-.footer-copy{font-size:.78rem;color:var(--grey)}
+/* ── Footer ── */
+.footer{background:var(--white);border-top:1px solid var(--border);padding:2rem 5%}
+.footer-inner{align-items:center;display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;margin:0 auto;max-width:1200px}
+.footer-brand{align-items:center;display:flex;gap:.65rem}
+.footer-name{font-size:.9rem;font-weight:700;color:var(--slate)}
+.footer-name span{color:var(--blue)}
+.footer-tagline{color:var(--slate-soft);font-size:.72rem}
+.footer-copy{color:var(--slate-soft);font-size:.78rem}
 .footer-links{display:flex;gap:1.5rem}
-.footer-links a{color:var(--grey);font-size:.78rem;text-decoration:none;transition:color .2s}
-.footer-links a:hover{color:var(--white)}
+.footer-links a{color:var(--slate-soft);font-size:.78rem;font-weight:500;text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--blue)}
 
+/* ── Scroll reveal hint ── */
+.hero-scroll-hint{align-items:center;bottom:2.5rem;color:var(--slate-soft);display:flex;flex-direction:column;font-size:.68rem;font-weight:500;gap:.4rem;left:50%;letter-spacing:.1em;position:absolute;transform:translateX(-50%);z-index:1;text-transform:uppercase}
+.scroll-line{background:linear-gradient(to bottom,transparent,var(--blue));height:32px;width:1.5px;border-radius:1px}
+
+/* ── Responsive ── */
 @media(max-width:900px){
   .nav-links{display:none}
   .screen-inner{grid-template-columns:160px 1fr}
   .m-cards{grid-template-columns:1fr 1fr}
-  .h-features-section{height:auto}
-  .h-features-track{flex-wrap:wrap}
-  .h-feat-card{width:calc(50% - .7rem)}
+  .features-grid{grid-template-columns:1fr 1fr}
   .role-panel{gap:2rem;grid-template-columns:1fr}
 }
 @media(max-width:600px){
   .m-sidebar{display:none}
   .screen-inner{grid-template-columns:1fr}
-  .h-feat-card{width:100%}
+  .features-grid{grid-template-columns:1fr}
   .stats-row{align-items:center;flex-direction:column}
   .stat-item{border-bottom:1px solid var(--border);border-right:none;width:100%}
   .cta-box{padding:3rem 1.5rem}
   .hero-stats{gap:1.5rem}
 }
 `;
-
-// ─────────────────────────────────────────
-// Custom Cursor
-// ─────────────────────────────────────────
-export const CustomCursor: React.FC = () => {
-  const dotRef = useRef<HTMLDivElement>(null);
-  const ringRef = useRef<HTMLDivElement>(null);
-  const mouse = useRef({ x: 0, y: 0 });
-  const ring = useRef({ x: 0, y: 0 });
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      mouse.current = { x: e.clientX, y: e.clientY };
-      gsap.to(dotRef.current, { x: e.clientX, y: e.clientY, duration: 0.08 });
-    };
-    let raf: number;
-    const loop = () => {
-      ring.current.x += 0.1 * (mouse.current.x - ring.current.x);
-      ring.current.y += 0.1 * (mouse.current.y - ring.current.y);
-      gsap.set(ringRef.current, { x: ring.current.x, y: ring.current.y });
-      raf = requestAnimationFrame(loop);
-    };
-    window.addEventListener("mousemove", onMove);
-    raf = requestAnimationFrame(loop);
-    return () => { window.removeEventListener("mousemove", onMove); cancelAnimationFrame(raf); };
-  }, []);
-
-  return (
-    <>
-      <div ref={dotRef} className="cursor-dot" />
-      <div ref={ringRef} className="cursor-ring" />
-    </>
-  );
-};
-
-// ─────────────────────────────────────────
-// Particle Canvas
-// ─────────────────────────────────────────
-export const ParticleCanvas: React.FC = () => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
-    let w = (canvas.width = window.innerWidth);
-    let h = (canvas.height = window.innerHeight);
-    let mouse = { x: w / 2, y: h / 2 };
-
-    const particles = Array.from({ length: 100 }, () => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      vx: 0.35 * (Math.random() - 0.5),
-      vy: 0.35 * (Math.random() - 0.5),
-      r: 1.6 * Math.random() + 0.3,
-      alpha: 0.4 * Math.random() + 0.15,
-    }));
-
-    const onMove = (e: MouseEvent) => { mouse = { x: e.clientX, y: e.clientY }; };
-    const onResize = () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("resize", onResize);
-
-    let raf: number;
-    const draw = () => {
-      ctx.clearRect(0, 0, w, h);
-      particles.forEach((p) => {
-        const dx = mouse.x - p.x, dy = mouse.y - p.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 180) { p.vx += (dx / dist) * 0.018; p.vy += (dy / dist) * 0.018; }
-        p.vx *= 0.97; p.vy *= 0.97;
-        p.x += p.vx; p.y += p.vy;
-        if (p.x < 0) p.x = w; if (p.x > w) p.x = 0;
-        if (p.y < 0) p.y = h; if (p.y > h) p.y = 0;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, 2 * Math.PI);
-        ctx.fillStyle = `rgba(99,102,241,${p.alpha})`;
-        ctx.fill();
-      });
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const d = Math.sqrt((particles[i].x - particles[j].x) ** 2 + (particles[i].y - particles[j].y) ** 2);
-          if (d < 120) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(99,102,241,${0.1 * (1 - d / 120)})`;
-            ctx.lineWidth = 0.5;
-            ctx.stroke();
-          }
-        }
-      }
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("mousemove", onMove); window.removeEventListener("resize", onResize); };
-  }, []);
-
-  return <canvas ref={canvasRef} className="particle-canvas" />;
-};
-
-// ─────────────────────────────────────────
-// Scramble Text Hook
-// ─────────────────────────────────────────
-function useScramble(text: string, active: boolean): string {
-  const [display, setDisplay] = useState(text);
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$";
-  useEffect(() => {
-    if (!active) return;
-    let step = 0;
-    const id = setInterval(() => {
-      setDisplay(text.split("").map((c, i) => c === " " ? " " : step / 22 > i / text.length ? c : chars[Math.floor(40 * Math.random())]).join(""));
-      step++;
-      if (step > 22) clearInterval(id);
-    }, 40);
-    return () => clearInterval(id);
-  }, [active, text]); // eslint-disable-line
-  return display;
-}
 
 // ─────────────────────────────────────────
 // Animated Counter
@@ -368,7 +303,7 @@ export const Counter: React.FC<{ to: number; suffix?: string }> = ({ to, suffix 
 // Marquee
 // ─────────────────────────────────────────
 export const Marquee: React.FC = () => {
-  const items = ["Academics","Attendance","Exams & Results","Timetable","Placements","Digital Library","Communication","Admin Control"];
+  const items = ["Academics", "Attendance", "Exams & Results", "Timetable", "Placements", "Digital Library", "Communication", "Admin Control"];
   return (
     <div className="marquee-wrap">
       <div className="marquee-track">
@@ -379,6 +314,116 @@ export const Marquee: React.FC = () => {
         ))}
       </div>
     </div>
+  );
+};
+
+// ─────────────────────────────────────────
+// Navbar
+// ─────────────────────────────────────────
+export const Navbar: React.FC = () => {
+  const [scrolled, setScrolled] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  useEffect(() => {
+    const handler = () => setScrolled(window.scrollY > 40);
+    window.addEventListener("scroll", handler);
+
+    // Theme sync
+    const storedTheme = localStorage.getItem("portal_theme");
+    const initialTheme = storedTheme === "dark" ? "dark" : "light";
+    setTheme(initialTheme);
+    document.documentElement.classList.toggle("theme-dark", initialTheme === "dark");
+
+    return () => window.removeEventListener("scroll", handler);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("portal_theme", nextTheme);
+    document.documentElement.classList.toggle("theme-dark", nextTheme === "dark");
+  };
+
+  return (
+    <motion.nav className={`nav${scrolled ? " nav-scrolled" : ""}`}
+      initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}>
+      <div className="nav-logo">
+        <div className="nav-logo-icon">✦</div>
+        <div className="nav-logo-text">NgCMS <span>ERP</span></div>
+      </div>
+      <ul className="nav-links">
+        {["Features", "Analytics", "Roles", "About"].map(item => (
+          <li key={item}><a href={`#${item.toLowerCase()}`}>{item}</a></li>
+        ))}
+      </ul>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <button onClick={toggleTheme} className="theme-toggle" aria-label="Toggle theme">
+          {theme === 'dark' ? '☀️' : '🌙'}
+        </button>
+        <motion.a href="/login" className="nav-cta"
+          whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+          Sign In →
+        </motion.a>
+      </div>
+    </motion.nav>
+  );
+};
+
+// ─────────────────────────────────────────
+// Hero Section
+// ─────────────────────────────────────────
+export const HeroSection: React.FC = () => {
+  const { scrollY } = useScroll();
+  const y = useTransform(scrollY, [0, 600], [0, 120]);
+  const opacity = useTransform(scrollY, [0, 400], [1, 0]);
+
+  return (
+    <section className="hero">
+      <div className="hero-blob hero-blob-1" />
+      <div className="hero-blob hero-blob-2" />
+      <motion.div className="hero-content" style={{ y, opacity }}>
+        <motion.div className="hero-badge"
+          initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}>
+          <span className="badge-dot" /> St. Xavier's Digital Curator
+        </motion.div>
+        <motion.h1 className="hero-h1"
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}>
+          The <span className="accent">Intelligent</span> Campus{" "}
+          <span className="serif">Operating System</span>
+        </motion.h1>
+        <motion.p className="hero-sub"
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}>
+          NgCMS ERP unifies academics, attendance, exams, placements, and communication — tailored for every role, powered by AI.
+        </motion.p>
+        <motion.div className="hero-actions"
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.55 }}>
+          <motion.a href="/login" className="btn-primary" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+            Get Started <span>→</span>
+          </motion.a>
+          <motion.a href="#features" className="btn-ghost" whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+            Explore Features
+          </motion.a>
+        </motion.div>
+        <motion.div className="hero-stats"
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.9, duration: 0.5 }}>
+          {[["60+", "Students"], ["4", "Roles"], ["99%", "Uptime"]].map(([val, label]) => (
+            <div key={label} className="hero-stat">
+              <strong>{val}</strong>
+              <span>{label}</span>
+            </div>
+          ))}
+        </motion.div>
+      </motion.div>
+      <motion.div className="hero-scroll-hint"
+        animate={{ y: [0, 8, 0] }} transition={{ repeat: Infinity, duration: 2 }}>
+        <div className="scroll-line" /> scroll
+      </motion.div>
+    </section>
   );
 };
 
@@ -412,11 +457,10 @@ export const StatsBar: React.FC = () => (
 export const MockupSection: React.FC = () => {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], [80, -80]);
-  const rotateX = useTransform(scrollYProgress, [0, 0.4, 1], [14, 0, -6]);
-  const scale = useTransform(scrollYProgress, [0, 0.25], [0.88, 1]);
+  const y = useTransform(scrollYProgress, [0, 1], [60, -60]);
+  const rotateX = useTransform(scrollYProgress, [0, 0.4, 1], [10, 0, -4]);
+  const scale = useTransform(scrollYProgress, [0, 0.25], [0.92, 1]);
 
-  const sidebarItems = [["Dashboard","Students"],["Subjects","Timetable","Attendance","Exams"],["Library","Placement"]];
   const cards = [
     { label: "Total Students", num: "60", sub: "↑ Active Roll", cls: "" },
     { label: "Classes Today", num: "0", sub: "Next: 11:30 AM", cls: "grey" },
@@ -426,13 +470,14 @@ export const MockupSection: React.FC = () => {
 
   return (
     <div ref={ref} className="mockup-section">
-      <div className="mockup-label">
-        <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
-          <div className="section-tag">Live Preview</div>
-          <h2 className="section-title">See it in <span className="accent">action</span></h2>
-        </motion.div>
-      </div>
-      <motion.div className="mockup-wrapper" style={{ y, rotateX, scale, transformPerspective: 1400 }}>
+      <div className="mockup-inner">
+        <div className="mockup-label">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <div className="section-tag">Live Preview</div>
+            <h2 className="section-title">See it in <span className="accent">action</span></h2>
+          </motion.div>
+        </div>
+        <motion.div className="mockup-wrapper" style={{ y, rotateX, scale, transformPerspective: 1400 }}>
         <div className="screen-wrap">
           <div className="screen-bar">
             <div className="screen-dot d1" /><div className="screen-dot d2" /><div className="screen-dot d3" />
@@ -442,17 +487,17 @@ export const MockupSection: React.FC = () => {
             {/* Sidebar */}
             <div className="m-sidebar">
               <div className="m-brand">NgCMS ERP<small>AI POWERED ERP</small></div>
-              {["Dashboard","Students"].map(item => (
+              {["Dashboard", "Students"].map(item => (
                 <div key={item} className={`m-item${item === "Dashboard" ? " active" : ""}`}>
                   <div className="m-item-icon" />{item}
                 </div>
               ))}
               <div className="m-section">ACADEMIC HUB</div>
-              {["Subjects","Timetable","Attendance","Exams"].map(item => (
+              {["Subjects", "Timetable", "Attendance", "Exams"].map(item => (
                 <div key={item} className="m-item"><div className="m-item-icon" />{item}</div>
               ))}
               <div className="m-section">CAMPUS LIFE</div>
-              {["Library","Placement"].map(item => (
+              {["Library", "Placement"].map(item => (
                 <div key={item} className="m-item"><div className="m-item-icon" />{item}</div>
               ))}
               <div className="m-avatar">
@@ -468,7 +513,7 @@ export const MockupSection: React.FC = () => {
                   <div className="m-title">PORTAL <span>OVERVIEW</span></div>
                   <div className="m-subtitle">Spring Semester 2024</div>
                 </div>
-                <div className="m-date">SUNDAY<br />APRIL 5, 2026</div>
+                <div className="m-date">MONDAY<br />APRIL 6, 2026</div>
               </div>
               <div className="m-cards">
                 {cards.map((c, i) => (
@@ -497,65 +542,246 @@ export const MockupSection: React.FC = () => {
           </div>
         </div>
       </motion.div>
+      </div>
     </div>
   );
 };
 
 // ─────────────────────────────────────────
-// Horizontal Scroll Features
+// Attendance Bar Chart
 // ─────────────────────────────────────────
-export const FeaturesSection: React.FC = () => {
-  const sectionRef = useRef<HTMLElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
+const AttendanceBar: React.FC = () => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      const track = trackRef.current!;
-      const dist = track.scrollWidth - window.innerWidth + 120;
-      gsap.to(track, {
-        x: -dist, ease: "none",
-        scrollTrigger: {
-          trigger: sectionRef.current,
-          start: "top top",
-          end: () => `+=${dist + 400}`,
-          scrub: 1.4, pin: true, anticipatePin: 1,
-        },
-      });
-    }, sectionRef);
-    return () => ctx.revert();
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true); }, { threshold: 0.3 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
   }, []);
 
-  const features = [
-    { icon: "📋", title: "Smart Attendance", desc: "Real-time tracking with shortage alerts and automated parent notifications below 75%.", color: "#4338F7" },
-    { icon: "📝", title: "Exams & Results", desc: "End-to-end exam lifecycle — mark entry, verification, and secure admin-approved publishing.", color: "#7c3aed" },
-    { icon: "📚", title: "Subjects & Materials", desc: "Upload syllabi and references. Students access everything from one searchable hub.", color: "#0ea5e9" },
-    { icon: "🗓️", title: "Live Timetable", desc: "Role-aware schedule views with instant real-time propagation across all users.", color: "#10b981" },
-    { icon: "💬", title: "Communication Hub", desc: "Announcements, messages, and notice boards connecting every stakeholder securely.", color: "#f59e0b" },
-    { icon: "🎓", title: "Placement Portal", desc: "Track drives, applications, and offer letters. Full pipeline for placement cells.", color: "#ec4899" },
+  const data = [
+    { label: "Jan", val: 88, color: "#2563EB" },
+    { label: "Feb", val: 76, color: "#2563EB" },
+    { label: "Mar", val: 92, color: "#2563EB" },
+    { label: "Apr", val: 85, color: "#2563EB" },
+    { label: "May", val: 79, color: "#2563EB" },
+    { label: "Jun", val: 95, color: "#16A34A" },
+    { label: "Jul", val: 70, color: "#D97706" },
   ];
 
   return (
-    <section ref={sectionRef} className="h-features-section" id="features">
-      <div className="h-features-label">
-        <motion.div initial={{ opacity: 0, x: -20 }} whileInView={{ opacity: 1, x: 0 }}
-          viewport={{ once: true }} transition={{ duration: 0.6 }}>
-          <div className="section-tag">Core Modules</div>
-          <h2 className="section-title">Everything your<br /><span className="accent">campus needs</span></h2>
-          <p className="h-scroll-hint">← Drag to explore →</p>
+    <div className="chart-card" ref={ref} style={{ gridColumn: "span 1" }}>
+      <div className="chart-card-title">Monthly Attendance Rate</div>
+      <div className="chart-card-sub">Average across all students (%)</div>
+      <div className="chart-bar-wrap">
+        {data.map((d) => (
+          <div key={d.label} className="chart-bar-col">
+            <div className="chart-bar-val">{visible ? d.val : 0}%</div>
+            <div className="chart-bar-track">
+              <div
+                className="chart-bar-fill"
+                style={{
+                  height: visible ? `${d.val}%` : "0%",
+                  background: d.color,
+                  transition: "height 0.9s cubic-bezier(.34,1.2,.64,1)",
+                }}
+              />
+            </div>
+            <div className="chart-bar-label">{d.label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────
+// Module Usage Donut
+// ─────────────────────────────────────────
+const ModuleDonut: React.FC = () => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true); }, { threshold: 0.3 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+
+  const r = 36, cx = 48, cy = 48, circ = 2 * Math.PI * r;
+  const segments = [
+    { label: "Attendance", pct: 34, color: "#2563EB" },
+    { label: "Exams", pct: 26, color: "#7C3AED" },
+    { label: "Library", pct: 18, color: "#0EA5E9" },
+    { label: "Placement", pct: 22, color: "#16A34A" },
+  ];
+  let offset = 0;
+
+  return (
+    <div className="chart-card" ref={ref}>
+      <div className="chart-card-title">Module Usage</div>
+      <div className="chart-card-sub">Active sessions by module</div>
+      <div className="donut-wrap">
+        <svg className="donut-svg" width="96" height="96" viewBox="0 0 96 96">
+          <circle className="donut-circle-bg" cx={cx} cy={cy} r={r} />
+          {segments.map((s) => {
+            const dash = visible ? (s.pct / 100) * circ : 0;
+            const gap = circ - dash;
+            const el = (
+              <circle
+                key={s.label}
+                className="donut-circle-fill"
+                cx={cx} cy={cy} r={r}
+                stroke={s.color}
+                strokeDasharray={`${dash} ${gap}`}
+                strokeDashoffset={-offset}
+                style={{ transition: "stroke-dasharray 1.1s ease, stroke-dashoffset 1.1s ease" }}
+              />
+            );
+            offset += (s.pct / 100) * circ;
+            return el;
+          })}
+          <text className="donut-center-text" x={cx} y={cy - 5}>100%</text>
+          <text className="donut-center-sub" x={cx} y={cx + 9} style={{ fontSize: "7px", fill: "#64748B", textAnchor: "middle" }}>coverage</text>
+        </svg>
+        <div className="donut-legend">
+          {segments.map((s) => (
+            <div key={s.label} className="donut-leg-item">
+              <span className="donut-leg-dot" style={{ background: s.color }} />
+              {s.label}
+              <span className="donut-leg-pct">{s.pct}%</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────
+// Results Trend Sparkline
+// ─────────────────────────────────────────
+const ResultsTrend: React.FC = () => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setVisible(true); }, { threshold: 0.3 });
+    if (ref.current) obs.observe(ref.current);
+    return () => obs.disconnect();
+  }, []);
+
+  const pts = [58, 65, 61, 72, 69, 78, 82, 79, 88];
+  const W = 200, H = 90, pad = 8;
+  const minV = Math.min(...pts), maxV = Math.max(...pts);
+  const toX = (i: number) => pad + (i / (pts.length - 1)) * (W - 2 * pad);
+  const toY = (v: number) => H - pad - ((v - minV) / (maxV - minV + 1)) * (H - 2 * pad);
+  const polyline = pts.map((v, i) => `${toX(i)},${toY(v)}`).join(" ");
+  const area = `${toX(0)},${H} ` + polyline + ` ${toX(pts.length - 1)},${H}`;
+  const totalLen = 350;
+
+  return (
+    <div className="chart-card" ref={ref}>
+      <div className="chart-card-title">Exam Pass Rate</div>
+      <div className="chart-card-sub">Semester trend (%)</div>
+      <div className="spark-highlight">↑ +30pp this year</div>
+      <div className="spark-wrap">
+        <svg className="spark-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" height={H}>
+          <defs>
+            <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#2563EB" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
+            </linearGradient>
+          </defs>
+          <polygon className="spark-area" points={area} fill="url(#sparkGrad)" />
+          <polyline
+            className="spark-line"
+            points={polyline}
+            stroke="#2563EB"
+            strokeDasharray={totalLen}
+            strokeDashoffset={visible ? 0 : totalLen}
+            style={{ transition: "stroke-dashoffset 1.4s ease" }}
+          />
+          {pts.map((v, i) => (
+            <circle key={i} cx={toX(i)} cy={toY(v)} r="3" fill="#2563EB"
+              opacity={visible ? 1 : 0}
+              style={{ transition: `opacity 0.3s ease ${0.1 * i + 1}s` }} />
+          ))}
+        </svg>
+        <div className="spark-labels">
+          {["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"].map(l => (
+            <span key={l} className="spark-label">{l}</span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────
+// Charts Section
+// ─────────────────────────────────────────
+export const ChartsSection: React.FC = () => (
+  <section className="charts-section" id="analytics">
+    <div className="charts-inner">
+      <motion.div className="charts-label"
+        initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }} transition={{ duration: 0.6 }}>
+        <div className="section-tag">Analytics</div>
+        <h2 className="section-title">Data-driven insights, <span className="accent">at a glance</span></h2>
+      </motion.div>
+      <div className="charts-grid">
+        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.5, delay: 0 }}>
+          <AttendanceBar />
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.1 }}>
+          <ModuleDonut />
+        </motion.div>
+        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }}>
+          <ResultsTrend />
         </motion.div>
       </div>
-      <div ref={trackRef} className="h-features-track">
-        {features.map((f, i) => (
-          <motion.div key={i} className="h-feat-card" style={{ "--accent": f.color } as React.CSSProperties}
-            initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }} transition={{ delay: 0.05 * i, duration: 0.5 }}>
-            <div className="h-feat-num">0{i + 1}</div>
-            <div className="h-feat-icon" style={{ background: f.color + "20" }}>{f.icon}</div>
-            <h3 className="h-feat-title">{f.title}</h3>
-            <p className="h-feat-desc">{f.desc}</p>
-            <div className="h-feat-bar" style={{ background: f.color }} />
-          </motion.div>
-        ))}
+    </div>
+  </section>
+);
+
+// ─────────────────────────────────────────
+// Features Section (grid, no GSAP)
+// ─────────────────────────────────────────
+export const FeaturesSection: React.FC = () => {
+  const features = [
+    { icon: "📋", title: "Smart Attendance", desc: "Real-time tracking with shortage alerts and automated parent notifications below 75%.", color: "#2563EB" },
+    { icon: "📝", title: "Exams & Results", desc: "End-to-end exam lifecycle — mark entry, verification, and secure admin-approved publishing.", color: "#7C3AED" },
+    { icon: "📚", title: "Subjects & Materials", desc: "Upload syllabi and references. Students access everything from one searchable hub.", color: "#0EA5E9" },
+    { icon: "🗓️", title: "Live Timetable", desc: "Role-aware schedule views with instant real-time propagation across all users.", color: "#16A34A" },
+    { icon: "💬", title: "Communication Hub", desc: "Announcements, messages, and notice boards connecting every stakeholder securely.", color: "#D97706" },
+    { icon: "🎓", title: "Placement Portal", desc: "Track drives, applications, and offer letters. Full pipeline for placement cells.", color: "#EC4899" },
+  ];
+
+  return (
+    <section className="features-section" id="features">
+      <div className="features-inner">
+        <motion.div className="features-label"
+          initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }} transition={{ duration: 0.6 }}>
+          <div className="section-tag">Core Modules</div>
+          <h2 className="section-title">Everything your <span className="accent">campus needs</span></h2>
+        </motion.div>
+        <div className="features-grid">
+          {features.map((f, i) => (
+            <motion.div key={i} className="feat-card"
+              initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }} transition={{ delay: 0.06 * i, duration: 0.5 }}>
+              <div className="feat-num">0{i + 1}</div>
+              <div className="feat-icon" style={{ background: f.color + "18" }}>{f.icon}</div>
+              <h3 className="feat-title">{f.title}</h3>
+              <p className="feat-desc">{f.desc}</p>
+              <div className="feat-card-accent" style={{ background: f.color }} />
+            </motion.div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -567,19 +793,19 @@ export const FeaturesSection: React.FC = () => {
 export const RolesSection: React.FC = () => {
   const [active, setActive] = useState(0);
   const roles = [
-    { emoji: "🏛️", name: "Administrator", tag: "Full Access", color: "#4338F7", desc: "Complete institutional oversight — manage users, approve results, configure modules, and monitor the entire campus ecosystem.", perks: ["User & Role Management","Result Approval Workflow","System Configuration","Analytics & Reports","Full Module Access"] },
-    { emoji: "👨‍🏫", name: "Teacher", tag: "Academic Access", color: "#7c3aed", desc: "Your classroom, digitized. Mark attendance, upload materials, grade assignments, and publish verified results for your subjects.", perks: ["Attendance Marking","Material Uploads","Assignment Grading","Result Publishing","Timetable View"] },
-    { emoji: "🎒", name: "Student", tag: "Student Portal", color: "#0ea5e9", desc: "Everything you need, one place. Track attendance, download materials, check results, and manage your placement journey.", perks: ["Attendance Tracking","Material Downloads","Result Viewing","Placement Applications","Communication"] },
-    { emoji: "👨‍👩‍👧", name: "Parent", tag: "Guardian View", color: "#10b981", desc: "Stay connected with your ward's academic journey. Get instant alerts and monitor performance without stepping into the office.", perks: ["Attendance Monitoring","Result Viewing","Shortage Alerts","Communication","Progress Reports"] },
+    { emoji: "🏛️", name: "Administrator", tag: "Full Access", color: "#2563EB", desc: "Complete institutional oversight — manage users, approve results, configure modules, and monitor the entire campus ecosystem.", perks: ["User & Role Management", "Result Approval Workflow", "System Configuration", "Analytics & Reports", "Full Module Access"] },
+    { emoji: "👨‍🏫", name: "Teacher", tag: "Academic Access", color: "#7C3AED", desc: "Your classroom, digitized. Mark attendance, upload materials, grade assignments, and publish verified results for your subjects.", perks: ["Attendance Marking", "Material Uploads", "Assignment Grading", "Result Publishing", "Timetable View"] },
+    { emoji: "🎒", name: "Student", tag: "Student Portal", color: "#0EA5E9", desc: "Everything you need, one place. Track attendance, download materials, check results, and manage your placement journey.", perks: ["Attendance Tracking", "Material Downloads", "Result Viewing", "Placement Applications", "Communication"] },
+    { emoji: "👨‍👩‍👧", name: "Parent", tag: "Guardian View", color: "#16A34A", desc: "Stay connected with your ward's academic journey. Get instant alerts and monitor performance without stepping into the office.", perks: ["Attendance Monitoring", "Result Viewing", "Shortage Alerts", "Communication", "Progress Reports"] },
   ];
 
   return (
     <section className="roles-section" id="roles">
       <div className="roles-inner">
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
+        <motion.div initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }} transition={{ duration: 0.6 }}>
           <div className="section-tag">Access Control</div>
-          <h2 className="section-title">One platform,<br /><span className="accent">every role</span></h2>
+          <h2 className="section-title">One platform, <span className="accent">every role</span></h2>
         </motion.div>
         <div className="roles-tabs">
           {roles.map((r, i) => (
@@ -595,15 +821,15 @@ export const RolesSection: React.FC = () => {
         <AnimatePresence mode="wait">
           <motion.div key={active} className="role-panel"
             style={{ "--col": roles[active].color } as React.CSSProperties}
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}>
+            initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -14 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}>
             <div>
               <motion.div className="role-big-emoji"
-                animate={{ rotate: [0, 8, -8, 0] }} transition={{ duration: 0.5 }}>
+                animate={{ rotate: [0, 6, -6, 0] }} transition={{ duration: 0.45 }}>
                 {roles[active].emoji}
               </motion.div>
               <div className="role-tag-badge"
-                style={{ color: roles[active].color, background: roles[active].color + "18", border: `1px solid ${roles[active].color}44` }}>
+                style={{ color: roles[active].color, background: roles[active].color + "15", border: `1.5px solid ${roles[active].color}33` }}>
                 {roles[active].tag}
               </div>
               <h3 className="role-panel-name">{roles[active].name}</h3>
@@ -613,8 +839,8 @@ export const RolesSection: React.FC = () => {
               <div className="role-perks-title">Capabilities</div>
               {roles[active].perks.map((perk, i) => (
                 <motion.div key={perk} className="role-perk"
-                  initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.07 * i, duration: 0.35 }}>
+                  initial={{ opacity: 0, x: 14 }} animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.06 * i, duration: 0.3 }}>
                   <span className="perk-check" style={{ color: roles[active].color }}>✓</span>
                   {perk}
                 </motion.div>
@@ -633,116 +859,25 @@ export const RolesSection: React.FC = () => {
 export const CTASection: React.FC = () => (
   <section className="cta-section" id="login">
     <motion.div className="cta-box"
-      initial={{ opacity: 0, scale: 0.94 }} whileInView={{ opacity: 1, scale: 1 }}
-      viewport={{ once: true }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
+      initial={{ opacity: 0, scale: 0.95 }} whileInView={{ opacity: 1, scale: 1 }}
+      viewport={{ once: true }} transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}>
       <div className="cta-orb cta-orb1" />
       <div className="cta-orb cta-orb2" />
       <div className="cta-inner">
-        <div className="section-tag" style={{ color: "rgba(255,255,255,0.7)" }}>Ready to get started?</div>
+        <div className="cta-eyebrow">Ready to get started?</div>
         <h2 className="cta-h2">Digitize your campus.<br />Unify your institution.</h2>
         <p className="cta-sub">Join faculty, students, and staff on NgCMS ERP — the secure, AI-powered platform built for modern education.</p>
         <div className="cta-actions">
           <motion.a href="/login" className="cta-btn"
-            whileHover={{ scale: 1.05, boxShadow: "0 0 40px rgba(255,255,255,0.25)" }}
-            whileTap={{ scale: 0.97 }}>Initialize Connection →</motion.a>
+            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
+            Get Started →
+          </motion.a>
           <a href="#" className="cta-ghost">Request a Demo</a>
         </div>
       </div>
     </motion.div>
   </section>
 );
-
-// ─────────────────────────────────────────
-// Navbar
-// ─────────────────────────────────────────
-export const Navbar: React.FC = () => {
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const handler = () => setScrolled(window.scrollY > 40);
-    window.addEventListener("scroll", handler);
-    return () => window.removeEventListener("scroll", handler);
-  }, []);
-  return (
-    <motion.nav className={`nav${scrolled ? " nav-scrolled" : ""}`}
-      initial={{ y: -60, opacity: 0 }} animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}>
-      <div className="nav-logo">
-        <div className="nav-logo-icon">✦</div>
-        <div className="nav-logo-text">NgCMS <span>ERP</span></div>
-      </div>
-      <ul className="nav-links">
-        {["Features","Roles","About","Contact"].map(item => (
-          <li key={item}><a href={`#${item.toLowerCase()}`}>{item}</a></li>
-        ))}
-      </ul>
-      <motion.a href="/login" className="nav-cta"
-        whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>Sign In →</motion.a>
-    </motion.nav>
-  );
-};
-
-// ─────────────────────────────────────────
-// Hero Section
-// ─────────────────────────────────────────
-export const HeroSection: React.FC = () => {
-  const [active, setActive] = useState(false);
-  const line1 = useScramble("INTELLIGENT", active);
-  const line2 = useScramble("CAMPUS OS", active);
-  const { scrollY } = useScroll();
-  const y = useTransform(scrollY, [0, 600], [0, 160]);
-  const opacity = useTransform(scrollY, [0, 450], [1, 0]);
-
-  useEffect(() => { const t = setTimeout(() => setActive(true), 400); return () => clearTimeout(t); }, []);
-
-  return (
-    <section className="hero">
-      <ParticleCanvas />
-      <div className="hero-bg" />
-      <div className="hero-grid" />
-      <motion.div className="hero-content" style={{ y, opacity }}>
-        <motion.div className="hero-badge"
-          initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5, delay: 0.1 }}>
-          <span className="badge-pulse" /> &nbsp;St. Xavier's Digital Curator
-        </motion.div>
-        <motion.h1 className="hero-h1"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, delay: 0.2 }}>
-          <span className="hero-line-thin">THE</span><br />
-          <span className="hero-line-accent">{line1}</span><br />
-          <span className="hero-line-white">{line2}</span>
-        </motion.h1>
-        <motion.p className="hero-sub"
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.55 }}>
-          NgCMS ERP unifies academics, attendance, exams, placements, and communication — tailored for every role, powered by AI.
-        </motion.p>
-        <motion.div className="hero-actions"
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.7 }}>
-          <motion.a href="/login" className="btn-primary" whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
-            Initialize Connection <span className="btn-arrow">→</span>
-          </motion.a>
-          <motion.a href="#features" className="btn-ghost" whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.97 }}>
-            Explore Features
-          </motion.a>
-        </motion.div>
-        <motion.div className="hero-stats"
-          initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 0.5 }}>
-          {[["60+","Students"],["4","Roles"],["99%","Uptime"]].map(([val, label]) => (
-            <div key={label} className="hero-stat">
-              <strong>{val}</strong>
-              <span>{label}</span>
-            </div>
-          ))}
-        </motion.div>
-      </motion.div>
-      <motion.div className="hero-scroll-hint"
-        animate={{ y: [0, 10, 0] }} transition={{ repeat: Infinity, duration: 1.8 }}>
-        <div className="scroll-line" /> scroll
-      </motion.div>
-    </section>
-  );
-};
 
 // ─────────────────────────────────────────
 // Footer
@@ -759,14 +894,14 @@ export const Footer: React.FC = () => (
       </div>
       <div className="footer-copy">© 2026 NgCMS ERP. All rights reserved.</div>
       <div className="footer-links">
-        {["Privacy","Terms","Support"].map(l => <a key={l} href="#">{l}</a>)}
+        {["Privacy", "Terms", "Support"].map(l => <a key={l} href="#">{l}</a>)}
       </div>
     </div>
   </footer>
 );
 
 // ─────────────────────────────────────────
-// Style injector (call once at app root)
+// Style Injector
 // ─────────────────────────────────────────
 export const NgCMSStyles: React.FC = () => (
   <style dangerouslySetInnerHTML={{ __html: GLOBAL_CSS }} />
@@ -778,11 +913,11 @@ export const NgCMSStyles: React.FC = () => (
 const NgCMSLandingPage: React.FC = () => (
   <>
     <NgCMSStyles />
-    <CustomCursor />
     <Navbar />
     <HeroSection />
     <StatsBar />
     <MockupSection />
+    <ChartsSection />
     <FeaturesSection />
     <RolesSection />
     <CTASection />

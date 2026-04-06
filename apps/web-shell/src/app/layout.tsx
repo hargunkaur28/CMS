@@ -54,10 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const storedTheme = localStorage.getItem("portal_theme");
-    const systemPrefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initialTheme = storedTheme === "dark" || storedTheme === "light"
-      ? (storedTheme as "light" | "dark")
-      : (systemPrefersDark ? "dark" : "light");
+    const initialTheme = storedTheme === "dark" ? "dark" : "light";
     setTheme(initialTheme);
     document.documentElement.classList.toggle("theme-dark", initialTheme === "dark");
   }, []);
