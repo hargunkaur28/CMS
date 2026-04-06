@@ -48,6 +48,20 @@ export default function MarksEntryPage({ params }: { params: Promise<{ examId: s
     }
   };
 
+  // Extract batchId from first student if available, otherwise from exam
+  const getBatchId = () => {
+    if (students.length > 0 && students[0].batchId?._id) {
+      return students[0].batchId._id;
+    }
+    if (students.length > 0 && students[0].academicInfo?.batchId?._id) {
+      return students[0].academicInfo.batchId._id;
+    }
+    if (students.length > 0 && typeof students[0].batchId === 'string') {
+      return students[0].batchId;
+    }
+    return "";
+  };
+
   const handlePublish = async () => {
     if (!confirm("Confirm result publication? This generates permanent student records.")) return;
     try {
@@ -120,8 +134,8 @@ export default function MarksEntryPage({ params }: { params: Promise<{ examId: s
              examId={examId}
              subjects={exam.subjects || []}
              students={students}
-             courseId={exam.courses?.[0]?._id}
-             batchId={""} // Populated via rosters
+             courseId={exam.courses?.[0]?._id || exam.courses?.[0]}
+             batchId={getBatchId()}
              totalMarks={exam.totalMarks || 100}
            />
         </Card>

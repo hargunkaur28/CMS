@@ -20,6 +20,7 @@ export default function StudentTable({ students, onDelete, onEdit, onUpdateEnrol
       <table className="w-full text-left border-collapse">
         <thead className="bg-slate-50 border-b border-slate-100">
           <tr>
+            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 w-12">S.No</th>
             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Student Info</th>
             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Student ID</th>
             <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Course & Batch</th>
@@ -29,8 +30,11 @@ export default function StudentTable({ students, onDelete, onEdit, onUpdateEnrol
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-50">
-          {students.map((student) => (
+          {students.map((student, index) => (
             <tr key={student._id} className="hover:bg-slate-50 transition-colors group">
+              <td className="px-6 py-4">
+                <p className="text-[10px] font-bold text-slate-500">{String(index + 1).padStart(2, '0')}</p>
+              </td>
               <td className="px-6 py-4">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-slate-100 border-2 border-white overflow-hidden shadow-sm">

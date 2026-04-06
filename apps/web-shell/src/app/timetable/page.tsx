@@ -1,24 +1,41 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import Card from '@/components/ui/Card';
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { 
   Calendar, 
   Clock, 
   ChevronLeft, 
   ChevronRight, 
   Filter,
+  Download,
   MapPin,
   User,
   BookOpen
 } from 'lucide-react';
-import { fetchMyTimetable as fetchStudentTimetable } from '@/lib/api/student';
-import { fetchMyStudentTimetable as fetchParentTimetable } from '@/lib/api/parent';
+import { fetchMyTimetable as fetchStudentTimetable, fetchMyProfile as fetchStudentProfile } from '@/lib/api/student';
+import { fetchMyStudentTimetable as fetchParentTimetable, fetchMyStudentProfile as fetchParentProfile } from '@/lib/api/parent';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const TIME_SLOTS = [
+  { start: '09:00', label: '09:00 - 10:00' },
+  { start: '10:00', label: '10:00 - 11:00' },
+  { start: '11:00', label: '11:00 - 12:00' },
+  { start: '12:00', label: '12:00 - 01:00' },
+  { start: '13:00', label: '01:00 - 02:00' },
+  { start: '14:00', label: '02:00 - 03:00' },
+  { start: '15:00', label: '03:00 - 04:00' },
+  { start: '16:00', label: '04:00 - 05:00' },
+];
+
 export default function TimetablePortal() {
   const [timetable, setTimetable] = useState<Record<string, Record<string, any[]>>>({});
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [role, setRole] = useState<string | null>(null);
 
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -31,14 +48,20 @@ export default function TimetablePortal() {
     async function loadData() {
       try {
         let res;
+        let profileRes;
         if (userData.role === 'STUDENT') {
           res = await fetchStudentTimetable();
+          profileRes = await fetchStudentProfile();
         } else if (userData.role === 'PARENT') {
           res = await fetchParentTimetable();
+          profileRes = await fetchParentProfile();
         }
         
         if (res?.success) {
           setTimetable(res.data);
+        }
+        if (profileRes?.success) {
+          setProfile(profileRes.data);
         }
       } catch (err) {
         console.error("Failed to load timetable", err);
@@ -59,6 +82,70 @@ export default function TimetablePortal() {
       </div>
     );
   }
+
+  const handleDownloadPdf = async () => {
+    if (!Object.keys(timetable).length || downloading) return;
+
+    setDownloading(true);
+    try {
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      
+      const studentName = profile?.personalInfo?.name || `${profile?.personalInfo?.firstName || ""} ${profile?.personalInfo?.lastName || ""}`.trim() || "Student";
+      const batchLabel = profile?.academicInfo?.batch || profile?.batchId?.name || "Not Assigned";
+      const sectionLabel = profile?.academicInfo?.section || profile?.sectionId?.name || "Not Assigned";
+
+      doc.setFontSize(20);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Student Weekly Timetable", 14, 18);
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`Student: ${studentName}`, 14, 26);
+      doc.text(`Batch: ${batchLabel} | Section: ${sectionLabel}`, 14, 32);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 38);
+
+      const lookup = Object.entries(timetable).reduce((acc: Record<string, Record<string, any>>, [day, grouped]) => {
+        acc[day] = {};
+        Object.values(grouped).flat().forEach((entry: any) => {
+          acc[day][entry.startTime] = entry;
+        });
+        return acc;
+      }, {});
+
+      const rows = TIME_SLOTS.map((slot) => {
+        const row: string[] = [slot.label];
+        DAYS.forEach((day) => {
+          const entry = lookup[day]?.[slot.start];
+          if (!entry) {
+            row.push("-");
+            return;
+          }
+          const subjectName = entry.subjectId?.name || entry.subject || "Subject";
+          const teacherName = entry.teacherId?.name || "Teacher";
+          const roomName = entry.room || entry.roomNo || "TBD";
+          row.push(`${subjectName}\n${teacherName}\nRoom ${roomName}`);
+        });
+        return row;
+      });
+
+      autoTable(doc, {
+        head: [["Time", ...DAYS]],
+        body: rows,
+        startY: 44,
+        theme: "grid",
+        styles: { fontSize: 7, cellPadding: 2, valign: "middle", textColor: [51, 65, 85] },
+        headStyles: { fillColor: [79, 70, 229], textColor: [255, 255, 255], fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        columnStyles: {
+          0: { cellWidth: 28 },
+        },
+      });
+
+      const fileName = `${studentName.replace(/\s+/g, "_")}_Weekly_Timetable.pdf`;
+      doc.save(fileName);
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   // Flatten the grouped slots for the current selected day
   const currentDayGrouped = timetable[activeDay] || {};
@@ -172,8 +259,13 @@ export default function TimetablePortal() {
              Students are advised to be present 5 minutes before the session starts. Attendance logs are synchronized in real-time with the faculty portal.
            </p>
          </div>
-         <button className="relative z-10 px-8 py-4 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-xl">
-           Download Weekly PDF
+         <button 
+           onClick={handleDownloadPdf}
+           disabled={downloading || !Object.keys(timetable).length}
+           className="relative z-10 px-8 py-4 bg-white text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+         >
+           <Download size={14} />
+           {downloading ? 'Generating...' : 'Download Weekly PDF'}
          </button>
       </Card>
     </div>

@@ -18,7 +18,9 @@ import {
   Search,
   Settings,
   LogOut,
-  Layers
+  Layers,
+  Moon,
+  Sun
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -49,6 +51,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const [authorized, setAuthorized] = React.useState(false);
   const [currentUser, setCurrentUser] = React.useState<any>(null);
+  const [theme, setTheme] = React.useState<"light" | "dark">("light");
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("portal_theme", nextTheme);
+    document.documentElement.classList.toggle("theme-dark", nextTheme === "dark");
+  };
+
+  React.useEffect(() => {
+    const storedTheme = localStorage.getItem("portal_theme");
+    const initialTheme = storedTheme === "dark" ? "dark" : "light";
+    setTheme(initialTheme);
+    document.documentElement.classList.toggle("theme-dark", initialTheme === "dark");
+  }, []);
 
   const resolveAssetUrl = (url?: string) => {
     if (!url) return "";
@@ -96,8 +113,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     } catch {
       // Best-effort server logout; always clear local state.
     } finally {
+      const savedTheme = localStorage.getItem('portal_theme');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      if (savedTheme) localStorage.setItem('portal_theme', savedTheme);
       router.push('/login');
     }
   };
@@ -181,6 +200,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                  <p className="text-[8px] font-bold text-slate-600 uppercase tracking-widest mt-1">LTS Instance</p>
               </div>
            </div>
+           <button
+             onClick={handleLogout}
+             className="w-full flex items-center gap-3.5 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] text-rose-500 hover:bg-rose-500/10 transition-all border border-transparent hover:border-rose-500/20"
+           >
+             <LogOut size={16} />
+             <span>Secure Sign Out</span>
+           </button>
         </div>
       </aside>
 
@@ -200,6 +226,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Search size={14} className="text-slate-400 group-hover:text-indigo-600 transition-colors" />
                <input type="text" placeholder="STRATEGIC SEARCH..." className="bg-transparent border-none text-[9px] font-black focus:outline-none w-48 tracking-widest admin-search-input" />
              </div>
+
+             <div className="h-10 w-px bg-slate-200 mx-2" />
+
+             <button
+               type="button"
+               onClick={toggleTheme}
+               className="w-10 h-10 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors flex items-center justify-center"
+               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+             >
+               {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+             </button>
 
              <div className="h-10 w-px bg-slate-200 mx-2" />
 

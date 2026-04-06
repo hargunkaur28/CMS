@@ -32,10 +32,21 @@ export default function AttendancePage() {
     const enriched = await Promise.all(
       schedule.map(async (session: any) => {
         const section = session.section || session.sectionId?.name || "General";
-        const attendanceRes = await api.get(
-          `/teacher/attendance?batchId=${session.batchId?._id || session.batchId}&subjectId=${session.subjectId?._id || session.subjectId}&date=${scheduleRes.data?.meta?.serverDate}&lecture=${session.period}&section=${section}`
-        );
-        const marked = Array.isArray(attendanceRes.data?.data) && attendanceRes.data.data.length > 0;
+        let marked = false;
+        
+        // Only fetch attendance if subjectId exists
+        try {
+          const subjectId = session.subjectId?._id || session.subjectId;
+          if (subjectId && subjectId !== 'undefined') {
+            const attendanceRes = await api.get(
+              `/teacher/attendance?batchId=${session.batchId?._id || session.batchId}&subjectId=${subjectId}&date=${scheduleRes.data?.meta?.serverDate}&lecture=${session.period}&section=${section}`
+            );
+            marked = Array.isArray(attendanceRes.data?.data) && attendanceRes.data.data.length > 0;
+          }
+        } catch (err) {
+          console.warn(`Failed to load attendance for session:`, err);
+        }
+        
         return {
           ...session,
           attendanceMarked: marked,
@@ -99,6 +110,13 @@ export default function AttendancePage() {
 
   const submitAttendance = async () => {
     if (!selectedSession) return;
+    
+    const subjectId = selectedSession.subjectId?._id || selectedSession.subjectId;
+    if (!subjectId || subjectId === 'undefined') {
+      setError("Subject information is missing. Cannot mark attendance");
+      return;
+    }
+    
     setSubmitting(true);
     setError("");
     setSuccess("");
@@ -107,7 +125,7 @@ export default function AttendancePage() {
       const payload = Object.entries(records).map(([studentId, status]) => ({ studentId, status }));
       await api.post("/teacher/attendance/mark", {
         batchId: selectedSession.batchId?._id || selectedSession.batchId,
-        subjectId: selectedSession.subjectId?._id || selectedSession.subjectId,
+        subjectId: subjectId,
         lecture: selectedSession.period,
         date: serverDate,
         section: selectedSession.section || selectedSession.sectionId?.name || "General",

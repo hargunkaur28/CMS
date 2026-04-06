@@ -72,44 +72,52 @@ export default function StudentMaterialsPage() {
   const subjectGroups = useMemo(() => {
     const map = new Map<string, any>();
 
-    const getSubjectKey = (entry: any, materialItem?: any) => {
-      const subjectId = entry?.subjectId?._id || entry?.subjectId || materialItem?.subjectId?._id || materialItem?.subjectId;
-      if (subjectId) return String(subjectId);
+    const getSubjectId = (entry: any) => {
+      // Always try to get the _id first, whether it's nested or direct
+      const id = entry?.subjectId?._id || entry?.subjectId;
+      return id ? String(id).trim() : null;
+    };
 
-      const code = String(entry?.subjectId?.code || materialItem?.subjectId?.code || "").trim().toUpperCase();
-      const name = String(entry?.subjectId?.name || entry?.subject || materialItem?.subjectId?.name || materialItem?.subject || "General")
-        .trim()
-        .toUpperCase();
-      return `${code}::${name}`;
+    const getSubjectInfo = (entry: any) => {
+      const name = entry?.subjectId?.name || entry?.subject || "General";
+      const code = entry?.subjectId?.code || "GEN";
+      const teacherName = entry?.teacherId?.name || "Faculty";
+      return { name, code, teacherName };
     };
 
     const upsertSubject = (entry: any, materialItem?: any) => {
-      const subjectId = getSubjectKey(entry, materialItem);
-      const subjectName = entry?.subjectId?.name || entry?.subject || materialItem?.subjectId?.name || materialItem?.subject || "General";
-      const subjectCode = entry?.subjectId?.code || materialItem?.subjectId?.code || "GEN";
-      const teacherName = entry?.teacherId?.name || materialItem?.teacherId?.name || "Faculty";
+      const item = materialItem || entry;
+      const subjectId = getSubjectId(item);
+      
+      if (!subjectId) return; // Skip if no ID
+      
+      const info = getSubjectInfo(item);
 
-      if (!map.has(String(subjectId))) {
-        map.set(String(subjectId), {
-          subjectId: String(subjectId),
-          subjectName,
-          subjectCode,
-          teacherName,
+      if (!map.has(subjectId)) {
+        map.set(subjectId, {
+          subjectId,
+          subjectName: info.name,
+          subjectCode: info.code,
+          teacherName: info.teacherName,
           timetableEntries: [],
           materials: [],
         });
       }
 
-      const group = map.get(String(subjectId));
-      if (entry) group.timetableEntries.push(entry);
+      const group = map.get(subjectId)!;
+      
+      // Update with latest info
+      if (info.name && info.name !== "General") group.subjectName = info.name;
+      if (info.code && info.code !== "GEN") group.subjectCode = info.code;
+      if (info.teacherName && info.teacherName !== "Faculty") group.teacherName = info.teacherName;
+      
+      if (entry && !materialItem) group.timetableEntries.push(entry);
       if (materialItem) group.materials.push(materialItem);
-      if (teacherName && group.teacherName === "Faculty") group.teacherName = teacherName;
-      if (subjectCode && group.subjectCode === "GEN") group.subjectCode = subjectCode;
-      if (subjectName && group.subjectName === "General") group.subjectName = subjectName;
     };
 
+    // Process timetable first, then materials
     timetable.forEach((entry) => upsertSubject(entry));
-    visibleMaterials.forEach((item) => upsertSubject(item, item));
+    visibleMaterials.forEach((item) => upsertSubject(null, item));
 
     return Array.from(map.values()).sort((a, b) => a.subjectName.localeCompare(b.subjectName));
   }, [visibleMaterials, timetable]);

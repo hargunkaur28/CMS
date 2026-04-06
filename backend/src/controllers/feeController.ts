@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { Request, Response } from "express";
+// @ts-ignore
 import Razorpay from "razorpay";
 import FeeAdjustment from "../models/FeeAdjustment.js";
 import FeeStructure from "../models/FeeStructure.js";

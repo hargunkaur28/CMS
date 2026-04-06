@@ -8,6 +8,7 @@ export interface IMarkComponent {
 }
 
 export interface IMarks extends Document {
+  collegeId: mongoose.Types.ObjectId;
   examId: mongoose.Types.ObjectId;
   studentId: mongoose.Types.ObjectId;
   subjectId: mongoose.Types.ObjectId;
@@ -22,6 +23,7 @@ export interface IMarks extends Document {
 }
 
 const MarksSchema: Schema = new Schema({
+  collegeId: { type: Schema.Types.ObjectId, ref: 'College', required: true },
   examId: { type: Schema.Types.ObjectId, ref: 'Exam', required: true },
   studentId: { type: Schema.Types.ObjectId, ref: 'Student', required: true },
   subjectId: { type: Schema.Types.ObjectId, ref: 'Subject', required: true },
@@ -49,9 +51,8 @@ MarksSchema.pre('save', function(next) {
 });
 
 // Optimize for common queries
-MarksSchema.index({ examId: 1, studentId: 1 }, { unique: true });
-MarksSchema.index({ status: 1 });
+MarksSchema.index({ collegeId: 1, examId: 1, studentId: 1 }, { unique: true });
 MarksSchema.index({ studentId: 1 });
-MarksSchema.index({ examId: 1, batchId: 1 });
+MarksSchema.index({ examId: 1 });
 
 export default mongoose.model<IMarks>('Marks', MarksSchema);

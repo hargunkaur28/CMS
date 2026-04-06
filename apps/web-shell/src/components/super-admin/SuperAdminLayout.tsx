@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, ChevronDown, LogOut, Settings } from 'lucide-react';
+import { Menu, X, ChevronDown, LogOut, Settings, Sun, Moon } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import UserAvatar from '../ui/UserAvatar';
@@ -42,10 +42,28 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     } catch {
       // Continue with client-side logout even if the server request fails.
     } finally {
-      localStorage.clear();
+      const savedTheme = localStorage.getItem('portal_theme');
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (savedTheme) localStorage.setItem('portal_theme', savedTheme);
       setUserMenuOpen(false);
       router.push('/login');
     }
+  };
+
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  React.useEffect(() => {
+    const storedTheme = localStorage.getItem("portal_theme");
+    const initialTheme = storedTheme === "dark" ? "dark" : "light";
+    setTheme(initialTheme);
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    setTheme(nextTheme);
+    localStorage.setItem("portal_theme", nextTheme);
+    document.documentElement.classList.toggle("theme-dark", nextTheme === "dark");
   };
 
 
@@ -96,6 +114,16 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             </Link>
           ))}
         </nav>
+
+        <div className="p-4 border-t border-gray-700">
+           <button
+             onClick={handleLogout}
+             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-400 hover:bg-red-900/20 transition-all font-medium"
+           >
+             <LogOut size={20} />
+             {sidebarOpen && <span>Sign Out</span>}
+           </button>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -107,39 +135,48 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
             <p className="text-sm text-gray-600">Manage colleges, users, and system settings</p>
           </div>
 
-          {/* User Menu */}
-          <div className="relative">
+          {/* Theme & User Menu */}
+          <div className="flex items-center gap-4">
             <button
-              onClick={() => setUserMenuOpen(!userMenuOpen)}
-              className="super-admin-user-trigger flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
+              onClick={toggleTheme}
+              className="p-2.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-100 transition-all"
+              aria-label="Toggle theme"
             >
-              <UserAvatar name={user?.name || 'Super Admin'} imageUrl={user?.profilePicture} size={40} />
-              <div className="text-left hidden sm:block">
-                <p className="font-medium text-gray-900">{user?.name || 'Super Admin'}</p>
-                <p className="text-xs text-gray-600">Platform Owner</p>
-              </div>
-              <ChevronDown size={18} className="text-gray-600" />
+              {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
             </button>
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="super-admin-user-trigger flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 transition"
+              >
+                <UserAvatar name={user?.name || 'Super Admin'} imageUrl={user?.profilePicture} size={40} />
+                <div className="text-left hidden sm:block">
+                  <p className="font-medium text-gray-900">{user?.name || 'Super Admin'}</p>
+                  <p className="text-xs text-gray-600">Platform Owner</p>
+                </div>
+                <ChevronDown size={18} className="text-gray-600" />
+              </button>
 
-            {userMenuOpen && (
-              <div className="super-admin-user-menu absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                <button
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    router.push('/super-admin/profile');
-                  }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 text-gray-700"
-                >
-                  <Settings size={16} /> Profile Settings
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 text-red-600 border-t border-gray-200"
-                >
-                  <LogOut size={16} /> Logout
-                </button>
-              </div>
-            )}
+              {userMenuOpen && (
+                <div className="super-admin-user-menu absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                  <button
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      router.push('/super-admin/profile');
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 text-gray-700"
+                  >
+                    <Settings size={16} /> Profile Settings
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2 text-red-600 border-t border-gray-200"
+                  >
+                    <LogOut size={16} /> Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 

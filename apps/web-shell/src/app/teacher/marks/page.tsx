@@ -30,6 +30,7 @@ export default function MarksPage() {
   const [loading, setLoading] = useState(true);
   const [fetchingBatches, setFetchingBatches] = useState(false);
   const [fetchingStudents, setFetchingStudents] = useState(false);
+  const [submittedMarks, setSubmittedMarks] = useState<Record<string, { marks: number; remarks: string }>>({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -55,6 +56,12 @@ export default function MarksPage() {
   useEffect(() => {
     fetchInitialData();
   }, []);
+
+  useEffect(() => {
+    if (selectedExam) {
+      fetchSubmittedMarks(selectedExam._id);
+    }
+  }, [selectedExam]);
 
   const handleSubjectChange = async (subjectId: string) => {
     setSelectedSubject(subjectId);
@@ -103,6 +110,30 @@ export default function MarksPage() {
       : (ex.subjectId?._id || ex.subjectId)?.toString() === selectedSubject
   );
 
+  const fetchSubmittedMarks = async (examId: string) => {
+    try {
+      const res = await api.get(`/teacher/marks/${examId}`);
+      console.log('📊 Marks API Response:', res.data);
+      const marksMap: Record<string, { marks: number; remarks: string; markId: string }> = {};
+      if (Array.isArray(res.data.data)) {
+        res.data.data.forEach((m: any) => {
+          const sId = m.studentId?._id || m.studentId;
+          marksMap[sId] = {
+            marks: m.marksObtained,
+            remarks: m.remarks || '',
+            markId: m._id
+          };
+          console.log(`✅ Loaded marks for student ${sId}:`, m.marksObtained);
+        });
+      }
+      console.log('📋 Final marks map:', marksMap);
+      setSubmittedMarks(marksMap);
+    } catch (err) {
+      console.log('❌ Error fetching marks:', err);
+      // No submitted marks yet, that's okay
+    }
+  };
+
   const handleSaveRow = async (studentId: string, marksObtained: number, remarks: string) => {
     if (!selectedExam || !selectedSubject || !selectedBatch) {
       setError("Please select Subject, Batch, and Exam before entering marks");
@@ -133,6 +164,30 @@ export default function MarksPage() {
     }
   };
 
+  const handleEditSubmittedMarks = async (studentId: string, marksObtained: number, remarks: string) => {
+    const submitted = submittedMarks[studentId];
+    if (!submitted?.markId) {
+      setError("Cannot find mark record for editing");
+      throw new Error("Missing markId");
+    }
+
+    try {
+      setError("");
+      await api.put(`/teacher/marks/${submitted.markId}`, {
+        marksObtained,
+        remarks
+      });
+      setSuccess("Marks updated successfully");
+      // Refresh submitted marks
+      if (selectedExam) {
+        fetchSubmittedMarks(selectedExam._id);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to update marks");
+      throw err;
+    }
+  };
+
   const handleSaveAll = async (rows: { studentId: string; marks: number; remarks: string }[]) => {
     if (!selectedExam || !selectedSubject || !selectedBatch || !selectedCourseId) {
       setError("Please select a subject before saving marks");
@@ -156,6 +211,8 @@ export default function MarksPage() {
       throw err;
     }
   };
+
+
 
   if (loading) return (
     <div className="animate-pulse space-y-8 p-8">
@@ -309,7 +366,9 @@ export default function MarksPage() {
              <MarksEntryTable 
                students={students} 
                onSaveRow={handleSaveRow} 
-               onBulkSubmit={handleSaveAll} 
+               onBulkSubmit={handleSaveAll}
+               onEditSubmitted={handleEditSubmittedMarks}
+               submittedMarks={submittedMarks}
                maxMarks={selectedExam?.totalMarks || selectedExam?.maxMarks || 100}
              />
           </div>

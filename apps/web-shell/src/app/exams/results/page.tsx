@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useResults } from "@/hooks/useResults";
 import ResultCard from "@/components/exams/ResultCard";
 import { AlertCircle, GraduationCap, Award, BookOpen, Clock, ChevronRight } from "lucide-react";
@@ -8,8 +9,37 @@ import Card from "@/components/ui/Card";
 import Link from "next/link";
 
 export default function StudentResultsPortal() {
+  const router = useRouter();
+  const [studentId, setStudentId] = useState<string | undefined>(undefined);
+  const [user, setUser] = useState<any>(null);
+  
+  // Determine studentId based on user role
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+      
+      if (parsedUser.role === "PARENT") {
+        // For parents, get the child's student profile from localStorage
+        const childProfile = localStorage.getItem("student_profile");
+        if (childProfile) {
+          const profile = JSON.parse(childProfile);
+          setStudentId(profile._id);
+        }
+      } else if (parsedUser.role === "STUDENT") {
+        // For students, use their own ID (backend will use logged-in user)
+        setStudentId(parsedUser._id);
+      } else {
+        // Non-student/parent users should not see this page
+        router.push("/");
+        return;
+      }
+    }
+  }, [router]);
+
   // Backend now automatically filters by the logged-in student's ID
-  const { results, stats, loading, error } = useResults();
+  const { results, stats, loading, error } = useResults(studentId);
 
   if (loading) {
     return (
@@ -19,6 +49,9 @@ export default function StudentResultsPortal() {
     );
   }
 
+  const isParent = user?.role === "PARENT";
+  const headerTitle = isParent ? `Child's Examination Results` : `Examination Results`;
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-1000 max-w-7xl mx-auto w-full">
       <header>
@@ -27,8 +60,8 @@ export default function StudentResultsPortal() {
           <ChevronRight size={10} />
           <span className="text-slate-900">Academic Records</span>
         </nav>
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Examination Results</h1>
-        <p className="text-sm text-slate-500 mt-1">Official transcripts and performance analytics for all registered terms.</p>
+        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">{headerTitle}</h1>
+        <p className="text-sm text-slate-500 mt-1">{isParent ? "Official transcripts and performance analytics for your child." : "Official transcripts and performance analytics for all registered terms."}</p>
       </header>
 
       {results && results.length > 0 ? (
@@ -61,8 +94,8 @@ export default function StudentResultsPortal() {
       ) : (
         <Card className="py-24 text-center bg-white border border-dashed border-slate-200 rounded-[2rem] shadow-sm">
           <AlertCircle size={48} className="text-slate-200 mx-auto mb-4" />
-          <p className="text-lg font-bold text-slate-400 uppercase tracking-widest">No results published yet</p>
-          <p className="text-sm text-slate-300 mt-2">Check back after your examinations are concluded.</p>
+          <p className="text-lg font-bold text-slate-400 uppercase tracking-widest">{isParent ? "No results published yet for your child" : "No results published yet"}</p>
+          <p className="text-sm text-slate-300 mt-2">Check back after examinations are concluded.</p>
         </Card>
       )}
     </div>

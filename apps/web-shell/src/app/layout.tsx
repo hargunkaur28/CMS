@@ -45,6 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [globalSettings, setGlobalSettings] = useState<any>(null);
   const [backendOnline, setBackendOnline] = useState(true);
@@ -68,6 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    setToken(token);
     const isLandingPage = pathname === "/";
     const isLoginPage = pathname === "/login";
     const isChangePasswordPage = pathname === "/change-password";
@@ -189,14 +191,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     } catch {
       // Ignore server logout failures and still clear the local session.
     } finally {
+      const savedTheme = localStorage.getItem('portal_theme');
       localStorage.clear();
+      if (savedTheme) localStorage.setItem('portal_theme', savedTheme);
       router.push('/login');
     }
   };
 
   const isLoginPage = pathname === "/login";
   const isChangePasswordPage = pathname === "/change-password";
-  const isLandingPage = pathname === "/";
+  const isLandingPage = pathname === "/" && !token; // Only treat / as landing page if NOT logged in
   const isAuthPage = isLoginPage || isChangePasswordPage;
   const isPublicShellPage = isAuthPage || isLandingPage;
   const showBackendBanner = !isPublicShellPage && backendChecked && !backendOnline;
@@ -255,20 +259,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           )}
 
-          {!isAuthPage && !isLandingPage ? (
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className={cn(
-                "fixed right-4 z-120 w-10 h-10 rounded-xl bg-white/90 border border-slate-200 text-slate-700 shadow-lg hover:bg-white transition-all flex items-center justify-center",
-                themeToggleTopClass
-              )}
-              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-            >
-              {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-          ) : null}
+          {/* Theme toggle removed from floating position - will be in navbar */}
 
           {loading ? (
             <div className="h-screen w-full flex items-center justify-center bg-slate-50">
@@ -398,6 +389,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                     label="Digital Library" 
                     href="/library" 
                     active={pathname.startsWith("/library")} 
+                    roles={['SUPER_ADMIN', 'COLLEGE_ADMIN', 'TEACHER', 'STUDENT', 'LIBRARIAN']}
+                    currentUserRole={user?.role}
                   />
                   
                   <NavItem 
@@ -453,6 +446,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
                        </div>
                        <div className="h-8 w-px bg-slate-100 mx-2" />
+                       <button
+                         type="button"
+                         onClick={toggleTheme}
+                         className="w-10 h-10 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors flex items-center justify-center"
+                         aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                         title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+                       >
+                         {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+                       </button>
                         {user ? (
                         <div className="hidden md:flex items-center gap-2">
                           <div className="text-right">

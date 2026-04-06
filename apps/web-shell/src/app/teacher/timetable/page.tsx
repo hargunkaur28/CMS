@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, Download } from "lucide-react";
 import TimetableGrid, { TimetableCellEntry } from "@/components/timetable/TimetableGrid";
 import { fetchTimetableByTeacher } from "@/lib/api/timetable";
 
@@ -52,11 +52,52 @@ export default function TeacherMyTimetablePage() {
     );
   }
 
+  const downloadTimetable = () => {
+    if (entries.length === 0) return;
+    
+    // Create CSV content
+    const headers = ['Day', 'Period', 'Time', 'Subject', 'Batch', 'Section', 'Room'];
+    const rows = entries.map(e => [
+      e.day || '',
+      e.period || '',
+      `${e.startTime} - ${e.endTime}`,
+      e.subject || '',
+      e.batchId?.name || '',
+      e.sectionId?.name || '',
+      e.room || ''
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Timetable_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-black text-slate-900 tracking-tight">My Timetable</h1>
-        <p className="text-sm font-medium text-slate-500 mt-2">Weekly teaching schedule across all assigned sections.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight">My Timetable</h1>
+          <p className="text-sm font-medium text-slate-500 mt-2">Weekly teaching schedule across all assigned sections.</p>
+        </div>
+        <button
+          onClick={downloadTimetable}
+          disabled={entries.length === 0}
+          className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed transition-all font-medium text-sm"
+        >
+          <Download size={16} />
+          Download CSV
+        </button>
       </div>
 
       {error ? (

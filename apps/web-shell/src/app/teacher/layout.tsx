@@ -12,7 +12,9 @@ import {
   LogOut,
   Bell,
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  Moon,
+  Sun
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";

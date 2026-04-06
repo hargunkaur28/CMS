@@ -33,6 +33,18 @@ const MarksGrid: React.FC<MarksGridProps> = ({ examId, subjects, students, cours
     const marksValue = localMarks[studentId]?.[activeSubject];
     if (marksValue === undefined) return;
 
+    // Validate required fields
+    if (!studentId || !activeSubject || !courseId || !batchId) {
+      alert("Missing required data: ensure course, batch, and student data are loaded");
+      return;
+    }
+
+    const marksNum = Number(marksValue);
+    if (isNaN(marksNum) || marksNum < 0 || marksNum > totalMarks) {
+      alert(`Marks must be between 0 and ${totalMarks}`);
+      return;
+    }
+
     setSavingId(`${studentId}-${activeSubject}`);
     try {
       await enterMarks({
@@ -41,7 +53,7 @@ const MarksGrid: React.FC<MarksGridProps> = ({ examId, subjects, students, cours
         courseId,
         batchId,
         components: [
-          { name: "Main Exam", maxMarks: totalMarks, obtainedMarks: Number(marksValue) }
+          { name: "Main Exam", maxMarks: totalMarks, obtainedMarks: marksNum }
         ]
       });
     } catch (err) {
@@ -53,6 +65,16 @@ const MarksGrid: React.FC<MarksGridProps> = ({ examId, subjects, students, cours
 
   return (
     <div className="space-y-6">
+      {(!batchId || !courseId) && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+          <div className="text-red-600 font-bold text-lg">⚠️</div>
+          <div>
+            <p className="text-sm font-bold text-red-600">Cannot save marks yet</p>
+            <p className="text-xs text-red-500 mt-1">Missing batch or course information. Please reload the page or contact support.</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-2 p-1 bg-surface-container rounded-2xl w-fit">
         {subjects.map((subject) => (
           <button
@@ -96,11 +118,7 @@ const MarksGrid: React.FC<MarksGridProps> = ({ examId, subjects, students, cours
                         min="0"
                         max={totalMarks}
                         value={localMarks[student._id]?.[activeSubject] || ""}
-                        onChange={(e) => {
-                           const val = Number(e.target.value);
-                           if (val > totalMarks) return;
-                           handleMarkChange(student._id, e.target.value);
-                        }}
+                        onChange={(e) => handleMarkChange(student._id, e.target.value)}
                         className="w-24 bg-slate-50 text-center font-bold text-slate-900 p-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 h-10 shadow-inner"
                       />
                       <span className="text-[10px] font-bold text-slate-400 mt-1 uppercase">Max: {totalMarks}</span>
@@ -109,8 +127,8 @@ const MarksGrid: React.FC<MarksGridProps> = ({ examId, subjects, students, cours
                   <td className="px-6 py-4 text-center">
                     <button
                       onClick={() => handleSave(student._id)}
-                      disabled={savingId === `${student._id}-${activeSubject}`}
-                      className="px-4 py-2 bg-primary text-primary-on-primary rounded-lg text-sm font-medium shadow-ambient hover:opacity-90 transition-all disabled:opacity-50"
+                      disabled={savingId === `${student._id}-${activeSubject}` || !batchId || !courseId}
+                      className="px-4 py-2 bg-primary text-primary-on-primary rounded-lg text-sm font-medium shadow-ambient hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {savingId === `${student._id}-${activeSubject}` ? "Saving..." : "Save"}
                     </button>

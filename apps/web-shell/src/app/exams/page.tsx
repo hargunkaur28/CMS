@@ -94,12 +94,12 @@ export default function ExamsDashboard() {
         </div>
         
         <div className="flex items-center gap-3">
-          {isAdmin && (
+          {isStaff && (
             <Link 
               href="/exams/create"
               className="bg-primary text-primary-on-primary px-6 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 flex items-center gap-2 hover:opacity-90 active:scale-95 transition-all"
             >
-              <Plus size={18} /> Create Exam
+              <Plus size={18} /> {isAdmin ? 'Create Exam' : 'Create Assessment'}
             </Link>
           )}
           {!isStaff && (

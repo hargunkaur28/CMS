@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { User, Save, CheckCircle2, AlertCircle } from "lucide-react";
+import { User, Save, CheckCircle2, AlertCircle, Send, Edit2 } from "lucide-react";
 import GradeBadge from "./GradeBadge";
 import { cn } from "@/lib/utils";
 
@@ -15,21 +15,39 @@ interface MarksEntryTableProps {
   students: Student[];
   onSaveRow: (studentId: string, marks: number, remarks: string) => Promise<void>;
   onBulkSubmit: (data: { studentId: string, marks: number, remarks: string }[]) => Promise<void>;
+  onEditSubmitted?: (studentId: string, marks: number, remarks: string) => Promise<void>;
   maxMarks: number;
+  submittedMarks?: Record<string, { marks: number, remarks: string, markId?: string }>;
+  isEditMode?: boolean;
 }
 
-export default function MarksEntryTable({ students, onSaveRow, onBulkSubmit, maxMarks }: MarksEntryTableProps) {
-  const [entries, setEntries] = useState<Record<string, { marks: string, remarks: string, status: 'idle' | 'saving' | 'saved' | 'error' }>>({});
+export default function MarksEntryTable({ 
+  students, 
+  onSaveRow, 
+  onBulkSubmit,
+  onEditSubmitted,
+  maxMarks,
+  submittedMarks = {},
+  isEditMode = false
+}: MarksEntryTableProps) {
+  const [entries, setEntries] = useState<Record<string, { marks: string, remarks: string, status: 'idle' | 'saving' | 'saved' | 'error', isEditing: boolean }>>({});
   const [savingAll, setSavingAll] = useState(false);
+  const [editingStudentId, setEditingStudentId] = useState<string | null>(null);
 
   // Sync entries when students prop changes
   React.useEffect(() => {
     const initial: any = {};
     students.forEach(s => {
-      initial[s._id] = { marks: "", remarks: "", status: 'idle' };
+      const submitted = submittedMarks[s._id];
+      initial[s._id] = {
+        marks: submitted ? submitted.marks.toString() : "",
+        remarks: submitted ? submitted.remarks : "",
+        status: 'idle',
+        isEditing: false
+      };
     });
     setEntries(initial);
-  }, [students]);
+  }, [students, submittedMarks]);
 
   const handleInputChange = (studentId: string, field: 'marks' | 'remarks', value: string) => {
     setEntries(prev => ({
@@ -59,6 +77,20 @@ export default function MarksEntryTable({ students, onSaveRow, onBulkSubmit, max
     try {
       await onSaveRow(studentId, parseFloat(entry.marks), entry.remarks);
       setEntries(prev => ({ ...prev, [studentId]: { ...prev[studentId], status: 'saved' } }));
+    } catch (err) {
+      setEntries(prev => ({ ...prev, [studentId]: { ...prev[studentId], status: 'error' } }));
+    }
+  };
+
+  const updateSubmittedMarks = async (studentId: string) => {
+    const entry = entries[studentId];
+    if (!entry || !entry.marks || !onEditSubmitted) return;
+    
+    setEntries(prev => ({ ...prev, [studentId]: { ...prev[studentId], status: 'saving' } }));
+    try {
+      await onEditSubmitted(studentId, parseFloat(entry.marks), entry.remarks);
+      setEntries(prev => ({ ...prev, [studentId]: { ...prev[studentId], status: 'saved', isEditing: false } }));
+      setEditingStudentId(null);
     } catch (err) {
       setEntries(prev => ({ ...prev, [studentId]: { ...prev[studentId], status: 'error' } }));
     }
@@ -114,13 +146,18 @@ export default function MarksEntryTable({ students, onSaveRow, onBulkSubmit, max
         </thead>
         <tbody>
           {students.map((student, index) => {
-            const entry = entries[student._id] || { marks: "", remarks: "", status: 'idle' };
-            const grade = calculateGrade(entry.marks);
-            const isError = entry.marks ? parseFloat(entry.marks) > maxMarks : false;
+            const entry = entries[student._id] || { marks: "", remarks: "", status: 'idle', isEditing: false };
+            const submitted = submittedMarks[student._id];
+            const isEditing = entry.isEditing || editingStudentId === student._id;
+            const displayMarks = entry.marks || (submitted?.marks?.toString() || "");
+            const displayRemarks = entry.remarks || (submitted?.remarks || "");
+            const grade = calculateGrade(entry.marks || displayMarks);
+            const isError = (entry.marks || displayMarks) ? parseFloat(entry.marks || displayMarks) > maxMarks : false;
+            const isSubmitted = submitted && !entry.marks;
 
             return (
               <tr key={student._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors">
-                <td className="p-4 text-sm font-bold text-slate-400">{index + 1}</td>
+                <td className="p-4 text-sm font-bold text-slate-400">{String(index + 1).padStart(2, '0')}</td>
                 <td className="p-4">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
@@ -133,19 +170,24 @@ export default function MarksEntryTable({ students, onSaveRow, onBulkSubmit, max
                   </div>
                 </td>
                 <td className="p-4">
-                  <div className="relative">
+                  <div className="relative flex items-center gap-2">
                     <input
                       type="number"
-                      value={entry.marks}
+                      value={displayMarks}
                       onChange={(e) => handleInputChange(student._id, 'marks', e.target.value)}
+                      readOnly={isSubmitted && !isEditing}
                       placeholder="00"
                       className={cn(
-                        "w-full px-3 py-2 text-center text-sm font-bold border rounded-xl focus:ring-2 outline-none transition-all",
+                        "flex-1 px-3 py-2 text-center text-sm font-bold border rounded-xl focus:ring-2 outline-none transition-all",
+                        isSubmitted && !isEditing && "bg-slate-50 cursor-not-allowed",
                         isError 
                           ? "border-red-300 bg-red-50 text-red-600 focus:ring-red-100" 
                           : "border-slate-200 focus:border-slate-900 focus:ring-slate-100"
                       )}
                     />
+                    {isSubmitted && !isEditing && (
+                      <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded">SUBMITTED</span>
+                    )}
                     {isError && (
                       <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[10px] px-2 py-1 rounded shadow-lg whitespace-nowrap">
                          Exceeds Max!
@@ -159,42 +201,123 @@ export default function MarksEntryTable({ students, onSaveRow, onBulkSubmit, max
                 <td className="p-4">
                   <input
                     type="text"
-                    value={entry.remarks}
+                    value={displayRemarks}
                     onChange={(e) => handleInputChange(student._id, 'remarks', e.target.value)}
+                    readOnly={isSubmitted && !isEditing}
                     placeholder="Add brief remarks..."
-                    className="w-full px-3 py-2 text-sm border-b border-transparent hover:border-slate-200 focus:border-slate-900 focus:bg-slate-50/50 outline-none transition-all bg-transparent"
+                    className={cn(
+                      "w-full px-3 py-2 text-sm border-b border-transparent outline-none transition-all bg-transparent",
+                      isSubmitted && !isEditing && "cursor-not-allowed",
+                      !isSubmitted || isEditing ? "hover:border-slate-200 focus:border-slate-900 focus:bg-slate-50/50" : ""
+                    )}
                   />
                 </td>
                 <td className="p-4 text-center">
-                   <button
-                     onClick={() => saveRow(student._id)}
-                     disabled={entry.status === 'saving' || !entry.marks || isError}
-                     className={cn(
-                       "p-2 rounded-lg transition-all",
-                       entry.status === 'saved' 
-                         ? "text-green-600 bg-green-50" 
-                         : entry.status === 'error'
-                         ? "text-red-600 bg-red-50"
-                         : "text-slate-400 hover:bg-slate-100 hover:text-slate-900"
-                     )}
-                   >
-                     {entry.status === 'saving' ? (
+                  {isSubmitted && !isEditing ? (
+                    <button
+                      onClick={() => {
+                        setEditingStudentId(student._id);
+                        setEntries(prev => ({
+                          ...prev,
+                          [student._id]: {
+                            marks: submitted.marks.toString(),
+                            remarks: submitted.remarks,
+                            status: 'idle',
+                            isEditing: true
+                          }
+                        }));
+                      }}
+                      className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 mx-auto"
+                    >
+                      <Edit2 size={16} />
+                      Edit
+                    </button>
+                  ) : isEditing && isSubmitted ? (
+                    <div className="flex gap-1 justify-center">
+                      <button
+                        onClick={() => updateSubmittedMarks(student._id)}
+                        disabled={entry.status === 'saving' || !displayMarks || isError}
+                        className={cn(
+                          "p-2 rounded-lg transition-all",
+                          entry.status === 'saved' 
+                            ? "text-green-600 bg-green-50" 
+                            : entry.status === 'error'
+                            ? "text-red-600 bg-red-50"
+                            : "text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+                        )}
+                      >
+                        {entry.status === 'saving' ? (
+                          <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <CheckCircle2 size={18} />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingStudentId(null);
+                          setEntries(prev => ({
+                            ...prev,
+                            [student._id]: {
+                              marks: '',
+                              remarks: '',
+                              status: 'idle',
+                              isEditing: false
+                            }
+                          }));
+                        }}
+                        className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-red-600 transition-all"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => saveRow(student._id)}
+                      disabled={entry.status === 'saving' || !displayMarks || isError}
+                      className={cn(
+                        "px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 mx-auto",
+                        entry.status === 'saved' 
+                          ? "text-green-600 bg-green-50" 
+                          : entry.status === 'error'
+                          ? "text-red-600 bg-red-50"
+                          : "text-slate-600 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      )}
+                    >
+                      {entry.status === 'saving' ? (
                         <div className="w-4 h-4 border-2 border-slate-900 border-t-transparent rounded-full animate-spin"></div>
-                     ) : entry.status === 'saved' ? (
-                        <CheckCircle2 size={18} />
-                     ) : entry.status === 'error' ? (
-                        <AlertCircle size={18} />
-                     ) : (
-                        <Save size={18} />
-                     )}
-                   </button>
+                      ) : entry.status === 'saved' ? (
+                        <>
+                          <CheckCircle2 size={16} />
+                          Saved
+                        </>
+                      ) : entry.status === 'error' ? (
+                        <>
+                          <AlertCircle size={16} />
+                          Error
+                        </>
+                      ) : (
+                        <>
+                          <Save size={16} />
+                          Save
+                        </>
+                      )}
+                    </button>
+                  )}
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end">
+      <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
+        <div className="text-sm text-slate-600">
+          {students.length > 0 && (
+            <>
+              <span className="font-bold">{Object.values(entries).filter(e => e.status === 'saved').length}</span>
+              <span> of {students.length} saved</span>
+            </>
+          )}
+        </div>
         <button
           onClick={saveAllRows}
           disabled={savingAll}

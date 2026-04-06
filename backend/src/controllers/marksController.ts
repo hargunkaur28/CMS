@@ -23,17 +23,18 @@ export const getAssignedExams = async (req: Request, res: Response) => {
 
     // Fetch teacher's assigned subjects
     const faculty = await Faculty.findOne({ userId: teacherId, collegeId });
-    if (!faculty) {
-      return res.status(404).json({ success: false, message: 'Faculty profile not found' });
-    }
+    const assignedSubjectIds = faculty?.assignedSubjects?.map((a: any) => a.subjectId).filter(Boolean) || [];
 
-    const assignedSubjectIds = faculty.assignedSubjects.map((a: any) => a.subjectId).filter(Boolean);
-
-    // Filter exams to only those belonging to assigned subjects
+    // Get exams that either:
+    // 1. Have subjects matching teacher's assigned subjects, OR
+    // 2. Were created by the teacher
     const exams = await Exam.find({
       collegeId,
-      subjects: { $in: assignedSubjectIds },
-      status: { $in: ['SCHEDULED', 'PUBLISHED'] }
+      $or: [
+        { subjects: { $in: assignedSubjectIds } },
+        { createdBy: teacherId }
+      ],
+      status: { $in: ['SCHEDULED', 'PUBLISHED', 'DRAFT'] }
     })
       .populate('subjects', 'name code')
       .sort({ scheduleDate: -1 });
@@ -60,24 +61,27 @@ export const enterMarks = async (req: Request, res: Response) => {
     const subjectIdStr = subjectId.toString();
     const batchIdStr = batchId.toString();
 
-    // 2. Fetch teacher's assignments
-    const faculty = await Faculty.findOne({ userId: teacherIdStr, collegeId });
-    if (!faculty) {
-      return res.status(403).json({ success: false, message: 'Faculty profile not found' });
+    // 2. Verify exam exists and teacher created it or is assigned
+    const exam = await Exam.findById(examId).lean();
+    if (!exam) {
+      return res.status(404).json({ success: false, message: 'Exam not found' });
     }
 
-    // 3. Verify this subject+batch is assigned
-    const isAuthorized = faculty.assignedSubjects.some(a => 
-      a.subjectId.toString() === subjectIdStr && 
-      a.batchId.toString() === batchIdStr
-    );
-
+    const isExamCreator = exam.createdBy?.toString() === teacherIdStr;
+    
+    let isAuthorized = isExamCreator;
+    
     if (!isAuthorized) {
-      return res.status(403).json({
-        success: false,
-        error: "Forbidden",
-        message: "You are not assigned to this subject and batch combination"
-      });
+      const faculty = await Faculty.findOne({ userId: teacherId, collegeId });
+      if (faculty) {
+        isAuthorized = faculty.assignedSubjects.some((a: any) =>
+          a.subjectId.toString() === subjectIdStr && a.batchId.toString() === batchIdStr
+        );
+      }
+    }
+    
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, message: 'You are not authorized to save marks for this class' });
     }
 
     if (marksObtained > maxMarks) {
@@ -237,14 +241,25 @@ export const bulkEnterMarks = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'No marks were provided to save' });
     }
 
-    const faculty = await Faculty.findOne({ userId: teacherId, collegeId });
-    if (!faculty) {
-      return res.status(403).json({ success: false, message: 'You are not authorized to save marks for this class' });
+    // Verify teacher created the exam or is assigned the subject
+    const exam = await Exam.findById(examId).lean();
+    if (!exam) {
+      return res.status(404).json({ success: false, message: 'Exam not found' });
     }
 
-    const isAuthorized = faculty.assignedSubjects.some((a: any) =>
-      a.subjectId.toString() === String(subjectId) && a.batchId.toString() === String(batchId)
-    );
+    const isExamCreator = exam.createdBy?.toString() === teacherId.toString();
+    
+    let isAuthorized = isExamCreator;
+    
+    if (!isAuthorized) {
+      const faculty = await Faculty.findOne({ userId: teacherId, collegeId });
+      if (faculty) {
+        isAuthorized = faculty.assignedSubjects.some((a: any) =>
+          a.subjectId.toString() === String(subjectId) && a.batchId.toString() === String(batchId)
+        );
+      }
+    }
+    
     if (!isAuthorized) {
       return res.status(403).json({ success: false, message: 'You are not authorized to save marks for this class' });
     }
