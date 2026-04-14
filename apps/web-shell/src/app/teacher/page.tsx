@@ -205,12 +205,22 @@ export default function TeacherDashboard() {
                            </div>
                         </div>
                      </div>
-                     <Link 
-                        href={`/teacher/attendance/mark?subjectId=${liveClass.subjectId?._id}&batchId=${liveClass.batchId?._id}`}
-                        className="mt-6 md:mt-0 px-8 py-4 bg-white text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl group-hover:bg-slate-50 transition-all flex items-center gap-2"
-                     >
-                        Mark Presence <ChevronRight size={16} />
-                     </Link>
+                     {liveClass.subjectId?._id && liveClass.batchId?._id ? (
+                        <Link 
+                           href={`/teacher/attendance?subjectId=${liveClass.subjectId._id}&batchId=${liveClass.batchId._id}`}
+                           className="mt-6 md:mt-0 px-8 py-4 bg-white text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl group-hover:bg-slate-50 transition-all flex items-center gap-2"
+                        >
+                           Mark Presence <ChevronRight size={16} />
+                        </Link>
+                     ) : (
+                        <button 
+                           disabled 
+                           className="mt-6 md:mt-0 px-8 py-4 bg-slate-200 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl flex items-center gap-2 cursor-not-allowed"
+                           title="Subject or batch information is missing"
+                        >
+                           Mark Presence <ChevronRight size={16} />
+                        </button>
+                     )}
                   </div>
                )}
 
@@ -231,9 +241,15 @@ export default function TeacherDashboard() {
                            </div>
                         </div>
                      </div>
-                     <Link href={`/teacher/attendance/mark?subjectId=${item.subjectId?._id}&batchId=${item.batchId?._id}`} className="p-3 bg-slate-50 text-slate-900 rounded-2xl hover:bg-slate-900 hover:text-white transition-all">
-                        <ChevronRight size={20} />
-                     </Link>
+                     {item.subjectId?._id && item.batchId?._id ? (
+                        <Link href={`/teacher/attendance?subjectId=${item.subjectId._id}&batchId=${item.batchId._id}`} className="p-3 bg-slate-50 text-slate-900 rounded-2xl hover:bg-slate-900 hover:text-white transition-all">
+                           <ChevronRight size={20} />
+                        </Link>
+                     ) : (
+                        <button disabled className="p-3 bg-slate-200 text-slate-400 rounded-2xl cursor-not-allowed" title="Subject or batch information missing">
+                           <ChevronRight size={20} />
+                        </button>
+                     )}
                   </div>
                )) : (
                   <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-200">

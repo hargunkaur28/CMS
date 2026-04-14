@@ -91,9 +91,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     if (!token && !isLoginPage && !isChangePasswordPage && !isLandingPage) {
       router.push("/login");
     } else if (token && isLoginPage) {
-      router.push(shouldForcePasswordChange ? "/change-password" : "/");
-    } else if (token && shouldForcePasswordChange && !isChangePasswordPage) {
-      router.push("/change-password");
+      router.push("/");
     } else if (token && !isAuthPage && !isLandingPage && role === 'SUPER_ADMIN' && !pathname.startsWith('/super-admin')) {
       router.replace('/super-admin/dashboard');
       return;

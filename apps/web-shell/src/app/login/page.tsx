@@ -88,10 +88,8 @@ export default function LoginPage() {
           isFirstLogin: Boolean(data.isFirstLogin),
         }));
         
-        // 4. Redirect
-        const requiresPasswordChange = Boolean(data.mustChangePassword)
-          && ["TEACHER", "PARENT", "STUDENT", "LIBRARIAN", "COLLEGE_ADMIN"].includes(String(data.role || "").toUpperCase());
-        router.push(requiresPasswordChange ? "/change-password" : "/");
+        // 4. Redirect to home (skip password change on login)
+        router.push("/");
         router.refresh();
       }
     } catch (err: any) {

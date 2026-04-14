@@ -168,14 +168,6 @@ export default function StudentProfile() {
                   </section>
                 </div>
               )}
-              {activeTab === "exams" && (
-                <div className="animate-in fade-in duration-500 space-y-4">
-                  <section className="bg-slate-50 rounded-2xl border border-slate-100 p-5">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Examination Snapshot</p>
-                    <p className="text-sm font-semibold text-slate-700 mt-2">Exam and marks details are linked to this student profile through the examinations module.</p>
-                  </section>
-                </div>
-              )}
               {activeTab === "fees" && (
                 <div className="animate-in fade-in duration-500 space-y-4">
                   <section className="bg-slate-50 rounded-2xl border border-slate-100 p-5">

@@ -157,10 +157,24 @@ export default function MarksPage() {
       });
       setError("");
       setSuccess("Marks saved successfully");
+      // Refresh submitted marks
+      if (selectedExam) {
+        fetchSubmittedMarks(selectedExam._id);
+      }
     } catch (err: any) {
       const msg = err.response?.data?.message || "Failed to save marks";
-      setError(msg);
-      throw err;
+      // Check if the error is about marks already existing
+      if (msg.toLowerCase().includes("already exists")) {
+        setError("");
+        setSuccess("✓ Marks already saved for this student. Click EDIT to modify them.");
+        // Refresh submitted marks so the edit button becomes visible
+        if (selectedExam) {
+          await fetchSubmittedMarks(selectedExam._id);
+        }
+      } else {
+        setError(msg);
+        throw err;
+      }
     }
   };
 

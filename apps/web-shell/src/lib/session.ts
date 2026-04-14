@@ -102,6 +102,8 @@ export const isAccessAllowed = (role: string | null | undefined, pathname: strin
   // Parents cannot access academics routes (teacher materials/admin content)
   if (pathname.startsWith('/academics')) return normalized === 'SUPER_ADMIN' || normalized === 'COLLEGE_ADMIN' || normalized === 'TEACHER' || normalized === 'STUDENT';
   if (pathname.startsWith('/student')) return normalized === 'STUDENT';
+  // Parents can view timetable, attendance, results, fees, and other general pages
+  if (pathname === '/timetable' || pathname === '/attendance' || pathname === '/exams' || pathname.startsWith('/results')) return normalized === 'STUDENT' || normalized === 'PARENT';
   if (pathname.startsWith('/settings')) return normalized === 'STUDENT' || normalized === 'TEACHER' || normalized === 'PARENT';
   return true;
 };

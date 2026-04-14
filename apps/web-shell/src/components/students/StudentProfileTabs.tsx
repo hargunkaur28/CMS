@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { User, Layers, Calendar, FileText, CreditCard, MessageSquare, ClipboardCheck } from "lucide-react";
+import { User, Layers, Calendar, FileText, CreditCard, MessageSquare } from "lucide-react";
 
 interface StudentProfileTabsProps {
   activeTab: string;
@@ -13,7 +13,6 @@ const tabs = [
   { id: "overview", label: "Overview", icon: <User size={16} /> },
   { id: "academics", label: "Academics", icon: <Layers size={16} /> },
   { id: "attendance", label: "Attendance", icon: <Calendar size={16} /> },
-  { id: "exams", label: "Exams", icon: <ClipboardCheck size={16} /> },
   { id: "fees", label: "Fees", icon: <CreditCard size={16} /> },
   { id: "documents", label: "Documents", icon: <FileText size={16} /> },
   { id: "comms", label: "Communication", icon: <MessageSquare size={16} /> },
