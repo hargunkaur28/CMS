@@ -53,6 +53,8 @@ const allowedOrigins = [
   'http://127.0.0.1:3001',
   'http://[::1]:3000',
   'http://[::1]:3001',
+  'https://collegemanagement.avanienterprises.in',
+  'http://collegemanagement.avanienterprises.in',
   ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
 ];
 
