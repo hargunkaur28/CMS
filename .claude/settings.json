@@ -17,7 +17,9 @@
       "PowerShell(git pull)",
       "Bash(python generate_features_pdf.py)",
       "Bash(python -c ' *)",
-      "PowerShell(git fetch)"
+      "PowerShell(git fetch)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('express:', \\(p.dependencies||{}\\).express\\); console.log\\('sanitize-html:', \\(p.dependencies||{}\\)['sanitize-html']\\); console.log\\('xss:', \\(p.dependencies||{}\\).xss\\); console.log\\('dompurify:', \\(p.dependencies||{}\\).isomorphic-dompurify || \\(p.dependencies||{}\\)['dompurify']\\);\")",
+      "Bash(node -e \"try{console.log\\(require\\('express/package.json'\\).version\\)}catch\\(e\\){console.log\\('n/a'\\)}\")"
     ]
   }
 }

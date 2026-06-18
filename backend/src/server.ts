@@ -33,6 +33,7 @@ import timetableRoutes from './routes/timetableRoutes.js';
 import dashboardRoutes from './routes/dashboard.js';
 import feesRoutes from './routes/feesRoutes.js';
 import studentFeeRoutes from './routes/studentFeeRoutes.js';
+import { sanitizeInput } from './middleware/sanitize.js';
 
 // Connect to MongoDB
 console.log("[DB] Attempting to connect to MongoDB...");
@@ -79,6 +80,10 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Sanitize all incoming input (body/query/params) to block script/HTML injection (XSS).
+app.use(sanitizeInput);
+
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Request Logger
