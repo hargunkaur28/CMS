@@ -329,12 +329,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   
                   <NavItem 
                     icon={<ClipboardCheck size={18} />} 
-                    label="Attendance" 
+                    label="Attendance"
                     href={
-                      user?.role === 'STUDENT' ? '/student/attendance' : 
-                      ['COLLEGE_ADMIN', 'SUPER_ADMIN'].includes(user?.role) ? '/admin/attendance' : 
+                      user?.role === 'STUDENT' ? '/student/attendance' :
+                      user?.role === 'TEACHER' ? '/teacher/attendance' :
+                      ['COLLEGE_ADMIN', 'SUPER_ADMIN'].includes(user?.role) ? '/admin/attendance' :
                       '/attendance'
-                    } 
+                    }
                     active={pathname.includes("/attendance")} 
                   />
                   
