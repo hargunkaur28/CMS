@@ -110,6 +110,7 @@ const seedData = async () => {
       { name: 'Dr. Richard Feynman', email: 'feynman@git.edu', password: 'password123', role: 'TEACHER', collegeId: college._id },
       { name: 'Prof. Nikola Tesla', email: 'tesla@git.edu', password: 'password123', role: 'TEACHER', collegeId: college._id },
       { name: 'Prof. Varun Sharma', email: 'varun@gmail.com', password: 'password123', role: 'TEACHER', collegeId: college._id },
+      { name: 'Margaret Hamilton', email: 'librarian@git.edu', password: 'password123', role: 'LIBRARIAN', collegeId: college._id, employeeId: 'EMP-LIBRARIAN' },
       { name: 'Harsh Kumar', email: 'student@git.edu', password: 'password123', role: 'STUDENT', collegeId: college._id, registrationId: 'STU2024001' },
       { name: 'Mr. Sharma', email: 'parent@git.edu', password: 'password123', role: 'PARENT', collegeId: college._id, registrationId: 'PAR2024001' },
       ...extraStudents.map(s => ({ 

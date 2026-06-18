@@ -618,7 +618,11 @@ export const getStudentTodaySchedule = async (req: Request, res: Response) => {
     if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
 
     const section = await resolveStudentSection(student);
-    if (!section) return res.status(400).json({ success: false, message: 'Student is not assigned to a valid section' });
+    // Today's schedule is a non-critical dashboard widget: if the student has no
+    // section assigned yet, return an empty schedule instead of failing with 400.
+    if (!section) {
+      return res.status(200).json({ success: true, data: [], message: 'Student is not assigned to a section yet' });
+    }
 
     const results = await populateTimetable(
       Timetable.find({

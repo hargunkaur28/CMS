@@ -15,12 +15,14 @@ export const markAttendance = async (req: Request, res: Response) => {
   try {
     const { classId, subjectId, date, records } = req.body;
     const teacherId = (req as any).user?._id;
+    const collegeId = (req as any).user?.collegeId;
 
     const existingDate = new Date(date);
     existingDate.setHours(0, 0, 0, 0);
 
     const attendance = await Attendance.create({
       teacherId,
+      collegeId,
       classId,
       subjectId,
       date: existingDate,
@@ -142,6 +144,11 @@ export const markBulkAttendance = async (req: Request, res: Response) => {
     });
 
     let updateQuery: any = { teacherId, records, section: section || 'General' };
+
+    // Stamp the college so college-scoped reports (admin overview/ledger) include this record.
+    if (user.collegeId) {
+      updateQuery.collegeId = user.collegeId;
+    }
 
     if (existingAttendance) {
        const twentyFourHours = 24 * 60 * 60 * 1000;

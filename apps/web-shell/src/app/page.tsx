@@ -901,9 +901,13 @@ function StudentDashboard() {
                            <Calendar size={12} />
                            {dueDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}
                          </div>
+                         {assignment.fileUrl ? (
                          <a href={assignment.fileUrl.startsWith('http') ? assignment.fileUrl : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5005/api'}`.replace('/api', '') + '/' + assignment.fileUrl.replace(/\\/g, '/')} target="_blank" rel="noopener noreferrer" className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1 bg-indigo-50/50 px-2.5 py-1.5 rounded-lg active:scale-95">
                            View <ArrowUpRight size={12} />
                          </a>
+                         ) : (
+                           <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">No file</span>
+                         )}
                       </div>
                     </div>
                   );

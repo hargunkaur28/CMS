@@ -75,6 +75,8 @@ export default function LoginPage() {
 
       if (response.status === 200 || response.status === 201) {
         // 3. Session Persistence
+        // Clear any stale "access denied" notice left over from a prior session/role
+        localStorage.removeItem("portal_notice");
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify({
           _id: data._id,

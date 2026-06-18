@@ -127,9 +127,16 @@ export const getShortageList = async (req: Request, res: Response) => {
 export const getStudentWiseAttendance = async (req: Request, res: Response) => {
   try {
     const { batchId, section, subjectId } = req.query;
-    
+    const userRole = (req as any).user?.role;
+    const userCollegeId = (req as any).user?.collegeId;
+
     // Base match for the attendance collection
     const matchQuery: any = {};
+    // Scope to the admin's own college so the ledger matches the college-scoped KPIs
+    // and does not leak other colleges' students.
+    if (userRole === 'COLLEGE_ADMIN' && userCollegeId) {
+      matchQuery.collegeId = new mongoose.Types.ObjectId(userCollegeId.toString());
+    }
     if (batchId) matchQuery.classId = new mongoose.Types.ObjectId(batchId as string);
     if (subjectId) matchQuery.subjectId = new mongoose.Types.ObjectId(subjectId as string);
     // Note: section filtering requires fetching Batch details or Student details
