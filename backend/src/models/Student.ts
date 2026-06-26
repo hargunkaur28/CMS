@@ -90,6 +90,7 @@ const StudentSchema: Schema = new Schema(
         uploadedAt: { type: Date, default: Date.now },
       },
     ],
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
@@ -107,6 +108,20 @@ StudentSchema.pre('save', function(next) {
     student.studentId = student.enrollmentId;
   }
   next();
+});
+
+// Soft-delete: auto-exclude isDeleted records from find and countDocuments
+StudentSchema.pre(/^find/, function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
+StudentSchema.pre('countDocuments', function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
 });
 
 export default mongoose.model<IStudent>("Student", StudentSchema);

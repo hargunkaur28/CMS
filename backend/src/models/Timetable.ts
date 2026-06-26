@@ -47,10 +47,25 @@ const TimetableSchema: Schema = new Schema(
     dayOfWeek: { type: String, enum: DAYS },
     period: { type: Number, min: 1, max: 8 },
     academicYear: { type: String },
-    isActive: { type: Boolean, default: true }
+    isActive: { type: Boolean, default: true },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
+
+// Soft-delete: auto-exclude isDeleted records from find and countDocuments
+TimetableSchema.pre(/^find/, function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
+TimetableSchema.pre('countDocuments', function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
 
 TimetableSchema.index(
   { collegeId: 1, batchId: 1, sectionId: 1, day: 1, startTime: 1 },

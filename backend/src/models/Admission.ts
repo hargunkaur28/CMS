@@ -26,6 +26,21 @@ const AdmissionSchema: Schema = new Schema({
   appliedDate: { type: Date, default: Date.now },
   enrolledDate: { type: Date },
   studentId: { type: Schema.Types.ObjectId, ref: 'Student' },
+  isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });
+
+// Soft-delete: auto-exclude isDeleted records from find and countDocuments
+AdmissionSchema.pre(/^find/, function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
+AdmissionSchema.pre('countDocuments', function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
 
 export default mongoose.model<IAdmission>('Admission', AdmissionSchema);

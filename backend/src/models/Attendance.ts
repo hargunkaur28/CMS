@@ -1,6 +1,15 @@
 // FILE: backend/src/models/Attendance.ts
 import mongoose, { Schema, Document } from "mongoose";
 
+export interface IRectificationLog {
+  modifiedBy?: mongoose.Types.ObjectId;
+  modifiedAt?: Date;
+  previousRecords: {
+    studentId?: mongoose.Types.ObjectId;
+    status?: string;
+  }[];
+}
+
 export interface IAttendance extends Document {
   teacherId: mongoose.Types.ObjectId;
   classId: mongoose.Types.ObjectId;
@@ -12,6 +21,8 @@ export interface IAttendance extends Document {
     studentId: mongoose.Types.ObjectId;
     status: 'Present' | 'Absent' | 'Leave';
   }[];
+  isRectified?: boolean;
+  rectificationLogs: IRectificationLog[];
   createdAt: Date;
   updatedAt: Date;
 }

@@ -53,11 +53,26 @@ const FacultySchema: Schema = new Schema(
       enum: ['Active', 'On-Leave', 'Resigned'],
       default: 'Active',
     },
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
 
 // Compound index for fast assignment lookups
 FacultySchema.index({ 'assignedSubjects.batchId': 1, 'assignedSubjects.subjectId': 1 });
+
+// Soft-delete: auto-exclude isDeleted records from find and countDocuments
+FacultySchema.pre(/^find/, function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
+FacultySchema.pre('countDocuments', function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
 
 export default mongoose.model<IFaculty>('Faculty', FacultySchema);

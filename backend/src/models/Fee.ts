@@ -20,6 +20,21 @@ const FeeSchema: Schema = new Schema({
   paymentDate: { type: Date },
   receiptNumber: { type: String },
   type: { type: String, required: true },
+  isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });
+
+// Soft-delete: auto-exclude isDeleted records from find and countDocuments
+FeeSchema.pre(/^find/, function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
+FeeSchema.pre('countDocuments', function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
 
 export default mongoose.model<IFee>('Fee', FeeSchema);

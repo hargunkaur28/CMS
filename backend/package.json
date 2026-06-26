@@ -11,9 +11,12 @@
     "seed": "tsc && node dist/backend/src/config/seed.js",
     "migrate:enrollment-ids": "tsc && node dist/backend/src/scripts/migrate_enrollment_ids.js",
     "migrate:department-index": "tsc && node dist/backend/src/scripts/migrateDepartmentIndex.js",
+    "mcp": "node dist/backend/src/mcp/index.js",
+    "mcp:dev": "tsc && node dist/backend/src/mcp/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "bcryptjs": "^2.4.3",
     "cloudinary": "^1.41.3",
     "cors": "^2.8.5",

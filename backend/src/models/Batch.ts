@@ -39,8 +39,23 @@ const BatchSchema: Schema = new Schema(
       }
     ],
     students: [{ type: Schema.Types.ObjectId, ref: "Student" }],
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
+
+// Soft-delete: auto-exclude isDeleted records from find and countDocuments
+BatchSchema.pre(/^find/, function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
+BatchSchema.pre('countDocuments', function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
 
 export default mongoose.model<IBatch>("Batch", BatchSchema);

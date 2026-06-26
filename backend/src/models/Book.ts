@@ -20,8 +20,23 @@ const BookSchema: Schema = new Schema({
   totalCopies: { type: Number, required: true },
   availableCopies: { type: Number, required: true },
   location: { type: String },
+  isDeleted: { type: Boolean, default: false },
 }, { timestamps: true });
 
 BookSchema.index({ isbn: 1, collegeId: 1 }, { unique: true });
+
+// Soft-delete: auto-exclude isDeleted records from find and countDocuments
+BookSchema.pre(/^find/, function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
+BookSchema.pre('countDocuments', function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
 
 export default mongoose.model<IBook>('Book', BookSchema);

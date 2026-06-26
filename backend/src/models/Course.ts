@@ -23,8 +23,23 @@ const CourseSchema: Schema = new Schema(
     totalSeats: { type: Number, required: true },
     description: { type: String },
     subjects: [{ type: Schema.Types.ObjectId, ref: "Subject" }],
+    isDeleted: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
+
+// Soft-delete: auto-exclude isDeleted records from find and countDocuments
+CourseSchema.pre(/^find/, function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
+CourseSchema.pre('countDocuments', function (this: any) {
+  const filter = this.getFilter();
+  if (filter.isDeleted === undefined) {
+    this.where({ isDeleted: { $ne: true } });
+  }
+});
 
 export default mongoose.model<ICourse>("Course", CourseSchema);
