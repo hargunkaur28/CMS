@@ -34,6 +34,7 @@ import dashboardRoutes from './routes/dashboard.js';
 import feesRoutes from './routes/feesRoutes.js';
 import studentFeeRoutes from './routes/studentFeeRoutes.js';
 import { sanitizeInput } from './middleware/sanitize.js';
+import { integrateMCPWithExpress } from './mcp/express.js';
 
 // Connect to MongoDB
 console.log("[DB] Attempting to connect to MongoDB...");
@@ -41,6 +42,7 @@ await connectDB();
 console.log("[DB] MongoDB connection sequence completed.");
 
 const app = express();
+integrateMCPWithExpress(app);
 const httpServer = createServer(app);
 
 // Initialize Socket.io
