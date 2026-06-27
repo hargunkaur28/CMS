@@ -726,7 +726,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       } else if (type === 'number' || type === 'integer') {
         inputHtml = '<input type="number" id="param-' + key + '" placeholder="' + desc.replace(/"/g, '') + '">';
       } else if (type === 'array' || type === 'object') {
-        inputHtml = '<textarea id="param-' + key + '" placeholder=\'JSON: ' + desc.replace(/'/g, '') + '\'></textarea>';
+        inputHtml = '<textarea id="param-' + key + '" placeholder="JSON: ' + desc.replace(/'/g, '') + '"></textarea>';
       } else {
         inputHtml = '<input type="text" id="param-' + key + '" placeholder="' + desc.replace(/"/g, '') + '">';
       }
