@@ -40,15 +40,13 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       color: var(--text-primary);
       min-height: 100vh;
       line-height: 1.6;
-      display: flex;
-      flex-direction: column;
     }
 
     /* Header */
     .header {
       background: linear-gradient(135deg, #1a1040 0%, #0f172a 50%, #0a1628 100%);
       border-bottom: 1px solid var(--border);
-      padding: 16px 32px;
+      padding: 24px 32px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -65,21 +63,21 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
     }
 
     .logo {
-      width: 36px;
-      height: 36px;
+      width: 42px;
+      height: 42px;
       background: linear-gradient(135deg, var(--accent), #a855f7);
-      border-radius: 10px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 700;
       color: white;
       box-shadow: 0 4px 15px var(--accent-glow);
     }
 
     .header h1 {
-      font-size: 18px;
+      font-size: 20px;
       font-weight: 700;
       background: linear-gradient(135deg, #e2e8f0, #94a3b8);
       -webkit-background-clip: text;
@@ -88,54 +86,20 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
 
     .header h1 span {
       font-weight: 400;
-      font-size: 13px;
+      font-size: 14px;
       background: linear-gradient(135deg, #94a3b8, #64748b);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       margin-left: 8px;
     }
 
-    .header-nav {
-      display: flex;
-      background: var(--bg-input);
-      padding: 4px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      gap: 4px;
-    }
-
-    .nav-btn {
-      padding: 6px 16px;
-      border: none;
-      background: transparent;
-      color: var(--text-secondary);
-      font-size: 13px;
-      font-weight: 500;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .nav-btn:hover {
-      color: var(--text-primary);
-    }
-
-    .nav-btn.active {
-      background: var(--bg-card);
-      color: var(--accent-hover);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
-
     .connection-badge {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 14px;
+      padding: 8px 16px;
       border-radius: 20px;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 500;
       border: 1px solid var(--border);
       background: var(--bg-secondary);
@@ -152,20 +116,24 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
     .connection-badge.connected .dot {
       background: var(--success);
       box-shadow: 0 0 8px rgba(34,197,94,0.5);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
     }
 
     /* Layout */
     .container {
       display: flex;
-      flex: 1;
-      height: calc(100vh - 69px);
-      overflow: hidden;
+      height: calc(100vh - 91px);
     }
 
     /* Sidebar */
     .sidebar {
-      width: 320px;
-      min-width: 320px;
+      width: 340px;
+      min-width: 340px;
       background: var(--bg-secondary);
       border-right: 1px solid var(--border);
       display: flex;
@@ -174,7 +142,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
     }
 
     .sidebar-header {
-      padding: 16px;
+      padding: 20px;
       border-bottom: 1px solid var(--border);
     }
 
@@ -227,6 +195,10 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
 
     .tool-list::-webkit-scrollbar {
       width: 6px;
+    }
+
+    .tool-list::-webkit-scrollbar-track {
+      background: transparent;
     }
 
     .tool-list::-webkit-scrollbar-thumb {
@@ -298,7 +270,6 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      background: var(--bg-primary);
     }
 
     .main-empty {
@@ -316,21 +287,31 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       opacity: 0.3;
     }
 
+    .main-empty p {
+      font-size: 15px;
+    }
+
     .tool-detail {
       flex: 1;
       overflow-y: auto;
       padding: 32px;
     }
 
-    .tool-detail::-webkit-scrollbar { width: 6px; }
-    .tool-detail::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    .tool-detail::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .tool-detail::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 3px;
+    }
 
     .detail-header {
-      margin-bottom: 24px;
+      margin-bottom: 28px;
     }
 
     .detail-header h2 {
-      font-size: 22px;
+      font-size: 24px;
       font-weight: 700;
       margin-bottom: 8px;
       font-family: 'SF Mono', 'Fira Code', monospace;
@@ -339,16 +320,17 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
     .detail-header p {
       color: var(--text-secondary);
       font-size: 14px;
+      line-height: 1.6;
     }
 
     /* Form */
     .param-section h3 {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: var(--text-muted);
-      margin-bottom: 12px;
+      margin-bottom: 16px;
     }
 
     .param-group {
@@ -374,6 +356,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       font-size: 13px;
       font-weight: 600;
       margin-bottom: 6px;
+      color: var(--text-primary);
     }
 
     .param-field label .required {
@@ -382,6 +365,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       border-radius: 4px;
       background: rgba(239,68,68,0.15);
       color: #f87171;
+      font-weight: 600;
     }
 
     .param-field label .optional {
@@ -390,6 +374,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       border-radius: 4px;
       background: rgba(100,116,139,0.2);
       color: var(--text-muted);
+      font-weight: 500;
     }
 
     .param-field .hint {
@@ -410,6 +395,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       font-size: 13px;
       font-family: 'SF Mono', 'Fira Code', monospace;
       outline: none;
+      transition: border-color 0.2s;
     }
 
     .param-field input:focus,
@@ -419,12 +405,18 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       box-shadow: 0 0 0 3px var(--accent-glow);
     }
 
+    .param-field textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
     /* Buttons */
     .btn {
       padding: 10px 24px;
       border-radius: 8px;
       font-size: 13px;
       font-weight: 600;
+      font-family: inherit;
       cursor: pointer;
       border: none;
       transition: all 0.2s;
@@ -442,6 +434,16 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
     .btn-primary:hover {
       transform: translateY(-1px);
       box-shadow: 0 6px 20px var(--accent-glow);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .btn-secondary {
@@ -463,16 +465,19 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
 
     /* Result */
     .result-section {
-      margin-top: 24px;
+      margin-top: 28px;
     }
 
     .result-section h3 {
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 1px;
       color: var(--text-muted);
-      margin-bottom: 8px;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .result-box {
@@ -488,191 +493,37 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       font-family: 'SF Mono', 'Fira Code', monospace;
       color: var(--text-secondary);
       white-space: pre-wrap;
-      word-break: break-all;
+      word-break: break-word;
+      line-height: 1.7;
     }
 
-    .result-box.success { border-color: rgba(34,197,94,0.3); }
-    .result-box.error { border-color: rgba(239,68,68,0.3); }
+    .result-box.success {
+      border-color: rgba(34,197,94,0.3);
+    }
+
+    .result-box.error {
+      border-color: rgba(239,68,68,0.3);
+    }
 
     .result-time {
       font-size: 11px;
       color: var(--text-muted);
-      margin-left: 8px;
-      text-transform: none;
-    }
-
-    /* AI Chat Interface */
-    .chat-view {
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      flex: 1;
-      background: var(--bg-primary);
-    }
-
-    .chat-config-bar {
-      padding: 12px 24px;
-      background: var(--bg-secondary);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      justify-content: space-between;
-    }
-
-    .chat-config-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--text-secondary);
-    }
-
-    .key-input-wrapper {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .key-input {
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      padding: 6px 12px;
-      border-radius: 6px;
-      color: var(--text-primary);
-      font-size: 12px;
-      width: 280px;
-      outline: none;
-    }
-
-    .key-input:focus {
-      border-color: var(--accent);
-    }
-
-    .chat-messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .chat-messages::-webkit-scrollbar { width: 6px; }
-    .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-    .chat-msg {
-      max-width: 80%;
-      padding: 14px 18px;
-      border-radius: 12px;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
-    .chat-msg.user {
-      align-self: flex-end;
-      background: var(--accent);
-      color: white;
-      box-shadow: 0 4px 10px var(--accent-glow);
-      border-bottom-right-radius: 2px;
-    }
-
-    .chat-msg.assistant {
-      align-self: flex-start;
-      background: var(--bg-card);
-      color: var(--text-primary);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 2px;
-    }
-
-    .tool-execution-log {
       margin-top: 8px;
-      font-size: 12px;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px;
-      font-family: 'SF Mono', 'Fira Code', monospace;
-      color: var(--text-secondary);
-      border-left: 3px solid var(--warning);
     }
 
-    .tool-execution-log.success {
-      border-left-color: var(--success);
+    /* Loading spinner */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: inline-block;
     }
 
-    .tool-execution-log summary {
-      cursor: pointer;
-      font-weight: 600;
-      color: var(--text-primary);
-      outline: none;
-    }
-
-    .tool-execution-log pre {
-      margin-top: 6px;
-      max-height: 200px;
-      overflow-y: auto;
-      font-size: 11px;
-      color: var(--text-muted);
-    }
-
-    .chat-input-bar {
-      padding: 16px 24px 24px 24px;
-      background: linear-gradient(180deg, transparent 0%, var(--bg-secondary) 100%);
-      border-top: 1px solid var(--border);
-    }
-
-    .chat-input-wrapper {
-      display: flex;
-      gap: 12px;
-      background: var(--bg-input);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 8px 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-      align-items: center;
-    }
-
-    .chat-input-wrapper:focus-within {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--accent-glow);
-    }
-
-    .chat-textarea {
-      flex: 1;
-      background: transparent;
-      border: none;
-      color: var(--text-primary);
-      font-size: 14px;
-      font-family: inherit;
-      outline: none;
-      resize: none;
-      height: 24px;
-      line-height: 24px;
-    }
-
-    .chat-send-btn {
-      background: linear-gradient(135deg, var(--accent), #7c3aed);
-      color: white;
-      border: none;
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.2s;
-    }
-
-    .chat-send-btn:hover {
-      transform: scale(1.05);
-    }
-
-    .chat-send-btn:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-      transform: none;
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
 
     /* Filter tabs */
@@ -680,7 +531,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       display: flex;
       flex-wrap: wrap;
       gap: 4px;
-      padding: 12px 16px;
+      padding: 12px 20px;
       border-bottom: 1px solid var(--border);
     }
 
@@ -709,23 +560,12 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
       border-color: rgba(99,102,241,0.3);
     }
 
-    /* Spinner */
-    .spinner {
-      width: 16px;
-      height: 16px;
-      border: 2px solid rgba(255,255,255,0.3);
-      border-top-color: white;
-      border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-      display: inline-block;
+    /* Responsive */
+    @media (max-width: 768px) {
+      .container { flex-direction: column; }
+      .sidebar { width: 100%; min-width: auto; max-height: 40vh; }
+      .tool-detail { padding: 20px; }
     }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    /* Utility classes */
-    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -733,25 +573,15 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
 <div class="header">
   <div class="header-left">
     <div class="logo">⚡</div>
-    <h1>CMS MCP Server <span>v1.1.0 (AI Enabled)</span></h1>
+    <h1>CMS MCP Server <span>v1.0.0</span></h1>
   </div>
-  
-  <div class="header-nav">
-    <button class="nav-btn active" id="manualTabBtn" onclick="switchView('manual')">
-      ⚙️ Manual Tools
-    </button>
-    <button class="nav-btn" id="aiTabBtn" onclick="switchView('ai')">
-      🤖 Ask AI Chat
-    </button>
-  </div>
-
   <div class="connection-badge" id="connectionBadge">
     <div class="dot"></div>
     <span id="connectionText">Connecting...</span>
   </div>
 </div>
 
-<div class="container" id="manualView">
+<div class="container">
   <div class="sidebar">
     <div class="sidebar-header">
       <div class="search-wrapper">
@@ -774,79 +604,10 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
   </div>
 </div>
 
-<div class="container hidden" id="aiView">
-  <div class="chat-view">
-    <div class="chat-config-bar">
-      <div class="chat-config-left">
-        <span>Use Gemini to run database tools using natural language.</span>
-      </div>
-      <div class="key-input-wrapper">
-        <label style="font-size: 12px; color: var(--text-muted)">Gemini API Key:</label>
-        <input type="password" class="key-input" id="geminiApiKey" placeholder="AIzaSy..." oninput="saveApiKey()">
-      </div>
-    </div>
-
-    <div class="chat-messages" id="chatMessages">
-      <div class="chat-msg assistant">
-        Hello! I can query the database using any of the 53 tools available. 
-        <br><br>
-        <strong>Try asking:</strong>
-        <ul style="margin-left: 20px; margin-top: 8px; font-size: 13px; color: var(--text-secondary)">
-          <li>"How many students are in the CSE department?"</li>
-          <li>"Which books are currently overdue?"</li>
-          <li>"Show batch CSE2026-A timetable slots"</li>
-        </ul>
-        <br>
-        <em>Please enter your Gemini API Key in the top right to enable AI chat.</em>
-      </div>
-    </div>
-
-    <div class="chat-input-bar">
-      <div class="chat-input-wrapper">
-        <textarea class="chat-textarea" id="chatInput" placeholder="Ask any question about the database..." rows="1" onkeydown="handleChatKeydown(event)"></textarea>
-        <button class="chat-send-btn" id="chatSendBtn" onclick="submitChat()">
-          <span style="font-size: 16px">➔</span>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
   const BASE = window.location.origin;
   let tools = [];
   let selectedTool = null;
-
-  // ── Tab Switcher ──
-  function switchView(view) {
-    const manualBtn = document.getElementById('manualTabBtn');
-    const aiBtn = document.getElementById('aiTabBtn');
-    const manualView = document.getElementById('manualView');
-    const aiView = document.getElementById('aiView');
-
-    if (view === 'manual') {
-      manualBtn.classList.add('active');
-      aiBtn.classList.remove('active');
-      manualView.classList.remove('hidden');
-      aiView.classList.add('hidden');
-    } else {
-      manualBtn.classList.remove('active');
-      aiBtn.classList.add('active');
-      manualView.classList.add('hidden');
-      aiView.classList.remove('hidden');
-      
-      // Load API Key
-      const savedKey = localStorage.getItem('gemini_api_key');
-      if (savedKey) {
-        document.getElementById('geminiApiKey').value = savedKey;
-      }
-    }
-  }
-
-  function saveApiKey() {
-    const key = document.getElementById('geminiApiKey').value.trim();
-    localStorage.setItem('gemini_api_key', key);
-  }
 
   // ── Load Tools via REST API ──
   async function connect() {
@@ -1091,238 +852,6 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
     const filter = document.querySelector('.filter-tab.active')?.dataset.filter;
     renderToolList(filter, e.target.value);
   });
-
-  // ── Gemini Agent Client-Side Loop ──
-  let chatHistory = [];
-
-  function handleChatKeydown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      submitChat();
-    }
-  }
-
-  async function submitChat() {
-    const key = localStorage.getItem('gemini_api_key');
-    if (!key) {
-      alert('Please enter your Gemini API Key in the top right input field!');
-      return;
-    }
-
-    const input = document.getElementById('chatInput');
-    const query = input.value.trim();
-    if (!query) return;
-
-    input.value = '';
-    
-    // Append user message
-    appendChatMessage('user', query);
-    
-    const sendBtn = document.getElementById('chatSendBtn');
-    sendBtn.disabled = true;
-    
-    const assistantMsgEl = appendChatMessage('assistant', '<span class="spinner"></span> Thinking...');
-    
-    // Prepare conversation messages
-    chatHistory.push({
-      role: 'user',
-      parts: [{ text: query }]
-    });
-
-    try {
-      await runAgentLoop(key, assistantMsgEl);
-    } catch (err) {
-      assistantMsgEl.innerHTML = '<span style="color:var(--error)">Error: ' + err.message + '</span>';
-    } finally {
-      sendBtn.disabled = false;
-    }
-  }
-
-  function appendChatMessage(role, htmlContent) {
-    const container = document.getElementById('chatMessages');
-    const msg = document.createElement('div');
-    msg.className = 'chat-msg ' + role;
-    msg.innerHTML = htmlContent;
-    container.appendChild(msg);
-    container.scrollTop = container.scrollHeight;
-    return msg;
-  }
-
-  // Translates MCP tool list to Gemini API functions
-  function getGeminiTools() {
-    return tools.map(t => {
-      const properties = {};
-      const required = t.inputSchema?.required || [];
-      
-      if (t.inputSchema?.properties) {
-        for (const [k, v] of Object.entries(t.inputSchema.properties)) {
-          let geminiType = 'STRING';
-          if (v.type === 'number' || v.type === 'integer') geminiType = 'NUMBER';
-          else if (v.type === 'boolean') geminiType = 'BOOLEAN';
-          else if (v.type === 'array') geminiType = 'ARRAY';
-          else if (v.type === 'object') geminiType = 'OBJECT';
-          
-          properties[k] = {
-            type: geminiType,
-            description: v.description || ''
-          };
-          if (v.enum) {
-            properties[k].enum = v.enum;
-          }
-        }
-      }
-
-      return {
-        name: t.name,
-        description: t.description || '',
-        parameters: {
-          type: 'OBJECT',
-          properties: properties,
-          required: required
-        }
-      };
-    });
-  }
-
-  async function runAgentLoop(apiKey, responseEl) {
-    let loopCount = 0;
-    const maxLoops = 8;
-    const geminiTools = getGeminiTools();
-    
-    while (loopCount < maxLoops) {
-      loopCount++;
-      
-      const payload = {
-        contents: chatHistory,
-        tools: [{ functionDeclarations: geminiTools }],
-        systemInstruction: {
-          parts: [{ text: "You are a helpful college management assistant. Use the provided tools to answer user questions about the database. If a user asks for 'CSE department' or similar, use the appropriate tool parameters. Keep answers concise." }]
-        }
-      };
-
-      const response = await fetch(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + apiKey,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        }
-      );
-
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error?.message || 'Gemini API connection error (HTTP ' + response.status + ')');
-      }
-
-      const data = await response.json();
-      const candidate = data.candidates?.[0];
-      const part = candidate?.content?.parts?.[0];
-
-      if (!part) {
-        throw new Error('Empty response from AI engine');
-      }
-
-      // Add AI turn to history
-      chatHistory.push(candidate.content);
-
-      if (part.functionCall) {
-        const call = part.functionCall;
-        const toolName = call.name;
-        const args = call.args || {};
-
-        // Render tool call action in UI
-        const logId = 'log-' + Date.now();
-        const logHtml = 
-          '<details class="tool-execution-log" id="' + logId + '">' +
-            '<summary>🔧 Running ' + toolName + '...</summary>' +
-            '<pre>Arguments: ' + JSON.stringify(args, null, 2) + '</pre>' +
-          '</details>';
-        
-        // Temporarily clear thinking spinner and add the execution log
-        if (responseEl.innerHTML.includes('Thinking...')) {
-          responseEl.innerHTML = '';
-        }
-        responseEl.innerHTML += logHtml;
-        responseEl.scrollTop = responseEl.scrollHeight;
-
-        // Run tool against our backend API
-        let toolOutput;
-        try {
-          const runRes = await fetch(BASE + '/mcp/api/run', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ toolName, args })
-          });
-          const runData = await runRes.json();
-          toolOutput = runData.result || runData;
-          
-          // Format result preview
-          let previewText = '';
-          const content = toolOutput.content;
-          if (content && content[0]?.text) {
-            try {
-              previewText = JSON.stringify(JSON.parse(content[0].text), null, 2);
-            } catch {
-              previewText = content[0].text;
-            }
-          } else {
-            previewText = JSON.stringify(toolOutput, null, 2);
-          }
-
-          // Update log to success
-          const logEl = document.getElementById(logId);
-          if (logEl) {
-            logEl.classList.add('success');
-            logEl.querySelector('summary').textContent = '✅ Ran ' + toolName;
-            logEl.querySelector('pre').textContent += '\n\nResponse:\n' + previewText;
-          }
-        } catch (tErr) {
-          toolOutput = { error: tErr.message };
-          const logEl = document.getElementById(logId);
-          if (logEl) {
-            logEl.querySelector('summary').textContent = '❌ Failed ' + toolName;
-            logEl.querySelector('pre').textContent += '\n\nError: ' + tErr.message;
-          }
-        }
-
-        // Add tool output back into history
-        chatHistory.push({
-          role: 'user',
-          parts: [{
-            functionResponse: {
-              name: toolName,
-              response: { output: toolOutput }
-            }
-          }]
-        });
-
-        // Add a small spacer/thinking indicator for the next step
-        responseEl.innerHTML += '<div id="spinner-' + logId + '" style="margin-top: 8px"><span class="spinner"></span> Working on answer...</div>';
-        
-        // Let loop continue to query Gemini with the output
-        const nextSpinner = document.getElementById('spinner-' + logId);
-        if (nextSpinner) {
-          nextSpinner.remove();
-        }
-      } else if (part.text) {
-        // Final text response received
-        if (responseEl.innerHTML.includes('Thinking...')) {
-          responseEl.innerHTML = '';
-        }
-        
-        // Simple linebreaks and markdown bold/italic parsing using pure string splits (no backslashes/regex to avoid template literal conflicts)
-        const formattedText = part.text
-          .split('\\n').join('<br>')
-          .split('**').reduce(function(acc, val, idx) { return acc + (idx % 2 === 1 ? '<strong>' + val + '</strong>' : val); }, '')
-          .split('*').reduce(function(acc, val, idx) { return acc + (idx % 2 === 1 ? '<em>' + val + '</em>' : val); }, '');
-
-        responseEl.innerHTML += '<div style="margin-top: 8px">' + formattedText + '</div>';
-        return; // Complete
-      }
-    }
-
-    throw new Error('AI query exceeded maximum reasoning steps (8 loops).');
-  }
 
   // ── Boot ──
   connect();
