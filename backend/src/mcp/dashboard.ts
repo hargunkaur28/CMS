@@ -1310,11 +1310,11 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
           responseEl.innerHTML = '';
         }
         
-        // Simple linebreaks to <br> and bolding for presentation
+        // Simple linebreaks and markdown bold/italic parsing using pure string splits (no backslashes/regex to avoid template literal conflicts)
         const formattedText = part.text
-          .replace(/\\n/g, '<br>')
-          .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
-          .replace(/\\*(.*?)\\*/g, '<em>$1</em>');
+          .split('\\n').join('<br>')
+          .split('**').reduce(function(acc, val, idx) { return acc + (idx % 2 === 1 ? '<strong>' + val + '</strong>' : val); }, '')
+          .split('*').reduce(function(acc, val, idx) { return acc + (idx % 2 === 1 ? '<em>' + val + '</em>' : val); }, '');
 
         responseEl.innerHTML += '<div style="margin-top: 8px">' + formattedText + '</div>';
         return; // Complete
