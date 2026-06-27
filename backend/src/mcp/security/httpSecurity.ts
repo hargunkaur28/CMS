@@ -20,7 +20,10 @@ const CSP = [
   "connect-src 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  // 'self' + https: so the OAuth consent form can post here AND be redirected
+  // to the client's external https callback (e.g. Claude). http:/data: targets
+  // stay blocked. The only HTML form we serve is the OAuth consent page.
+  "form-action 'self' https:",
 ].join('; ');
 
 /** Helmet-equivalent security headers. */
