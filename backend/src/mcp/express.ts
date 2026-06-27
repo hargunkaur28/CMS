@@ -2,6 +2,7 @@ import express from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { createAuthMiddleware } from './auth.js';
+import { serveDashboard } from './dashboard.js';
 
 // Import tool registers
 import { registerStudentTools } from './tools/student.tools.js';
@@ -28,24 +29,35 @@ export function integrateMCPWithExpress(app: express.Express) {
   registerFeeTools(server);
   registerLibraryTools(server);
 
-  let transportInstance: SSEServerTransport | null = null;
+  const transports = new Map<string, SSEServerTransport>();
+
+  // Dashboard UI
+  app.get('/mcp', serveDashboard);
 
   // Mount SSE endpoint
-  app.get('/mcp/sse', createAuthMiddleware(), async (req, res) => {
+  app.get('/mcp/sse', async (req, res) => {
     console.error('[MCP] Deployed SSE client connecting...');
-    transportInstance = new SSEServerTransport('/mcp/messages', res);
-    await server.connect(transportInstance);
-    console.error('[MCP] Deployed SSE client connected');
+    const transport = new SSEServerTransport('/mcp/messages', res);
+    transports.set(transport.sessionId, transport);
+
+    res.on('close', () => {
+      transports.delete(transport.sessionId);
+      console.error('[MCP] SSE client disconnected:', transport.sessionId);
+    });
+
+    await server.connect(transport);
+    console.error('[MCP] Deployed SSE client connected:', transport.sessionId);
   });
 
   // Mount message post endpoint
-  app.post('/mcp/messages', createAuthMiddleware(), express.json(), async (req, res) => {
-    if (!transportInstance) {
-      return res.status(400).send('Active SSE session not established. Connect to /mcp/sse first.');
+  app.post('/mcp/messages', express.json(), async (req, res) => {
+    const sessionId = req.query.sessionId as string;
+    const transport = transports.get(sessionId);
+    if (!transport) {
+      return res.status(400).json({ error: 'Invalid or expired session. Reconnect to /mcp/sse.' });
     }
-    console.error('[MCP] Deployed SSE received message');
-    await transportInstance.handlePostMessage(req, res);
+    await transport.handlePostMessage(req, res);
   });
 
-  console.error('[MCP] Mounted MCP SSE routes on /mcp/sse and /mcp/messages');
+  console.error('[MCP] Mounted MCP routes: /mcp (dashboard), /mcp/sse, /mcp/messages');
 }
