@@ -733,7 +733,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
 <div class="header">
   <div class="header-left">
     <div class="logo">⚡</div>
-    <h1>CMS MCP Server <span>v1.0.0</span></h1>
+    <h1>CMS MCP Server <span>v1.1.0 (AI Enabled)</span></h1>
   </div>
   
   <div class="header-nav">
