@@ -37,25 +37,16 @@ export function integrateMCPWithExpress(app: express.Express) {
   // ── Dashboard UI ──
   app.get('/mcp', serveDashboard);
 
-  // ── Dashboard REST API (tool listing + execution without SSE) ──
+  // ── Dashboard REST API (uses official MCP SDK request handlers) ──
   app.get('/mcp/api/tools', async (_req, res) => {
     try {
       const server = createMCPServer();
-      // Access the internal server's registered tools
-      const internalServer = (server as any).server;
-      const toolsList: any[] = [];
-
-      if (internalServer?._registeredTools) {
-        for (const [name, entry] of internalServer._registeredTools) {
-          toolsList.push({
-            name,
-            description: entry.description || '',
-            inputSchema: entry.inputSchema || { type: 'object', properties: {} },
-          });
-        }
+      const handler = (server.server as any)._requestHandlers.get('tools/list');
+      if (!handler) {
+        throw new Error('tools/list handler not found');
       }
-
-      res.json({ tools: toolsList });
+      const result = await handler({ method: 'tools/list' });
+      res.json(result);
     } catch (err: any) {
       console.error('[MCP] /mcp/api/tools error:', err.message);
       res.status(500).json({ error: err.message });
@@ -68,15 +59,17 @@ export function integrateMCPWithExpress(app: express.Express) {
       if (!toolName) return res.status(400).json({ error: 'toolName is required' });
 
       const server = createMCPServer();
-      const internalServer = (server as any).server;
-      const toolEntry = internalServer?._registeredTools?.get(toolName);
-
-      if (!toolEntry) {
-        return res.status(404).json({ error: `Tool "${toolName}" not found` });
+      const handler = (server.server as any)._requestHandlers.get('tools/call');
+      if (!handler) {
+        throw new Error('tools/call handler not found');
       }
-
-      // Execute the tool callback directly
-      const result = await toolEntry.callback(args || {}, { server: internalServer });
+      const result = await handler({
+        method: 'tools/call',
+        params: {
+          name: toolName,
+          arguments: args || {},
+        },
+      });
       res.json({ result });
     } catch (err: any) {
       console.error('[MCP] /mcp/api/run error:', err.message);
