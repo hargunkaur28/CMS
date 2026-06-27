@@ -42,6 +42,9 @@ await connectDB();
 console.log("[DB] MongoDB connection sequence completed.");
 
 const app = express();
+// Trust Render's reverse proxy so req.ip / X-Forwarded-* reflect the real client
+// (used by MCP rate limiting and login session IP capture).
+app.set('trust proxy', 1);
 integrateMCPWithExpress(app);
 const httpServer = createServer(app);
 
