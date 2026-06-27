@@ -1312,9 +1312,9 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
         
         // Simple linebreaks to <br> and bolding for presentation
         const formattedText = part.text
-          .replace(/\n/g, '<br>')
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>');
+          .replace(/\\n/g, '<br>')
+          .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
+          .replace(/\\*(.*?)\\*/g, '<em>$1</em>');
 
         responseEl.innerHTML += '<div style="margin-top: 8px">' + formattedText + '</div>';
         return; // Complete
