@@ -608,97 +608,30 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
   const BASE = window.location.origin;
   let tools = [];
   let selectedTool = null;
-  let sessionEndpoint = null;
-  let eventSource = null;
-  let pendingRequests = {};
-  let requestId = 1;
 
-  // ── SSE Connection ──
-  function connect() {
+  // ── Load Tools via REST API ──
+  async function connect() {
     const badge = document.getElementById('connectionBadge');
     const text = document.getElementById('connectionText');
-    
-    eventSource = new EventSource(BASE + '/mcp/sse');
 
-    eventSource.addEventListener('endpoint', (e) => {
-      sessionEndpoint = e.data;
+    try {
+      const res = await fetch(BASE + '/mcp/api/tools');
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      tools = data.tools || [];
+
       badge.classList.add('connected');
-      text.textContent = 'Connected';
-      initialize();
-    });
-
-    eventSource.addEventListener('message', (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        if (msg.id && pendingRequests[msg.id]) {
-          pendingRequests[msg.id](msg);
-          delete pendingRequests[msg.id];
-        }
-      } catch(err) {}
-    });
-
-    eventSource.onerror = () => {
-      badge.classList.remove('connected');
-      text.textContent = 'Disconnected';
-      setTimeout(connect, 3000);
-    };
-  }
-
-  async function sendRequest(method, params) {
-    const id = requestId++;
-    const body = { jsonrpc: '2.0', id, method, params: params || {} };
-
-    return new Promise((resolve, reject) => {
-      pendingRequests[id] = resolve;
+      text.textContent = 'Connected (' + tools.length + ' tools)';
       
-      fetch(BASE + sessionEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      }).catch(reject);
-
-      // Timeout after 30s
-      setTimeout(() => {
-        if (pendingRequests[id]) {
-          delete pendingRequests[id];
-          reject(new Error('Request timed out'));
-        }
-      }, 30000);
-    });
-  }
-
-  async function initialize() {
-    try {
-      await sendRequest('initialize', {
-        protocolVersion: '2024-11-05',
-        capabilities: {},
-        clientInfo: { name: 'cms-dashboard', version: '1.0.0' }
-      });
-
-      // Send initialized notification (no response expected)
-      fetch(BASE + sessionEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })
-      });
-
-      // Small delay then list tools
-      setTimeout(listTools, 300);
-    } catch(err) {
-      console.error('Init failed:', err);
-    }
-  }
-
-  async function listTools() {
-    try {
-      const res = await sendRequest('tools/list', {});
-      tools = res.result?.tools || [];
       renderToolList();
       renderFilterTabs();
       document.getElementById('toolCount').innerHTML = 
         '<strong>' + tools.length + '</strong> tools available';
     } catch(err) {
-      console.error('List tools failed:', err);
+      badge.classList.remove('connected');
+      text.textContent = 'Connection Failed';
+      document.getElementById('toolCount').textContent = 'Failed to load tools: ' + err.message;
+      setTimeout(connect, 5000);
     }
   }
 
@@ -825,14 +758,13 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
         '<div class="result-box" id="resultBox"><pre id="resultPre"></pre></div>' +
       '</div>';
 
-    // Update sidebar active state
     renderToolList(
       document.querySelector('.filter-tab.active')?.dataset.filter, 
       document.getElementById('searchBox').value
     );
   }
 
-  // ── Run Tool ──
+  // ── Run Tool via REST API ──
   async function runTool() {
     if (!selectedTool) return;
 
@@ -871,21 +803,23 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
     const time = document.getElementById('resultTime');
 
     try {
-      const res = await sendRequest('tools/call', {
-        name: selectedTool.name,
-        arguments: args
+      const res = await fetch(BASE + '/mcp/api/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ toolName: selectedTool.name, args })
       });
-      
+
+      const data = await res.json();
       const elapsed = Date.now() - start;
       section.style.display = 'block';
       time.textContent = '(' + elapsed + 'ms)';
 
-      if (res.error) {
+      if (data.error) {
         box.className = 'result-box error';
-        pre.textContent = JSON.stringify(res.error, null, 2);
+        pre.textContent = typeof data.error === 'string' ? data.error : JSON.stringify(data.error, null, 2);
       } else {
         box.className = 'result-box success';
-        const content = res.result?.content;
+        const content = data.result?.content;
         if (content && content[0]?.text) {
           try {
             pre.textContent = JSON.stringify(JSON.parse(content[0].text), null, 2);
@@ -893,7 +827,7 @@ const DASHBOARD_HTML = `<!DOCTYPE html>
             pre.textContent = content[0].text;
           }
         } else {
-          pre.textContent = JSON.stringify(res.result, null, 2);
+          pre.textContent = JSON.stringify(data.result, null, 2);
         }
       }
     } catch(err) {
