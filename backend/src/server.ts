@@ -33,8 +33,19 @@ import timetableRoutes from './routes/timetableRoutes.js';
 import dashboardRoutes from './routes/dashboard.js';
 import feesRoutes from './routes/feesRoutes.js';
 import studentFeeRoutes from './routes/studentFeeRoutes.js';
+import placementRoutes from './routes/placementRoutes.js';
+import importRoutes from './routes/importRoutes.js';
+import trustedSourceRoutes from './routes/trustedSourceRoutes.js';
 import { sanitizeInput } from './middleware/sanitize.js';
 import { integrateMCPWithExpress } from './mcp/express.js';
+import { JobOrchestrator } from './services/queue/JobOrchestrator.js';
+import { EmailQueueProcessor } from './services/emailQueueProcessor.js';
+
+// Production safety check: Do not allow static OTP in production
+if (process.env.NODE_ENV === 'production' && process.env.ADMIN_STATIC_OTP) {
+  console.error("FATAL ERROR: ADMIN_STATIC_OTP cannot be used in a production environment.");
+  process.exit(1);
+}
 
 // Connect to MongoDB
 console.log("[DB] Attempting to connect to MongoDB...");
@@ -119,6 +130,11 @@ app.use('/api/timetable', timetableRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/fees', feesRoutes);
 app.use('/api/student', studentFeeRoutes);
+app.use('/api/placements', placementRoutes);
+app.use('/api/imports', importRoutes);
+app.use('/api/trusted-sources', trustedSourceRoutes);
+
+JobOrchestrator.initCron();
 
 app.get('/', (req: Request, res: Response) => {
   res.send('AI-Powered College Management System API is running...');
@@ -139,4 +155,31 @@ const PORT = process.env.PORT || 5005;
 console.log(`[SERVER] Attempting to start server on port ${PORT}...`);
 httpServer.listen(PORT, () => {
   console.log(`[SERVER] Success! Server is running on port ${PORT}`);
+  
+  // Start the email queue processor background loop
+  EmailQueueProcessor.start();
+  
+  // Trigger recovery for stuck email queue jobs on startup
+  EmailQueueProcessor.recoverStuckJobs().catch(err => {
+    console.error('[EmailQueueProcessor] Error in startup recovery:', err);
+  });
+});
+
+// Graceful shutdown handling
+process.on('SIGTERM', () => {
+  console.log('[SERVER] SIGTERM received. Stopping background worker and closing HTTP server...');
+  EmailQueueProcessor.stop();
+  httpServer.close(() => {
+    console.log('[SERVER] HTTP server closed.');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('[SERVER] SIGINT received. Stopping background worker and closing HTTP server...');
+  EmailQueueProcessor.stop();
+  httpServer.close(() => {
+    console.log('[SERVER] HTTP server closed.');
+    process.exit(0);
+  });
 });

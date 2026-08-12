@@ -28,7 +28,8 @@ import {
   Upload,
   MessageSquare,
   Moon,
-  Sun
+  Sun,
+  Briefcase
 } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
@@ -373,6 +374,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   <div className="pt-4 pb-2 px-3">
                     <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-3">Campus Life</p>
                   </div>
+
+                  <NavItem 
+                    icon={<Briefcase size={18} />} 
+                    label="Placements" 
+                    href="/student/placement" 
+                    active={pathname.startsWith("/student/placement")} 
+                    roles={['STUDENT']}
+                    currentUserRole={user?.role}
+                  />
 
                   <NavItem 
                     icon={<CreditCard size={18} />} 

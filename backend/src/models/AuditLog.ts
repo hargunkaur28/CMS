@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IAuditLog extends Document {
   userId?: mongoose.Types.ObjectId;
-  action: 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'PUBLISH' | 'APPROVE' | 'LOGIN' | 'LOGOUT';
+  action: 'CREATE' | 'READ' | 'UPDATE' | 'DELETE' | 'PUBLISH' | 'APPROVE' | 'LOGIN' | 'LOGOUT' | 'PLACEMENT_CREATED' | 'PLACEMENT_UPDATED' | 'PLACEMENT_PUBLISHED' | 'PLACEMENT_ARCHIVED' | 'PLACEMENT_DELETED' | 'PLACEMENT_RESTORED' | 'DRAFT_SAVED' | 'VIEWED' | 'PREVIEWED' | string;
   resource_type: string;
   resource_id: string;
   change_details?: Record<string, any>;
@@ -17,7 +17,7 @@ const AuditLogSchema: Schema = new Schema({
   userId: { type: Schema.Types.ObjectId, ref: 'User', required: false },
   action: { 
     type: String, 
-    enum: ['CREATE', 'READ', 'UPDATE', 'DELETE', 'PUBLISH', 'APPROVE', 'LOGIN', 'LOGOUT'],
+    enum: ['CREATE', 'READ', 'UPDATE', 'DELETE', 'PUBLISH', 'APPROVE', 'LOGIN', 'LOGOUT', 'PLACEMENT_CREATED', 'PLACEMENT_UPDATED', 'PLACEMENT_PUBLISHED', 'PLACEMENT_ARCHIVED', 'PLACEMENT_DELETED', 'PLACEMENT_RESTORED', 'DRAFT_SAVED', 'VIEWED', 'PREVIEWED', 'AI_IMPORT_APPROVED', 'AI_IMPORT_REJECTED'],
     required: true 
   },
   resource_type: { type: String, required: true },

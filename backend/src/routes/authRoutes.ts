@@ -12,6 +12,7 @@ import {
 	revokeSession,
 	logoutAllSessions,
 	uploadUserAsset,
+	verifyAdminOtp
 } from '../controllers/authController.js';
 import { protect } from '../middleware/auth.js';
 
@@ -32,6 +33,7 @@ const upload = multer({
 });
 
 router.post('/login', loginUser);
+router.post('/verify-otp', verifyAdminOtp);
 router.get('/profile', protect, getUserProfile);
 router.patch('/profile', protect, updateUserProfile);
 router.post('/change-password', protect, changePassword);

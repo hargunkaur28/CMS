@@ -26,4 +26,15 @@ const NotificationSchema: Schema = new Schema({
   actionUrl: { type: String },
 }, { timestamps: true });
 
+// Unique index to prevent duplicate notifications for a placement/student pair
+NotificationSchema.index(
+  { 'metadata.placementId': 1, recipientUserId: 1, type: 1 },
+  { 
+    unique: true, 
+    partialFilterExpression: { 'metadata.placementId': { $exists: true } }
+  }
+);
+
 export default mongoose.model<INotification>('Notification', NotificationSchema);
+
+

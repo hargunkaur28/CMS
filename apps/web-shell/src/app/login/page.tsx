@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   Sparkles, 
   Mail, 
@@ -10,7 +10,8 @@ import {
   Loader2, 
   ChevronRight, 
   AlertCircle,
-  ShieldCheck
+  ShieldCheck,
+  KeyRound
 } from "lucide-react";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -35,7 +36,13 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
-  React.useEffect(() => {
+  // OTP State
+  const [challengeId, setChallengeId] = useState<string | null>(null);
+  const [otp, setOtp] = useState("");
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
+  const [timeLeft, setTimeLeft] = useState<string>("05:00");
+
+  useEffect(() => {
     const storedTheme = localStorage.getItem("portal_theme");
     const systemPrefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
     const initialTheme = storedTheme === "dark" || storedTheme === "light"
@@ -45,6 +52,24 @@ export default function LoginPage() {
     document.documentElement.classList.toggle("theme-dark", initialTheme === "dark");
   }, []);
 
+  useEffect(() => {
+    if (!expiresAt) return;
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = expiresAt.getTime() - now;
+      if (distance <= 0) {
+        clearInterval(interval);
+        setTimeLeft("00:00");
+        setError("Security challenge expired. Please restart initialization.");
+      } else {
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+        setTimeLeft(`${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
   const toggleTheme = () => {
     const nextTheme = theme === "dark" ? "light" : "dark";
     setTheme(nextTheme);
@@ -52,12 +77,29 @@ export default function LoginPage() {
     document.documentElement.classList.toggle("theme-dark", nextTheme === "dark");
   };
 
+  const handleLoginSuccess = (data: any) => {
+    localStorage.removeItem("portal_notice");
+    localStorage.setItem("token", data.token);
+    localStorage.setItem("user", JSON.stringify({
+      _id: data._id,
+      id: data._id,
+      name: data.name,
+      email: data.email,
+      role: data.role,
+      collegeId: data.collegeId,
+      profilePicture: data.profilePicture || '',
+      mustChangePassword: Boolean(data.mustChangePassword),
+      isFirstLogin: Boolean(data.isFirstLogin),
+    }));
+    router.push("/");
+    router.refresh();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
-    // 1. Validation & Sanitization
     const result = loginSchema.safeParse(formData);
     
     if (!result.success) {
@@ -66,36 +108,44 @@ export default function LoginPage() {
       return;
     }
 
-    const sanitizedData = result.data;
-
     try {
-      // 2. Authentication Request
-      const response = await api.post("/auth/login", sanitizedData);
+      const response = await api.post("/auth/login", result.data);
       const data = response.data;
 
-      if (response.status === 200 || response.status === 201) {
-        // 3. Session Persistence
-        // Clear any stale "access denied" notice left over from a prior session/role
-        localStorage.removeItem("portal_notice");
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify({
-          _id: data._id,
-          id: data._id,
-          name: data.name,
-          email: data.email,
-          role: data.role,
-          collegeId: data.collegeId,
-          profilePicture: data.profilePicture || '',
-          mustChangePassword: Boolean(data.mustChangePassword),
-          isFirstLogin: Boolean(data.isFirstLogin),
-        }));
-        
-        // 4. Redirect to home (skip password change on login)
-        router.push("/");
-        router.refresh();
+      if (response.status === 202) {
+        setChallengeId(data.challengeId);
+        setExpiresAt(new Date(data.expiresAt));
+      } else if (response.status === 200 || response.status === 201) {
+        handleLoginSuccess(data);
       }
     } catch (err: any) {
       setError(err.response?.data?.message || "Institutional cluster connectivity failure");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (otp.length < 6) {
+      setError("Please enter the complete 6-digit security code");
+      return;
+    }
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await api.post("/auth/verify-otp", { challengeId, otp });
+      if (response.status === 200 || response.status === 201) {
+        handleLoginSuccess(response.data);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Security verification failed");
+      // If challenge expired or invalid, reset to login
+      if (err.response?.status === 400 && err.response?.data?.message?.includes("expired")) {
+        setChallengeId(null);
+        setOtp("");
+      }
     } finally {
       setLoading(false);
     }
@@ -107,8 +157,6 @@ export default function LoginPage() {
         type="button"
         onClick={toggleTheme}
         className="fixed top-4 right-4 z-40 w-10 h-10 rounded-xl bg-white/90 border border-slate-200 text-slate-700 shadow-lg hover:bg-white transition-all flex items-center justify-center"
-        aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-        title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       >
         {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
       </button>
@@ -122,67 +170,130 @@ export default function LoginPage() {
           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">St. Xavier's Digital Curator</p>
         </div>
 
-        <Card className="p-10 bg-white shadow-xl shadow-slate-200/50 relative border-t-4 border-t-indigo-600 rounded-3xl border-slate-100">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">Institutional Identifier (Email or ID)</label>
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
-                <input 
-                  type="text" 
-                  placeholder="name@institution.edu or ID-2024001"
-                  value={formData.identifier}
-                  onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-2xl pl-12 pr-4 py-3.5 text-sm outline-none text-slate-800 placeholder:text-slate-400 shadow-sm"
-                />
-              </div>
-            </div>
+        <Card className="p-10 bg-white shadow-xl shadow-slate-200/50 relative border-t-4 border-t-indigo-600 rounded-3xl border-slate-100 overflow-hidden">
+          
+          {/* OTP VIEW */}
+          {challengeId ? (
+             <form onSubmit={handleVerifyOtp} className="space-y-6 animate-in slide-in-from-right-8 duration-500">
+               <div className="text-center mb-6">
+                 <h2 className="text-lg font-bold text-slate-800">Two-Step Verification</h2>
+                 <p className="text-sm text-slate-500 mt-2">Enter the 6-digit security code generated by your authenticator or sent to your email.</p>
+               </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between pl-1 pr-1">
-                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Security Protocol</label>
-              </div>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
-                <input 
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-2xl pl-12 pr-12 py-3.5 text-sm outline-none text-slate-800 placeholder:text-slate-400 shadow-sm"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((prev) => !prev)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-indigo-600"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
+               <div className="space-y-2">
+                 <div className="flex items-center justify-between pl-1 pr-1">
+                   <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Security Code</label>
+                   <span className="text-xs font-bold text-rose-500 font-mono tracking-widest">{timeLeft}</span>
+                 </div>
+                 <div className="relative group">
+                   <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
+                   <input 
+                     type="text" 
+                     maxLength={6}
+                     placeholder="000000"
+                     value={otp}
+                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                     className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-2xl pl-12 pr-4 py-3.5 text-center text-2xl tracking-[0.5em] font-mono outline-none text-slate-800 placeholder:text-slate-300 shadow-sm"
+                   />
+                 </div>
+               </div>
 
-            {error && (
-              <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 animate-in shake duration-500">
-                <AlertCircle className="text-rose-600 shrink-0" size={18} />
-                <p className="text-xs font-bold text-rose-700 leading-tight">{error}</p>
-              </div>
-            )}
+               {error && (
+                 <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 animate-in shake duration-500">
+                   <AlertCircle className="text-rose-600 shrink-0" size={18} />
+                   <p className="text-xs font-bold text-rose-700 leading-tight">{error}</p>
+                 </div>
+               )}
 
-            <button 
-              disabled={loading}
-              className="w-full h-14 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-3 transition-all hover:bg-indigo-700 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0 group"
-            >
-              {loading ? (
-                <Loader2 className="animate-spin text-white" size={20} />
-              ) : (
-                <>
-                  <span>Initialize Connection</span>
-                  <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                </>
+               <button 
+                 disabled={loading || timeLeft === "00:00"}
+                 className="w-full h-14 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-3 transition-all hover:bg-indigo-700 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0 group"
+               >
+                 {loading ? (
+                   <Loader2 className="animate-spin text-white" size={20} />
+                 ) : (
+                   <>
+                     <span>Verify Identity</span>
+                     <ShieldCheck size={18} className="group-hover:scale-110 transition-transform" />
+                   </>
+                 )}
+               </button>
+
+               <button
+                 type="button"
+                 onClick={() => {
+                   setChallengeId(null);
+                   setOtp("");
+                   setError(null);
+                 }}
+                 className="w-full text-xs text-slate-500 hover:text-slate-800 font-bold uppercase tracking-wider transition-colors"
+               >
+                 Cancel & Return
+               </button>
+             </form>
+          ) : (
+             /* LOGIN VIEW */
+             <form onSubmit={handleSubmit} className="space-y-6 animate-in slide-in-from-left-8 duration-500">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-600 uppercase tracking-wider pl-1">Institutional Identifier (Email or ID)</label>
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
+                  <input 
+                    type="text" 
+                    placeholder="name@institution.edu or ID-2024001"
+                    value={formData.identifier}
+                    onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-2xl pl-12 pr-4 py-3.5 text-sm outline-none text-slate-800 placeholder:text-slate-400 shadow-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between pl-1 pr-1">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Security Protocol</label>
+                </div>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
+                  <input 
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all rounded-2xl pl-12 pr-12 py-3.5 text-sm outline-none text-slate-800 placeholder:text-slate-400 shadow-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-indigo-600"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 animate-in shake duration-500">
+                  <AlertCircle className="text-rose-600 shrink-0" size={18} />
+                  <p className="text-xs font-bold text-rose-700 leading-tight">{error}</p>
+                </div>
               )}
-            </button>
-          </form>
+
+              <button 
+                disabled={loading}
+                className="w-full h-14 bg-indigo-600 text-white rounded-2xl font-bold text-sm shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-3 transition-all hover:bg-indigo-700 hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:hover:translate-y-0 group"
+              >
+                {loading ? (
+                  <Loader2 className="animate-spin text-white" size={20} />
+                ) : (
+                  <>
+                    <span>Initialize Connection</span>
+                    <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
 
           <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col items-center gap-4">
              <div className="flex items-center gap-2 text-indigo-600/60 bg-indigo-50 px-3 py-1.5 rounded-full">

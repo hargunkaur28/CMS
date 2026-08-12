@@ -20,7 +20,9 @@ import {
   LogOut,
   Layers,
   Moon,
-  Sun
+  Sun,
+  Globe,
+  Briefcase
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -39,9 +41,12 @@ const NAV_ITEMS = [
   { icon: Layers, label: "Batches", href: "/admin/batches" },
   { icon: Calendar, label: "Schedule", href: "/admin/timetable" },
   { icon: ClipboardCheck, label: "Attendance", href: "/admin/attendance" },
+  { icon: Briefcase, label: "Placements", href: "/admin/placement" },
   { icon: FileText, label: "Exams", href: "/admin/exams" },
   { icon: CreditCard, label: "Fees", href: "/admin/fees" },
   { icon: MessageSquare, label: "Communication", href: "/admin/communication" },
+  { icon: Sparkles, label: "AI Imports", href: "/admin/ai-imports" },
+  { icon: Globe, label: "AI Sources", href: "/admin/ai-sources" },
   { icon: Settings, label: "Settings", href: "/admin/settings" },
   { icon: ShieldCheck, label: "Governance", href: "/admin/naac" },
 ];

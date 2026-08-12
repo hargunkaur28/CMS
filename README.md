@@ -172,6 +172,10 @@ API_SECRET=your_cloudinary_api_secret
 
 # Session
 SESSION_TIMEOUT=30
+
+# Groq AI (Backend only - never expose to frontend)
+GROQ_API_KEY=your_groq_api_key_here
+GROQ_MODEL=llama3-70b-8192
 ```
 
 For frontend, create `.env.local` in `apps/web-shell`:
@@ -384,6 +388,26 @@ For issues, questions, or feature requests:
 - [Database Schema](./docs/SCHEMA.md)
 - [Deployment Guide](./DEPLOYMENT_GUIDE.md)
 - [Architecture Overview](./docs/ARCHITECTURE.md)
+
+## 🤖 Groq AI Integration
+
+We use Groq API for server-side structured placement extraction.
+
+### Features
+- **Strict Zod Validation**: AI extraction output is strongly typed and validated against the Zod schema (`GroqPlacementSchema`).
+- **Delimiter-Based Extraction Protection**: Prevents prompt injection by placing the scraped content inside `<scraped_content>` tags and instructing the model to treat it as untrusted.
+- **Auto-Normalization & Safe Truncation**: Inputs are normalized and truncated safely at paragraph/sentence/line boundaries if they exceed 15,000 characters.
+- **Transient Retry Policy**: Uses an exponential backoff retry system (max 3 attempts) for transient failures (HTTP 429/5xx).
+- **Log Privacy**: API keys, credentials, and full request bodies are scrubbed/masked before writing to MongoDB system logs.
+
+### Testing
+To run the automated validation suite, execute:
+```bash
+cd backend
+npm run test:groq
+```
+This runs 6 offline mock scenarios testing edge-cases (missing fields, invalid payloads, transient 429 retries, and prompt injection mitigation).
+If `GROQ_API_KEY` is present in `backend/.env`, it will automatically execute a live integration test as well.
 
 ---
 
