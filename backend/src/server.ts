@@ -63,6 +63,10 @@ const httpServer = createServer(app);
 initSocket(httpServer);
 
 // Middleware
+const configuredOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim().replace(/\/$/, '')).filter(Boolean)
+  : [];
+
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
@@ -72,13 +76,14 @@ const allowedOrigins = [
   'http://[::1]:3001',
   'https://collegemanagement.avanienterprises.in',
   'http://collegemanagement.avanienterprises.in',
-  ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [])
+  'https://cms-lovat-phi.vercel.app',
+  ...configuredOrigins
 ];
 
 const isAllowedLocalOrigin = (origin: string) => {
   try {
     const parsed = new URL(origin);
-    return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '[::1]';
+    return parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '[::1]' || parsed.hostname.endsWith('.vercel.app');
   } catch {
     return false;
   }
@@ -86,7 +91,8 @@ const isAllowedLocalOrigin = (origin: string) => {
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || isAllowedLocalOrigin(origin)) {
+    const cleanOrigin = origin ? origin.replace(/\/$/, '') : '';
+    if (!origin || allowedOrigins.includes(cleanOrigin) || isAllowedLocalOrigin(cleanOrigin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));
